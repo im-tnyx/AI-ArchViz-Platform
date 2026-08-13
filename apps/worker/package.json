@@ -1,0 +1,17 @@
+{
+  "name": "@ai-archviz/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "worker": "node dist/cli.js",
+    "test:3dsmax:health": "node dist/cli.js probe-3ds-max"
+  },
+  "dependencies": {
+    "@ai-archviz/scene-spec": "workspace:*",
+    "@ai-archviz/worker-contracts": "workspace:*"
+  }
+}
