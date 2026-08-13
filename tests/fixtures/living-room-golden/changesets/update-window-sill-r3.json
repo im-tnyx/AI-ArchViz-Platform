@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_golden_update_window_sill_r3",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0002",
+  "targetRevisionId": "rev_golden_0003",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Raise the Golden north-wall window sill to the approved absolute elevation.",
+  "riskLevel": "high",
+  "operations": [
+    {
+      "operationId": "op_golden_update_window_sill_r3",
+      "type": "UpdateOpening",
+      "targetId": "opening_w01",
+      "reason": "Apply the verified 900 mm sill as absolute opening geometry.",
+      "riskLevel": "high",
+      "parameters": {
+        "offset": 1800,
+        "width": 2400,
+        "sill": 900,
+        "height": 1500
+      },
+      "preconditions": [],
+      "provenance": [
+        {
+          "evidenceId": "source_golden_fixture",
+          "field": "openings.opening_w01.sill"
+        }
+      ],
+      "expectedImpact": {
+        "affectedLogicalIds": ["opening_w01"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-13T11:00:00Z"
+  }
+}

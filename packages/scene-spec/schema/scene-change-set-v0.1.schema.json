@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-archviz.example/schema/scene-change-set-v0.1.schema.json",
-  "title": "AI ArchViz SceneChangeSet v0.1 — Spike 2 MoveObject subset",
+  "title": "AI ArchViz SceneChangeSet v0.1 — deterministic revision subset",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -54,7 +54,12 @@
       "type": "array",
       "minItems": 1,
       "maxItems": 1,
-      "items": { "$ref": "#/$defs/moveObject" }
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/moveObject" },
+          { "$ref": "#/$defs/updateOpening" }
+        ]
+      }
     },
     "preconditions": {
       "type": "array",
@@ -160,18 +165,61 @@
           "type": "array",
           "items": { "$ref": "#/$defs/provenance" }
         },
-        "expectedImpact": {
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "updateOpening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "UpdateOpening" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "high" },
+        "parameters": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["affectedLogicalIds"],
+          "required": ["offset", "width", "sill", "height"],
           "properties": {
-            "affectedLogicalIds": {
-              "type": "array",
-              "minItems": 1,
-              "items": { "$ref": "#/$defs/id" },
-              "uniqueItems": true
-            }
+            "offset": { "type": "number", "minimum": 0 },
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "sill": { "type": "number", "minimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 }
           }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "expectedImpact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["affectedLogicalIds"],
+      "properties": {
+        "affectedLogicalIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/id" },
+          "uniqueItems": true
         }
       }
     }

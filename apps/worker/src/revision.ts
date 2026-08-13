@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, readFileSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import {
@@ -15,7 +15,12 @@ import {
   validateSceneManifest,
   verifyJobHashes,
 } from "@ai-archviz/worker-contracts";
-import type { SemanticTransform, Vector3 } from "./build-plan.js";
+import {
+  compileGoldenBuildPlan,
+  type SemanticTransform,
+  type Vector3,
+  wallFrame,
+} from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
@@ -46,6 +51,15 @@ interface MoveObjectOperation {
   parameters: { transform: SemanticTransform };
 }
 
+interface UpdateOpeningOperation {
+  operationId: string;
+  type: "UpdateOpening";
+  targetId: string;
+  parameters: { offset: number; width: number; sill: number; height: number };
+}
+
+type SupportedOperation = MoveObjectOperation | UpdateOpeningOperation;
+
 interface ChangeSetContract extends SceneChangeSet {
   schemaVersion: "0.1.0";
   changeSetId: string;
@@ -53,7 +67,7 @@ interface ChangeSetContract extends SceneChangeSet {
   sceneId: string;
   baseRevisionId: string;
   targetRevisionId: string;
-  operations: [MoveObjectOperation];
+  operations: [SupportedOperation];
   metadata: { createdAt: string };
 }
 
@@ -75,7 +89,56 @@ interface SceneDocument extends Record<string, unknown> {
     transform: SemanticTransform;
     locks: { transform: boolean };
   }>;
+  geometry: Array<{
+    id: string;
+    type: string;
+    start?: Vector3;
+    end?: Vector3;
+    height?: number;
+    locks: { geometry: boolean };
+  }>;
+  openings: Array<{
+    id: string;
+    type: string;
+    hostGeometryId: string;
+    offset: number;
+    width: number;
+    sill: number;
+    height: number;
+    transform: SemanticTransform;
+    locks: { geometry: boolean };
+  }>;
+  cameras: Array<{ id: string }>;
   revisions: Array<Record<string, unknown>>;
+}
+
+interface WallSegmentPlan {
+  name: string;
+  hostLogicalId: string;
+  center: Vector3;
+  dimensions: Vector3;
+  rotationZ: number;
+}
+
+interface MoveMutation {
+  operationId: string;
+  type: "MoveObject";
+  targetId: string;
+  transform: SemanticTransform;
+}
+
+interface OpeningMutation {
+  operationId: string;
+  type: "UpdateOpening";
+  targetId: string;
+  hostLogicalId: string;
+  offset: number;
+  width: number;
+  sill: number;
+  height: number;
+  transform: SemanticTransform;
+  physicalPosition: Vector3;
+  wallSegments: WallSegmentPlan[];
 }
 
 export interface RevisionMutationPlan {
@@ -85,12 +148,7 @@ export interface RevisionMutationPlan {
   sceneId: string;
   baseRevisionId: string;
   targetRevisionId: string;
-  operation: {
-    operationId: string;
-    type: "MoveObject";
-    targetId: string;
-    transform: SemanticTransform;
-  };
+  operation: MoveMutation | OpeningMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -185,10 +243,13 @@ export function planSceneRevision(
       (operation) =>
         operation &&
         typeof operation === "object" &&
-        (operation as { type?: unknown }).type !== "MoveObject",
+        !["MoveObject", "UpdateOpening"].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
-    throw new RevisionValidationError("OPERATION_UNSUPPORTED", "Spike 2 supports MoveObject only");
+    throw new RevisionValidationError(
+      "OPERATION_UNSUPPORTED",
+      "Revision runner supports MoveObject and UpdateOpening only",
+    );
   }
   const baseValidation = validateSceneSpec(baseValue);
   if (!baseValidation.ok)
@@ -221,40 +282,132 @@ export function planSceneRevision(
     );
   }
   const [operation] = changeSet.operations;
-  if (operation?.type !== "MoveObject") {
-    throw new RevisionValidationError("OPERATION_UNSUPPORTED", "Spike 2 supports MoveObject only");
-  }
-  const matches = base.assets.filter((asset) => asset.id === operation.targetId);
-  if (matches.length === 0) {
-    throw new RevisionValidationError(
-      "TARGET_NOT_FOUND",
-      `Target ${operation.targetId} was not found`,
-    );
-  }
-  if (matches.length > 1) {
-    throw new RevisionValidationError(
-      "DUPLICATE_LOGICAL_ID",
-      `Target ${operation.targetId} is not unique`,
-    );
-  }
-  const target = matches[0] as SceneDocument["assets"][number];
-  if (target.type !== "proxy_asset") {
-    throw new RevisionValidationError("TARGET_NOT_MANAGED", "MoveObject target is not managed");
-  }
-  if (target.locks.transform) {
-    throw new RevisionValidationError(
-      "TRANSFORM_LOCKED",
-      `Target ${target.id} transform is locked`,
-    );
-  }
-  validatePlacement(base, target, operation.parameters.transform);
-
   const targetSceneSpec = structuredClone(baseValue) as SceneDocument;
   targetSceneSpec.scene.revisionId = changeSet.targetRevisionId;
   targetSceneSpec.scene.headRevisionId = changeSet.targetRevisionId;
-  const targetAsset = targetSceneSpec.assets.find((asset) => asset.id === operation.targetId);
-  if (!targetAsset) throw new RevisionValidationError("TARGET_NOT_FOUND", "Target disappeared");
-  targetAsset.transform = structuredClone(operation.parameters.transform);
+  let mutation: MoveMutation | OpeningMutation;
+  if (operation?.type === "MoveObject") {
+    const matches = base.assets.filter((asset) => asset.id === operation.targetId);
+    if (matches.length === 0) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Target ${operation.targetId} was not found`,
+      );
+    }
+    if (matches.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_LOGICAL_ID",
+        `Target ${operation.targetId} is not unique`,
+      );
+    }
+    const target = matches[0] as SceneDocument["assets"][number];
+    if (target.type !== "proxy_asset") {
+      throw new RevisionValidationError("TARGET_NOT_MANAGED", "MoveObject target is not managed");
+    }
+    if (target.locks.transform) {
+      throw new RevisionValidationError(
+        "TRANSFORM_LOCKED",
+        `Target ${target.id} transform is locked`,
+      );
+    }
+    validatePlacement(base, target, operation.parameters.transform);
+    const targetAsset = targetSceneSpec.assets.find((asset) => asset.id === operation.targetId);
+    if (!targetAsset) throw new RevisionValidationError("TARGET_NOT_FOUND", "Target disappeared");
+    targetAsset.transform = structuredClone(operation.parameters.transform);
+    mutation = {
+      operationId: operation.operationId,
+      type: "MoveObject",
+      targetId: operation.targetId,
+      transform: structuredClone(operation.parameters.transform),
+    };
+  } else if (operation?.type === "UpdateOpening") {
+    const matches = base.openings.filter((opening) => opening.id === operation.targetId);
+    if (matches.length === 0) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Opening ${operation.targetId} was not found`,
+      );
+    }
+    if (matches.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_LOGICAL_ID",
+        `Opening ${operation.targetId} is not unique`,
+      );
+    }
+    const opening = matches[0] as SceneDocument["openings"][number];
+    if (opening.locks.geometry) {
+      throw new RevisionValidationError(
+        "GEOMETRY_LOCKED",
+        `Opening ${opening.id} geometry is locked`,
+      );
+    }
+    const hostMatches = base.geometry.filter(
+      (entity) => entity.id === opening.hostGeometryId && entity.type === "wall",
+    );
+    if (hostMatches.length === 0) {
+      throw new RevisionValidationError(
+        "HOST_NOT_FOUND",
+        `Opening host ${opening.hostGeometryId} was not found`,
+      );
+    }
+    if (hostMatches.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_LOGICAL_ID",
+        `Opening host ${opening.hostGeometryId} is not unique`,
+      );
+    }
+    const host = hostMatches[0] as SceneDocument["geometry"][number];
+    if (host.locks.geometry) {
+      throw new RevisionValidationError(
+        "GEOMETRY_LOCKED",
+        `Host wall ${host.id} geometry is locked`,
+      );
+    }
+    if (!host.start || !host.end || host.height === undefined) {
+      throw new RevisionValidationError("HOST_INVALID", `Host wall ${host.id} is incomplete`);
+    }
+    const { length } = wallFrame(host as Parameters<typeof wallFrame>[0]);
+    const parameters = operation.parameters;
+    if (
+      parameters.offset + parameters.width > length ||
+      parameters.sill + parameters.height > host.height
+    ) {
+      throw new RevisionValidationError(
+        "OPENING_EXCEEDS_HOST",
+        `Opening ${opening.id} exceeds host wall ${host.id}`,
+      );
+    }
+    const targetOpening = targetSceneSpec.openings.find((entry) => entry.id === operation.targetId);
+    if (!targetOpening)
+      throw new RevisionValidationError("TARGET_NOT_FOUND", "Opening disappeared");
+    targetOpening.offset = parameters.offset;
+    targetOpening.width = parameters.width;
+    targetOpening.sill = parameters.sill;
+    targetOpening.height = parameters.height;
+    targetOpening.transform.position = [
+      parameters.offset,
+      targetOpening.transform.position[1],
+      parameters.sill,
+    ];
+    const buildPlan = compileGoldenBuildPlan(targetSceneSpec);
+    const marker = buildPlan.openingMarkers.find((entry) => entry.logicalId === operation.targetId);
+    if (!marker) throw new RevisionValidationError("TARGET_NOT_FOUND", "Opening marker is missing");
+    mutation = {
+      operationId: operation.operationId,
+      type: "UpdateOpening",
+      targetId: operation.targetId,
+      hostLogicalId: host.id,
+      offset: parameters.offset,
+      width: parameters.width,
+      sill: parameters.sill,
+      height: parameters.height,
+      transform: structuredClone(targetOpening.transform),
+      physicalPosition: structuredClone(marker.position),
+      wallSegments: buildPlan.wallSegments.filter((segment) => segment.hostLogicalId === host.id),
+    };
+  } else {
+    throw new RevisionValidationError("OPERATION_UNSUPPORTED", "Operation is unsupported");
+  }
   targetSceneSpec.revisions.push({
     revisionId: changeSet.targetRevisionId,
     parentRevisionId: changeSet.baseRevisionId,
@@ -278,12 +431,7 @@ export function planSceneRevision(
       sceneId: changeSet.sceneId,
       baseRevisionId: changeSet.baseRevisionId,
       targetRevisionId: changeSet.targetRevisionId,
-      operation: {
-        operationId: operation.operationId,
-        type: "MoveObject",
-        targetId: operation.targetId,
-        transform: structuredClone(operation.parameters.transform),
-      },
+      operation: mutation,
       expectedManagedLogicalIds: managedLogicalIds(base),
     },
   };
@@ -454,6 +602,32 @@ export function assertGoldenRevisionDiff(diff: SemanticRevisionDiff): void {
   }
 }
 
+export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: ChangeSetContract): void {
+  const [operation] = changeSet.operations;
+  if (operation?.type === "MoveObject") {
+    assertGoldenRevisionDiff(diff);
+    return;
+  }
+  const [change] = diff.changed;
+  const changedFields = Object.keys(change?.changes ?? {}).sort();
+  if (
+    operation?.type !== "UpdateOpening" ||
+    diff.revision.before !== changeSet.baseRevisionId ||
+    diff.revision.after !== changeSet.targetRevisionId ||
+    diff.changed.length !== 1 ||
+    change?.logicalId !== operation.targetId ||
+    changedFields.join() !== "sill,transform.position" ||
+    diff.added.length !== 0 ||
+    diff.removed.length !== 0 ||
+    diff.unchanged.length !== 13
+  ) {
+    throw new RevisionValidationError(
+      "UNEXPECTED_SEMANTIC_DIFF",
+      `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+    );
+  }
+}
+
 function sourcePath(repositoryRoot: string, declaredByPath: string, declaredPath: string): string {
   return resolveWithinRoot(
     repositoryRoot,
@@ -463,6 +637,76 @@ function sourcePath(repositoryRoot: string, declaredByPath: string, declaredPath
 
 function rawFileHash(path: string): string {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
+}
+
+function findVerifiedBaseArtifact(
+  config: WorkerConfig,
+  identity: { projectId: string; sceneId: string; revisionId: string },
+  expectedManifest: Record<string, unknown>,
+): { artifactPath: string; artifactHash: string } {
+  const directory = resolve(config.workspaceRoot, "idempotency");
+  if (!existsSync(directory)) {
+    throw new RevisionValidationError(
+      "BASE_ARTIFACT_NOT_VERIFIED",
+      `No durable evidence exists for ${identity.revisionId}`,
+    );
+  }
+  const matches: Array<{ artifactPath: string; artifactHash: string }> = [];
+  for (const name of readdirSync(directory)
+    .filter((entry) => entry.endsWith(".json"))
+    .sort()) {
+    let key: string | null = null;
+    try {
+      const candidate = readJson(resolve(directory, name)) as { idempotencyKey?: unknown };
+      key = typeof candidate.idempotencyKey === "string" ? candidate.idempotencyKey : null;
+      if (!key) continue;
+      const record = readLedger(config.workspaceRoot, key);
+      if (
+        record?.status !== "SUCCESS" ||
+        !record.successfulJobId ||
+        !record.reportPath ||
+        !record.verifiedOutputPath ||
+        !record.manifestPath ||
+        !record.verifiedOutputHash ||
+        !record.manifestHash
+      ) {
+        continue;
+      }
+      const reportPath = resolveWithinRoot(config.workspaceRoot, record.reportPath);
+      const artifactPath = resolveWithinRoot(config.workspaceRoot, record.verifiedOutputPath);
+      const manifestPath = resolveWithinRoot(config.workspaceRoot, record.manifestPath);
+      if (!existsSync(reportPath) || !existsSync(artifactPath) || !existsSync(manifestPath))
+        continue;
+      const report = validateExecutionReport(readJson(reportPath));
+      const manifest = readJson(manifestPath) as Record<string, unknown>;
+      if (
+        !report.ok ||
+        report.value.status !== "SUCCESS" ||
+        report.value.jobId !== record.successfulJobId ||
+        report.value.requestHash !== record.requestHash ||
+        report.value.projectId !== identity.projectId ||
+        report.value.sceneId !== identity.sceneId ||
+        report.value.revisionId !== identity.revisionId ||
+        !validateSceneManifest(manifest).ok ||
+        record.verifiedOutputHash !== rawFileHash(artifactPath) ||
+        record.manifestHash !== semanticJsonHash(manifest) ||
+        record.manifestHash !== semanticJsonHash(expectedManifest)
+      ) {
+        continue;
+      }
+      matches.push({ artifactPath, artifactHash: record.verifiedOutputHash });
+    } catch {
+      if (key) continue;
+    }
+  }
+  const unique = new Map(matches.map((entry) => [entry.artifactPath, entry]));
+  if (unique.size !== 1) {
+    throw new RevisionValidationError(
+      unique.size === 0 ? "BASE_ARTIFACT_NOT_VERIFIED" : "BASE_ARTIFACT_AMBIGUOUS",
+      `Expected exactly one verified ${identity.revisionId} artifact, found ${unique.size}`,
+    );
+  }
+  return [...unique.values()][0] as { artifactPath: string; artifactHash: string };
 }
 
 function makeError(code: string, message: string, retryable = false): ReportError {
@@ -663,16 +907,44 @@ export async function applySceneChangeSet(
     if (!baseJobValidation.ok)
       throw new RevisionValidationError("SCHEMA_INVALID", "Base job is invalid");
     const baseJob = baseJobValidation.value;
-    const baseScene = readJson(
+    const initialScene = readJson(
       sourcePath(config.repositoryRoot, baseJobPath, baseJob.inputs.sceneSpecPath),
     ) as Record<string, unknown>;
-    const baseManifest = readJson(
+    const initialManifest = readJson(
       sourcePath(config.repositoryRoot, baseJobPath, baseJob.inputs.expectedManifestPath),
     ) as Record<string, unknown>;
-    const hashes = verifyJobHashes(baseJob, baseScene, baseManifest);
+    const hashes = verifyJobHashes(baseJob, initialScene, initialManifest);
     if (!hashes.ok)
       throw new RevisionValidationError("HASH_MISMATCH", JSON.stringify(hashes.mismatches));
-    const planned = planSceneRevision(baseScene, readJson(changeSetPath));
+    const submittedChangeSet = readJson(changeSetPath) as { baseRevisionId?: unknown };
+    const submittedValidation = validateSceneChangeSet(submittedChangeSet);
+    if (!submittedValidation.ok) {
+      throw new RevisionValidationError(
+        "SCHEMA_INVALID",
+        `SceneChangeSet validation failed: ${JSON.stringify(submittedValidation.errors)}`,
+      );
+    }
+    const fixtureRoot = dirname(dirname(changeSetPath));
+    const requestedBaseRevision = String(submittedValidation.value.baseRevisionId);
+    const baseRevisionRoot = resolveWithinRoot(
+      config.repositoryRoot,
+      relative(config.repositoryRoot, resolve(fixtureRoot, "revisions", requestedBaseRevision)),
+    );
+    const baseScene =
+      requestedBaseRevision === baseJob.requestedRevisionId
+        ? initialScene
+        : (readJson(resolve(baseRevisionRoot, "scene-spec.json")) as Record<string, unknown>);
+    const baseManifest =
+      requestedBaseRevision === baseJob.requestedRevisionId
+        ? initialManifest
+        : (readJson(resolve(baseRevisionRoot, "expected-scene-manifest.json")) as Record<
+            string,
+            unknown
+          >);
+    if (!validateSceneSpec(baseScene).ok || !validateSceneManifest(baseManifest).ok) {
+      throw new RevisionValidationError("SCHEMA_INVALID", "Base revision fixture is invalid");
+    }
+    const planned = planSceneRevision(baseScene, submittedChangeSet);
     const revisionRoot = resolve(
       dirname(dirname(changeSetPath)),
       "revisions",
@@ -691,55 +963,18 @@ export async function applySceneChangeSet(
     if (!isDeepStrictEqual(planned.targetSceneSpec, targetScene)) {
       throw new RevisionValidationError(
         "EXPECTED_STATE_MISMATCH",
-        "Computed target SceneSpec differs from the committed rev0002 fixture",
+        `Computed target SceneSpec differs from the committed ${planned.changeSet.targetRevisionId} fixture`,
       );
     }
-    const baseLedger = readLedger(config.workspaceRoot, baseJob.idempotencyKey);
-    if (
-      baseLedger?.status !== "SUCCESS" ||
-      !baseLedger.verifiedOutputPath ||
-      !baseLedger.reportPath ||
-      !baseLedger.manifestPath
-    ) {
-      throw new RevisionValidationError(
-        "BASE_ARTIFACT_NOT_VERIFIED",
-        "Complete verified rev0001 evidence is not present in the durable ledger",
-      );
-    }
-    const baseArtifactPath = resolveWithinRoot(config.workspaceRoot, baseLedger.verifiedOutputPath);
-    const baseReportPath = resolveWithinRoot(config.workspaceRoot, baseLedger.reportPath);
-    const baseVerifiedManifestPath = resolveWithinRoot(
-      config.workspaceRoot,
-      baseLedger.manifestPath,
+    const verifiedBase = findVerifiedBaseArtifact(
+      config,
+      {
+        projectId: planned.changeSet.projectId,
+        sceneId: planned.changeSet.sceneId,
+        revisionId: planned.changeSet.baseRevisionId,
+      },
+      baseManifest,
     );
-    if (
-      !existsSync(baseArtifactPath) ||
-      !existsSync(baseReportPath) ||
-      !existsSync(baseVerifiedManifestPath)
-    ) {
-      throw new RevisionValidationError(
-        "RECOVERY_REQUIRED",
-        "Verified rev0001 evidence is incomplete",
-      );
-    }
-    const baseReportValidation = validateExecutionReport(readJson(baseReportPath));
-    const baseVerifiedManifest = readJson(baseVerifiedManifestPath);
-    const baseVerifiedManifestValidation = validateSceneManifest(baseVerifiedManifest);
-    if (
-      !baseReportValidation.ok ||
-      baseReportValidation.value.status !== "SUCCESS" ||
-      baseReportValidation.value.jobId !== baseLedger.successfulJobId ||
-      baseReportValidation.value.requestHash !== baseJob.requestHash ||
-      !baseVerifiedManifestValidation.ok ||
-      baseLedger.verifiedOutputHash !== rawFileHash(baseArtifactPath) ||
-      baseLedger.manifestHash !== semanticJsonHash(baseVerifiedManifest) ||
-      baseLedger.manifestHash !== baseJob.inputs.expectedManifestHash
-    ) {
-      throw new RevisionValidationError(
-        "RECOVERY_REQUIRED",
-        "Verified rev0001 report, manifest, or artifact evidence is invalid",
-      );
-    }
     prepared = {
       baseJob,
       baseScene,
@@ -751,8 +986,8 @@ export async function applySceneChangeSet(
       ) as ManifestTolerances,
       changeSet: planned.changeSet,
       plan: planned.plan,
-      baseArtifactPath,
-      baseArtifactHash: rawFileHash(baseArtifactPath),
+      baseArtifactPath: verifiedBase.artifactPath,
+      baseArtifactHash: verifiedBase.artifactHash,
     };
   } catch (error) {
     const validationError =
@@ -805,7 +1040,7 @@ export async function applySceneChangeSet(
       );
     }
     if (decision === "REPLAY_SUCCESS" && previous) {
-      return replayRevision(config, previous, jobId, prepared.baseManifest);
+      return replayRevision(config, previous, jobId, prepared.baseManifest, prepared.changeSet);
     }
     if (decision === "REPLAY_FAILURE" && previous) {
       return noExecution(
@@ -989,13 +1224,13 @@ export async function applySceneChangeSet(
       );
     }
     context.semanticDiff = diffSemanticManifests(prepared.baseManifest, actualManifest);
-    assertGoldenRevisionDiff(context.semanticDiff);
+    assertRevisionDiff(context.semanticDiff, prepared.changeSet);
     if (rawFileHash(prepared.baseArtifactPath) !== prepared.baseArtifactHash) {
       return failRevision(
         config,
         context,
         "BASE_ARTIFACT_CHANGED",
-        "rev0001 source artifact changed",
+        `${prepared.changeSet.baseRevisionId} source artifact changed`,
       );
     }
     promoteCandidate(workspace.candidatePath, workspace.outputPath);
@@ -1037,6 +1272,7 @@ function replayRevision(
   record: IdempotencyLedgerRecord,
   currentJobId: string,
   baseManifest: Record<string, unknown>,
+  changeSet: ChangeSetContract,
 ): RevisionResult {
   if (!record.reportPath || !record.verifiedOutputPath || !record.manifestPath) {
     return noExecution(
@@ -1089,7 +1325,7 @@ function replayRevision(
   }
   const report = reportValidation.value as unknown as RevisionExecutionReport;
   const semanticDiff = diffSemanticManifests(baseManifest, manifest);
-  assertGoldenRevisionDiff(semanticDiff);
+  assertRevisionDiff(semanticDiff, changeSet);
   return {
     workerVersion: "0.1.0",
     status: "SUCCESS",

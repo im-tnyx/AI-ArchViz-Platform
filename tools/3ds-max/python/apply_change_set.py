@@ -1,4 +1,4 @@
-"""Apply the trusted Spike 2 MoveObject plan to an isolated verified scene copy."""
+"""Apply one trusted deterministic revision to an isolated verified scene copy."""
 
 from __future__ import annotations
 
@@ -47,6 +47,39 @@ def _point(value: list[float]) -> Any:
     return rt.Point3(float(value[0]), float(value[1]), float(value[2]))
 
 
+def _create_wall_segment(segment: dict[str, Any], host: Any) -> Any:
+    width, length, height = segment["dimensions"]
+    node = rt.Box(width=float(width), length=float(length), height=float(height))
+    node.name = str(segment["name"])
+    node.rotation = rt.EulerAngles(0.0, 0.0, float(segment["rotationZ"]))
+    node.pos = _point(segment["center"])
+    node.parent = host
+    rt.setUserProp(node, "AIArchViz.HostLogicalId", str(segment["hostLogicalId"]))
+    rt.setUserProp(
+        node,
+        "AIArchViz.SegmentDimensions",
+        json.dumps(segment["dimensions"], separators=(",", ":")),
+    )
+    rt.setUserProp(
+        node,
+        "AIArchViz.SegmentCenter",
+        json.dumps(segment["center"], separators=(",", ":")),
+    )
+    rt.setUserProp(node, "AIArchViz.SegmentRotationZ", str(segment["rotationZ"]))
+    return node
+
+
+def _segment_signature(node: Any) -> tuple[Any, ...]:
+    return (
+        int(node.handle),
+        str(node.name),
+        _user_prop(node, "AIArchViz.HostLogicalId"),
+        _user_prop(node, "AIArchViz.SegmentDimensions"),
+        _user_prop(node, "AIArchViz.SegmentCenter"),
+        _user_prop(node, "AIArchViz.SegmentRotationZ"),
+    )
+
+
 def apply_revision() -> dict[str, Any]:
     base_path = _required_path("AI_ARCHVIZ_BASE_SCENE_PATH")
     candidate_path = _required_path("AI_ARCHVIZ_CANDIDATE_PATH")
@@ -56,8 +89,14 @@ def apply_revision() -> dict[str, Any]:
     if plan.get("revisionPlanVersion") != REVISION_RUNNER_VERSION:
         raise MutationError("REVISION_PLAN_UNSUPPORTED", "Unsupported revision plan version")
     operation = plan.get("operation")
-    if not isinstance(operation, dict) or operation.get("type") != "MoveObject":
-        raise MutationError("OPERATION_UNSUPPORTED", "Spike 2 runner supports MoveObject only")
+    if not isinstance(operation, dict) or operation.get("type") not in {
+        "MoveObject",
+        "UpdateOpening",
+    }:
+        raise MutationError(
+            "OPERATION_UNSUPPORTED",
+            "Runner supports MoveObject and UpdateOpening only",
+        )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
     if not rt.loadMaxFile(str(base_path), useFileUnits=True, quiet=True):
@@ -96,14 +135,68 @@ def apply_revision() -> dict[str, Any]:
         raise MutationError("DUPLICATE_LOGICAL_ID", f"Target {target_id} is not unique")
     target = targets[0]
     transform = operation["transform"]
-    target.pos = _point(transform["position"])
-    rotation = transform["rotationEuler"]
-    target.rotation = rt.EulerAngles(
-        float(rotation[0]),
-        float(rotation[1]),
-        float(rotation[2]),
-    )
-    target.scale = _point(transform["scale"])
+    rebuilt_host_id: str | None = None
+    deleted_segment_count = 0
+    created_segment_count = 0
+    preserved_segment_count = 0
+    if operation["type"] == "MoveObject":
+        target.pos = _point(transform["position"])
+        rotation = transform["rotationEuler"]
+        target.rotation = rt.EulerAngles(
+            float(rotation[0]),
+            float(rotation[1]),
+            float(rotation[2]),
+        )
+        target.scale = _point(transform["scale"])
+    else:
+        rebuilt_host_id = str(operation["hostLogicalId"])
+        hosts = logical_nodes.get(rebuilt_host_id, [])
+        if not hosts:
+            raise MutationError("HOST_NOT_FOUND", f"Host {rebuilt_host_id} was not found")
+        if len(hosts) > 1:
+            raise MutationError(
+                "DUPLICATE_LOGICAL_ID", f"Host {rebuilt_host_id} is not unique"
+            )
+        host = hosts[0]
+        unrelated_before = sorted(
+            _segment_signature(node)
+            for node in list(rt.objects)
+            if _user_prop(node, "AIArchViz.HostLogicalId")
+            and _user_prop(node, "AIArchViz.HostLogicalId") != rebuilt_host_id
+        )
+        segments = [
+            node
+            for node in list(rt.objects)
+            if _user_prop(node, "AIArchViz.HostLogicalId") == rebuilt_host_id
+        ]
+        deleted_segment_count = len(segments)
+        for segment in segments:
+            rt.delete(segment)
+        for segment in operation["wallSegments"]:
+            if str(segment["hostLogicalId"]) != rebuilt_host_id:
+                raise MutationError(
+                    "REVISION_PLAN_INVALID", "Plan contains an unrelated wall segment"
+                )
+            _create_wall_segment(segment, host)
+            created_segment_count += 1
+        unrelated_after = sorted(
+            _segment_signature(node)
+            for node in list(rt.objects)
+            if _user_prop(node, "AIArchViz.HostLogicalId")
+            and _user_prop(node, "AIArchViz.HostLogicalId") != rebuilt_host_id
+        )
+        if unrelated_before != unrelated_after:
+            raise MutationError(
+                "UNRELATED_GEOMETRY_CHANGED",
+                "A physical segment outside the requested host changed",
+            )
+        preserved_segment_count = len(unrelated_after)
+        target.pos = _point(operation["physicalPosition"])
+        rt.setUserProp(
+            target,
+            "AIArchViz.PhysicalPosition",
+            json.dumps(operation["physicalPosition"], separators=(",", ":")),
+        )
 
     for logical_id, nodes in logical_nodes.items():
         node = nodes[0]
@@ -117,6 +210,14 @@ def apply_revision() -> dict[str, Any]:
         metadata["AIArchViz.RevisionId"] = plan["targetRevisionId"]
         if logical_id == target_id:
             entry["transform"] = transform
+            if operation["type"] == "UpdateOpening":
+                entry["offset"] = operation["offset"]
+                entry["sill"] = operation["sill"]
+                entry["dimensions"] = [
+                    operation["width"],
+                    entry["dimensions"][1],
+                    operation["height"],
+                ]
         rt.setUserProp(node, "AIArchViz.RevisionId", str(plan["targetRevisionId"]))
         rt.setUserProp(
             node,
@@ -136,6 +237,10 @@ def apply_revision() -> dict[str, Any]:
         "baseRevisionId": plan["baseRevisionId"],
         "targetRevisionId": plan["targetRevisionId"],
         "targetLogicalId": target_id,
+        "rebuiltHostLogicalId": rebuilt_host_id,
+        "deletedWallSegmentCount": deleted_segment_count,
+        "createdWallSegmentCount": created_segment_count,
+        "preservedUnrelatedWallSegmentCount": preserved_segment_count,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,
