@@ -57,6 +57,10 @@ Implementation Starts
 - [x] `architecture/OBJECT-IDENTITY-AND-REVISION-MODEL.md`
 - [x] `architecture/SCENE-CHANGESET-SPEC.md`
 
+### Validation Safety
+
+- [x] `architecture/VALIDATION-ENGINE.md`
+
 ### Architecture Decisions
 
 - [x] `decisions/0001-real-3d-source-of-truth.md`
@@ -150,7 +154,7 @@ Defined:
 - structured errors
 - arbitrary code execution prevention
 
-### P0.4 Validation Engine
+### P0.4 Validation Engine ✅
 
 File:
 
@@ -158,18 +162,27 @@ File:
 architecture/VALIDATION-ENGINE.md
 ```
 
-Must define:
+Defined:
 
 - schema validation
-- evidence validation
-- spatial validation
-- collision validation
-- room-boundary validation
+- identity and revision validation
+- evidence/provenance validation
+- conflict detection
+- lock and approval checks
+- spatial and room-boundary validation
+- collision and clearance validation
 - architectural rule validation
-- locked-property checks
-- renderer compatibility checks
-- risk classification
-- execution gates
+- asset validation
+- renderer/DCC compatibility
+- contextual risk classification
+- blast-radius estimation
+- dry-run and atomicity
+- AI-specific validation boundaries
+- human approval gates
+- post-execution verification
+- scene reconciliation
+- deterministic policy versioning
+- structured errors and testing strategy
 
 ---
 
@@ -443,10 +456,10 @@ Implementation should start once these six are ready:
 3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md    ✅
 4. OBJECT-IDENTITY-AND-REVISION-MODEL.md           ✅
 5. SCENE-CHANGESET-SPEC.md                         ✅
-6. 3DS-MAX-WORKER-ARCHITECTURE.md
+6. 3DS-MAX-WORKER-ARCHITECTURE.md                  ⏳
 ```
 
-`VALIDATION-ENGINE.md` should also be completed before AI-generated production mutations are enabled, but the first deterministic 3ds Max technical spike can begin once the six-document stop gate is complete.
+`VALIDATION-ENGINE.md` is also complete and will protect production mutations once implementation begins.
 
 At that point the first technical spike begins:
 
@@ -476,17 +489,16 @@ Recommended next sequence:
 
 ```text
 NEXT 01
-VALIDATION-ENGINE.md
-
-NEXT 02
 3DS-MAX-WORKER-ARCHITECTURE.md
 
-NEXT 03
+NEXT 02
 LIVING-ROOM-GOLDEN-PROJECT.md
 
 THEN
 Start local implementation
 ```
+
+`SCENE-COMPILER.md` can be drafted alongside the first worker implementation when real command-generation requirements are visible.
 
 ---
 
