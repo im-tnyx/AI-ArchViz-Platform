@@ -4,6 +4,8 @@ export * from "./discovery.js";
 export * from "./errors.js";
 export * from "./golden-build.js";
 export * from "./health.js";
+export * from "./ledger.js";
+export * from "./lock.js";
 export * from "./manifest.js";
 export * from "./paths.js";
 export * from "./probe.js";

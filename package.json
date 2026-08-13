@@ -15,7 +15,8 @@
     "test": "pnpm run build && vitest run",
     "worker": "pnpm run build && node apps/worker/dist/cli.js",
     "test:3dsmax:health": "pnpm run build && node apps/worker/dist/cli.js probe-3ds-max",
-    "test:3dsmax:golden": "pnpm run build && node apps/worker/dist/cli.js build-scene tests/fixtures/living-room-golden/job-envelope.json"
+    "test:3dsmax:golden": "pnpm run build && node apps/worker/dist/cli.js build-scene tests/fixtures/living-room-golden/job-envelope.json",
+    "test:3dsmax:resilience": "pnpm run build && node apps/worker/dist/resilience.js"
   },
   "devDependencies": {
     "@ai-archviz/scene-spec": "workspace:*",

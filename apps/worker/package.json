@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc -b",
     "worker": "node dist/cli.js",
-    "test:3dsmax:health": "node dist/cli.js probe-3ds-max"
+    "test:3dsmax:health": "node dist/cli.js probe-3ds-max",
+    "test:3dsmax:resilience": "node dist/resilience.js"
   },
   "dependencies": {
     "@ai-archviz/scene-spec": "workspace:*",

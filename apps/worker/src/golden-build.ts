@@ -1,8 +1,11 @@
-import { existsSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, relative, resolve } from "node:path";
 import { validateSceneSpec } from "@ai-archviz/scene-spec";
 import {
+  checkBaseRevision,
   type JobEnvelope,
+  semanticJsonHash,
   validateExecutionReport,
   validateJobEnvelope,
   validateSceneManifest,
@@ -11,6 +14,14 @@ import {
 import { compileGoldenBuildPlan } from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
+import {
+  evaluateLedger,
+  type IdempotencyLedgerRecord,
+  readLedger,
+  startLedgerAttempt,
+  writeLedgerAtomic,
+} from "./ledger.js";
+import { acquireExecutionLock, ExecutionLockedError } from "./lock.js";
 import { compareSceneManifests, type ManifestTolerances } from "./manifest.js";
 import { resolveWithinRoot } from "./paths.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
@@ -61,6 +72,19 @@ export interface GoldenBuildResult {
   verificationProcess: ControlledProcessResult | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   report: ExecutionReport | null;
+  error: ReportError | null;
+  replayed: boolean;
+  originalJobId: string | null;
+  currentJobId: string | null;
+  requestHash: string | null;
+  verifiedOutputPath: string | null;
+}
+
+export interface TrustedFailureControls {
+  forceBuildFailure: boolean;
+  forceVerificationFailure: boolean;
+  forceManifestMismatch: boolean;
+  forceDccTimeout: boolean;
 }
 
 interface BuildContext {
@@ -157,7 +181,12 @@ function makeReport(
   if (!validation.ok) {
     throw new Error(`Execution report violates contract: ${JSON.stringify(validation.errors)}`);
   }
-  writeDeterministicJson(context.workspace.executionReportPath, report);
+  writeDeterministicJson(
+    status === "SUCCESS"
+      ? context.workspace.executionReportPath
+      : context.workspace.failureReportPath,
+    report,
+  );
   return report;
 }
 
@@ -174,6 +203,12 @@ function outer(context: BuildContext, report: ExecutionReport): GoldenBuildResul
     verificationProcess: context.verificationProcess,
     comparison: context.comparison,
     report,
+    error: report.error,
+    replayed: false,
+    originalJobId: context.job.jobId,
+    currentJobId: context.job.jobId,
+    requestHash: context.job.requestHash,
+    verifiedOutputPath: report.status === "SUCCESS" ? context.workspace.outputPath : null,
   };
 }
 
@@ -181,9 +216,14 @@ function fail(
   context: BuildContext,
   code: string,
   message: string,
-  options: { blocked?: boolean; validationFailed?: boolean; verificationFailed?: boolean } = {},
+  options: {
+    blocked?: boolean;
+    validationFailed?: boolean;
+    verificationFailed?: boolean;
+    retryable?: boolean;
+  } = {},
 ): GoldenBuildResult {
-  const error = reportError(code, message);
+  const error = reportError(code, message, options.retryable ?? false);
   const report = makeReport(
     context,
     options.blocked ? "BLOCKED" : "FAILED",
@@ -205,9 +245,10 @@ function processError(
   );
 }
 
-export async function buildGoldenScene(
+async function executeGoldenAttempt(
   config: WorkerConfig,
   suppliedJobPath: string,
+  controls: TrustedFailureControls,
 ): Promise<GoldenBuildResult> {
   const startedAt = new Date().toISOString();
   const absoluteJobPath = resolveWithinRoot(
@@ -254,6 +295,12 @@ export async function buildGoldenScene(
     const hashes = verifyJobHashes(job, sceneSpec, expectedManifest);
     if (!hashes.ok) {
       return fail(context, "HASH_MISMATCH", JSON.stringify(hashes.mismatches), {
+        validationFailed: true,
+      });
+    }
+    const revision = checkBaseRevision(job, null);
+    if (!revision.ok) {
+      return fail(context, revision.errorCode, JSON.stringify(revision), {
         validationFailed: true,
       });
     }
@@ -318,6 +365,10 @@ export async function buildGoldenScene(
   const commonEnvironment = {
     ...process.env,
     AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+    AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE: controls.forceBuildFailure ? "1" : "0",
+    AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE: controls.forceVerificationFailure ? "1" : "0",
+    AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH: controls.forceManifestMismatch ? "1" : "0",
+    AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT: controls.forceDccTimeout ? "1" : "0",
   };
   context.buildProcess = await runControlledProcess({
     executable: context.dcc.batchExecutablePath,
@@ -422,9 +473,291 @@ export async function buildGoldenScene(
       context,
       "PROMOTION_FAILED",
       error instanceof Error ? error.message : String(error),
-      { verificationFailed: true },
+      { verificationFailed: true, retryable: true },
     );
   }
   const report = makeReport(context, "SUCCESS", "PASS", "PASS", null);
   return outer(context, report);
+}
+
+export function readTrustedFailureControls(
+  environment: NodeJS.ProcessEnv = process.env,
+): TrustedFailureControls {
+  const enabled = (name: string): boolean => environment[name] === "1";
+  return {
+    forceBuildFailure: enabled("AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE"),
+    forceVerificationFailure: enabled("AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE"),
+    forceManifestMismatch: enabled("AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH"),
+    forceDccTimeout: enabled("AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT"),
+  };
+}
+
+export async function buildGoldenScene(
+  config: WorkerConfig,
+  suppliedJobPath: string,
+  controls = readTrustedFailureControls(),
+): Promise<GoldenBuildResult> {
+  const absoluteJobPath = resolveWithinRoot(
+    config.repositoryRoot,
+    relative(config.repositoryRoot, resolve(config.repositoryRoot, suppliedJobPath)),
+  );
+  const validation = validateJobEnvelope(readJson(absoluteJobPath));
+  if (!validation.ok) {
+    throw new Error(`Job Envelope validation failed: ${JSON.stringify(validation.errors)}`);
+  }
+  const job = validation.value;
+  let idempotencyLock: ReturnType<typeof acquireExecutionLock> | null = null;
+  let sceneLock: ReturnType<typeof acquireExecutionLock> | null = null;
+  let activeRecord: IdempotencyLedgerRecord | null = null;
+  try {
+    idempotencyLock = acquireExecutionLock(
+      config.workspaceRoot,
+      "idempotency",
+      job.idempotencyKey,
+      job.jobId,
+    );
+    const previous = readLedger(config.workspaceRoot, job.idempotencyKey);
+    const decision = evaluateLedger(previous, job);
+    if (decision === "IDEMPOTENCY_KEY_REUSE_MISMATCH") {
+      return resultWithoutExecution(
+        job,
+        "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+        "The idempotency key is already bound to a different requestHash",
+      );
+    }
+    if (decision === "REPLAY_SUCCESS" && previous) {
+      return replaySuccess(config, previous, job.jobId);
+    }
+    if (decision === "REPLAY_FAILURE" && previous) {
+      return replayFailure(config, previous, job.jobId);
+    }
+
+    try {
+      sceneLock = acquireExecutionLock(
+        config.workspaceRoot,
+        "scene",
+        `${job.projectId}\u0000${job.sceneId}`,
+        job.jobId,
+      );
+    } catch (error) {
+      if (!(error instanceof ExecutionLockedError)) throw error;
+      activeRecord = startLedgerAttempt(previous, job);
+      activeRecord.status = "FAILED_RETRYABLE";
+      activeRecord.retryable = true;
+      activeRecord.errorCode = error.code;
+      activeRecord.completedAt = new Date().toISOString();
+      activeRecord.updatedAt = activeRecord.completedAt;
+      writeLedgerAtomic(config.workspaceRoot, activeRecord);
+      return resultWithoutExecution(job, error.code, error.message, true);
+    }
+
+    activeRecord = startLedgerAttempt(previous, job);
+    writeLedgerAtomic(config.workspaceRoot, activeRecord);
+    const result = await executeGoldenAttempt(config, absoluteJobPath, controls);
+    persistTerminalLedger(config, activeRecord, result);
+    return result;
+  } catch (error) {
+    if (error instanceof ExecutionLockedError) {
+      return resultWithoutExecution(job, error.code, error.message, true);
+    }
+    if (activeRecord?.status === "IN_PROGRESS") {
+      const completedAt = new Date().toISOString();
+      writeLedgerAtomic(config.workspaceRoot, {
+        ...activeRecord,
+        status: "FAILED_RETRYABLE",
+        retryable: true,
+        errorCode: "WORKER_INTERRUPTED",
+        completedAt,
+        updatedAt: completedAt,
+      });
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    return resultWithoutExecution(
+      job,
+      message.startsWith("IDEMPOTENCY_LEDGER_CORRUPT")
+        ? "IDEMPOTENCY_LEDGER_CORRUPT"
+        : "WORKER_INTERRUPTED",
+      message,
+      true,
+    );
+  } finally {
+    sceneLock?.release();
+    idempotencyLock?.release();
+  }
+}
+
+function persistTerminalLedger(
+  config: WorkerConfig,
+  active: IdempotencyLedgerRecord,
+  result: GoldenBuildResult,
+): void {
+  const now = new Date().toISOString();
+  const success = result.status === "SUCCESS";
+  const retryable = result.report?.error?.retryable ?? false;
+  const workspace = result.workspace;
+  const record: IdempotencyLedgerRecord = {
+    ...active,
+    status: success ? "SUCCESS" : retryable ? "FAILED_RETRYABLE" : "FAILED_FINAL",
+    successfulJobId: success ? active.latestJobId : active.successfulJobId,
+    retryable: success ? false : retryable,
+    errorCode: result.report?.error?.code ?? result.error?.code ?? null,
+    completedAt: now,
+    updatedAt: now,
+    reportPath:
+      workspace && result.report
+        ? relative(
+            config.workspaceRoot,
+            resolve(
+              workspace,
+              result.status === "SUCCESS"
+                ? "output/execution-report.json"
+                : "logs/execution-report.json",
+            ),
+          )
+        : null,
+    verifiedOutputPath:
+      success && workspace
+        ? relative(config.workspaceRoot, resolve(workspace, "output/project.max"))
+        : null,
+    manifestPath:
+      success && workspace
+        ? relative(config.workspaceRoot, resolve(workspace, "verification/scene-manifest.json"))
+        : null,
+    verifiedOutputHash:
+      success && workspace ? rawFileHash(resolve(workspace, "output/project.max")) : null,
+    manifestHash:
+      success && workspace
+        ? semanticJsonHash(readJson(resolve(workspace, "verification/scene-manifest.json")))
+        : null,
+    dccVersion: result.dccVersion,
+    compatibilityMode: result.compatibilityMode,
+  };
+  writeLedgerAtomic(config.workspaceRoot, record);
+}
+
+function replaySuccess(
+  config: WorkerConfig,
+  record: IdempotencyLedgerRecord,
+  currentJobId: string,
+): GoldenBuildResult {
+  if (!record.reportPath || !record.verifiedOutputPath || !record.manifestPath) {
+    return resultWithoutExecution(
+      { jobId: currentJobId } as JobEnvelope,
+      "RECOVERY_REQUIRED",
+      "Successful ledger record is missing artifact paths",
+    );
+  }
+  const reportPath = resolveWithinRoot(config.workspaceRoot, record.reportPath);
+  const outputPath = resolveWithinRoot(config.workspaceRoot, record.verifiedOutputPath);
+  const manifestPath = resolveWithinRoot(config.workspaceRoot, record.manifestPath);
+  if (!existsSync(reportPath) || !existsSync(outputPath) || !existsSync(manifestPath)) {
+    return resultWithoutExecution(
+      { jobId: currentJobId } as JobEnvelope,
+      "RECOVERY_REQUIRED",
+      "A successful replay artifact is missing",
+    );
+  }
+  const reportValidation = validateExecutionReport(readJson(reportPath));
+  const manifestValidation = validateSceneManifest(readJson(manifestPath));
+  const reportIdentityMatches =
+    reportValidation.ok &&
+    reportValidation.value.status === "SUCCESS" &&
+    reportValidation.value.jobId === record.successfulJobId &&
+    reportValidation.value.idempotencyKey === record.idempotencyKey &&
+    reportValidation.value.requestHash === record.requestHash;
+  const hashesMatch =
+    record.verifiedOutputHash === rawFileHash(outputPath) &&
+    record.manifestHash === semanticJsonHash(readJson(manifestPath));
+  if (!reportValidation.ok || !reportIdentityMatches || !manifestValidation.ok || !hashesMatch) {
+    return resultWithoutExecution(
+      { jobId: currentJobId } as JobEnvelope,
+      "RECOVERY_REQUIRED",
+      "Stored success artifacts failed schema or hash validation",
+    );
+  }
+  if (currentJobId !== record.successfulJobId && !record.replayJobIds.includes(currentJobId)) {
+    const updatedAt = new Date().toISOString();
+    writeLedgerAtomic(config.workspaceRoot, {
+      ...record,
+      replayJobIds: [...record.replayJobIds, currentJobId],
+      latestJobId: currentJobId,
+      updatedAt,
+    });
+  }
+  const report = reportValidation.value as unknown as ExecutionReport;
+  return {
+    workerVersion: "0.1.0",
+    status: "SUCCESS",
+    targetVersion,
+    dccVersion: record.dccVersion,
+    compatibilityMode: record.compatibilityMode,
+    dcc: null,
+    workspace: dirname(dirname(outputPath)),
+    buildProcess: null,
+    verificationProcess: null,
+    comparison: null,
+    report,
+    error: null,
+    replayed: true,
+    originalJobId: record.successfulJobId ?? record.originalJobId,
+    currentJobId,
+    requestHash: record.requestHash,
+    verifiedOutputPath: outputPath,
+  };
+}
+
+function replayFailure(
+  config: WorkerConfig,
+  record: IdempotencyLedgerRecord,
+  currentJobId: string,
+): GoldenBuildResult {
+  const path = record.reportPath
+    ? resolveWithinRoot(config.workspaceRoot, record.reportPath)
+    : null;
+  const validated = path && existsSync(path) ? validateExecutionReport(readJson(path)) : null;
+  const report = validated?.ok ? (validated.value as unknown as ExecutionReport) : null;
+  return {
+    ...resultWithoutExecution(
+      { jobId: currentJobId } as JobEnvelope,
+      record.errorCode ?? "FAILED_FINAL",
+      "Stored non-retryable failure replayed",
+    ),
+    status: report?.status ?? "FAILED",
+    report,
+    replayed: true,
+    originalJobId: record.originalJobId,
+    requestHash: record.requestHash,
+  };
+}
+
+function resultWithoutExecution(
+  job: Pick<JobEnvelope, "jobId">,
+  code: string,
+  message: string,
+  retryable = false,
+): GoldenBuildResult {
+  const error = reportError(code, message, retryable);
+  return {
+    workerVersion: "0.1.0",
+    status: "BLOCKED",
+    targetVersion,
+    dccVersion: null,
+    compatibilityMode: false,
+    dcc: null,
+    workspace: null,
+    buildProcess: null,
+    verificationProcess: null,
+    comparison: null,
+    report: null,
+    error,
+    replayed: false,
+    originalJobId: null,
+    currentJobId: job.jobId,
+    requestHash: null,
+    verifiedOutputPath: null,
+  };
+}
+
+function rawFileHash(path: string): string {
+  return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 }

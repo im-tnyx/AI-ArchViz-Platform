@@ -229,6 +229,8 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
     # documents that useFileUnits=True does not persist the setting to 3dsmax.ini.
     if not rt.loadMaxFile(str(candidate_path), useFileUnits=True, quiet=True):
         raise RuntimeError("Fresh process could not load candidate scene")
+    if os.environ.get("AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE") == "1":
+        raise RuntimeError("TRUSTED_TEST_FORCED_VERIFICATION_FAILURE")
     if "millimeter" not in str(rt.units.SystemType).lower() or not _close(rt.units.SystemScale, 1.0):
         raise RuntimeError(
             f"UNIT_MISMATCH: {rt.units.SystemType} at scale {rt.units.SystemScale}"
@@ -291,6 +293,8 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
     }
     if errors:
         raise RuntimeError("; ".join(sorted(errors)))
+    if os.environ.get("AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH") == "1":
+        manifest["revisionId"] = "rev_forced_manifest_mismatch"
     _write_json(manifest_path, manifest)
     result = {
         "verificationVersion": VERIFY_VERSION,

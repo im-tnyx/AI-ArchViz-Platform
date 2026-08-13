@@ -1,7 +1,10 @@
 import {
+  closeSync,
   copyFileSync,
   existsSync,
+  fsyncSync,
   mkdirSync,
+  openSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -25,6 +28,7 @@ export interface JobWorkspace {
   manifestPath: string;
   outputPath: string;
   executionReportPath: string;
+  failureReportPath: string;
   buildResultPath: string;
   verificationResultPath: string;
 }
@@ -59,6 +63,7 @@ export function createJobWorkspace(workspaceRoot: string, jobId: string): JobWor
     manifestPath: join(verification, "scene-manifest.json"),
     outputPath: join(output, "project.max"),
     executionReportPath: join(output, "execution-report.json"),
+    failureReportPath: join(logs, "execution-report.json"),
     buildResultPath: join(logs, "build-result.json"),
     verificationResultPath: join(logs, "verification-result.json"),
   };
@@ -76,6 +81,17 @@ export function readJson(path: string): unknown {
 export function promoteCandidate(candidatePath: string, outputPath: string): void {
   if (!existsSync(candidatePath)) throw new Error("Candidate scene is missing");
   const temporaryPath = `${outputPath}.tmp`;
-  copyFileSync(candidatePath, temporaryPath);
-  renameSync(temporaryPath, outputPath);
+  try {
+    copyFileSync(candidatePath, temporaryPath);
+    const descriptor = openSync(temporaryPath, "r+");
+    try {
+      fsyncSync(descriptor);
+    } finally {
+      closeSync(descriptor);
+    }
+    renameSync(temporaryPath, outputPath);
+  } catch (error) {
+    if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true });
+    throw error;
+  }
 }

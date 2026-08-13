@@ -13,6 +13,7 @@ import { discoverThreeDsMax } from "./discovery.js";
 import { WorkerError } from "./errors.js";
 import { buildGoldenScene } from "./golden-build.js";
 import { inspectWorkerHealth } from "./health.js";
+import { readLedger } from "./ledger.js";
 import { logStructured } from "./logger.js";
 import { runThreeDsMaxProbe } from "./probe.js";
 
@@ -57,6 +58,16 @@ async function execute(argv: string[]): Promise<CliResult> {
       const config = loadWorkerConfig(repositoryRoot);
       const result = await buildGoldenScene(config, jobPath);
       return { exitCode: result.status === "SUCCESS" ? 0 : 1, output: result };
+    }
+    case "inspect-ledger": {
+      const [idempotencyKey] = args;
+      if (!idempotencyKey) return usage("inspect-ledger requires an idempotency key");
+      const config = loadWorkerConfig(repositoryRoot);
+      const record = readLedger(config.workspaceRoot, idempotencyKey);
+      return {
+        exitCode: record ? 0 : 1,
+        output: record ?? { ok: false, errorCode: "LEDGER_ENTRY_NOT_FOUND" },
+      };
     }
     case "validate-scene": {
       const [path] = args;
@@ -106,6 +117,7 @@ function usage(error?: string): CliResult {
         "inspect-3ds-max",
         "probe-3ds-max",
         "build-scene <job-envelope-path>",
+        "inspect-ledger <idempotency-key>",
         "validate-scene <path>",
         "validate-job <path>",
         "verify-hashes <job> <scene-spec> <expected-manifest>",

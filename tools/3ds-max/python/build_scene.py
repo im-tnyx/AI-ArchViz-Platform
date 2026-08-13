@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -155,12 +156,16 @@ def build() -> dict[str, Any]:
     plan_path = _required_path("AI_ARCHVIZ_BUILD_PLAN_PATH")
     candidate_path = _required_path("AI_ARCHVIZ_CANDIDATE_PATH")
     result_path = _required_path("AI_ARCHVIZ_BUILD_RESULT_PATH")
+    if os.environ.get("AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT") == "1":
+        time.sleep(300)
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     if plan.get("buildPlanVersion") != BUILD_VERSION:
         raise RuntimeError("Unsupported build plan version")
 
     rt.resetMaxFile(rt.Name("noPrompt"))
     _normalize_units()
+    if os.environ.get("AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE") == "1":
+        raise RuntimeError("TRUSTED_TEST_FORCED_BUILD_FAILURE")
 
     helpers: dict[str, Any] = {}
     opening_positions = {
