@@ -1,0 +1,35 @@
+{
+  "hashVectorVersion": "0.1.0",
+  "algorithm": "sha256-rfc8785-json-utf8",
+  "equivalentJson": {
+    "expectedCanonicalJson": "{\"a\":1,\"b\":2}",
+    "expectedContentHash": "sha256:43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777",
+    "cases": [
+      {
+        "name": "compact_ordered",
+        "jsonText": "{\"a\":1,\"b\":2}"
+      },
+      {
+        "name": "reordered_indented_lf_with_trailing_newline",
+        "jsonText": "{\n  \"b\": 2,\n  \"a\": 1\n}\n"
+      },
+      {
+        "name": "reordered_indented_crlf_with_trailing_newline",
+        "jsonText": "{\r\n  \"b\": 2,\r\n  \"a\": 1\r\n}\r\n"
+      }
+    ]
+  },
+  "semanticDifference": {
+    "left": {
+      "jsonText": "{\"a\":1}",
+      "expectedCanonicalJson": "{\"a\":1}",
+      "expectedContentHash": "sha256:015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862"
+    },
+    "right": {
+      "jsonText": "{\"a\":2}",
+      "expectedCanonicalJson": "{\"a\":2}",
+      "expectedContentHash": "sha256:7e8059f495589fcd981232cc11d00b00da3802c01d688fa1cf1f6bed6e5bb33c"
+    },
+    "mustDiffer": true
+  }
+}

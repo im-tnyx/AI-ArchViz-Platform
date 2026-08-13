@@ -346,7 +346,7 @@ Example:
   "jobEnvelopeVersion": "0.1.0",
   "jobId": "job_golden_build_0001",
   "idempotencyKey": "living-room-golden.build.rev_golden_0001",
-  "requestHash": "sha256:a64497044294b989569f1027e96b722bede0fce8a8fa229314647c9e2e09df72",
+  "requestHash": "sha256:87c19d97c399a72e3b4a10773d3f3ca9123182cacd53b74e6226dbcb6acf28f6",
   "projectId": "project_golden_living_001",
   "sceneId": "scene_golden_living_001",
   "jobType": "buildScene",
@@ -354,9 +354,9 @@ Example:
   "requestedRevisionId": "rev_golden_0001",
   "inputs": {
     "sceneSpecPath": "input/scene-spec.json",
-    "sceneSpecHash": "sha256:a9b20409428a7a49556603d890898c09d1af9a0bde3674a40eeb41d675a004eb",
+    "sceneSpecHash": "sha256:105d9770d8fd3edaeffe07b1f21d1c0a59aebbfa701d3bf561bf6dd5f70cd7d7",
     "expectedManifestPath": "input/expected-scene-manifest.json",
-    "expectedManifestHash": "sha256:c2085c501a5b2e2d5b3407c20491ae5ef1109537738d723be1dc8b55c84f3b4e"
+    "expectedManifestHash": "sha256:8de35bd41191a0f7904dfc160b096e4bc6b8a4f9f4462644ca5bad5f8e6427a7"
   },
   "workerRequirements": {
     "os": "windows",
@@ -902,8 +902,33 @@ Re-running the same approved job must not duplicate scene objects or apply movem
   creates a new `jobId` while preserving `idempotencyKey` and `requestHash`.
 - `idempotencyKey` is stable for one logical request and is reused for safe
   replay/retry attempts.
+- `sceneSpecHash` and `expectedManifestHash` are semantic JSON content hashes.
+  For either field, parse the JSON value, serialize that value with RFC 8785
+  JSON Canonicalization Scheme, encode the canonical JSON as UTF-8, calculate
+  SHA-256 over those bytes, and prefix the lowercase hexadecimal digest with
+  `sha256:`.
+
+  ```text
+  semanticJsonContentHash(value)
+  = "sha256:" + lowercaseHex(
+      SHA-256(
+        UTF-8(
+          RFC8785(value)
+        )
+      )
+    )
+  ```
+
+  Raw file bytes must not be used for semantic JSON content hashes. LF versus
+  CRLF, indentation, insignificant whitespace, object-key order, and trailing
+  newlines therefore do not change the hash. A change to the parsed JSON value
+  does change it. This rule applies to all Spike 1 semantic JSON input hashes
+  and to later JSON semantic-input hashes unless another versioned contract
+  explicitly defines a different algorithm. Normative test vectors live at
+  `tests/fixtures/living-room-golden/hash-vectors.json`.
 - `requestHash` is `sha256:` plus the lowercase SHA-256 digest of the RFC 8785
-  JSON Canonicalization Scheme serialization of this immutable object:
+  JSON Canonicalization Scheme serialization, UTF-8 encoding, and SHA-256 of
+  this one normative immutable request projection:
 
 ```json
 {
@@ -922,11 +947,18 @@ Re-running the same approved job must not duplicate scene objects or apply movem
 }
 ```
 
-`jobId`, `idempotencyKey`, `requestHash`, filesystem paths, output paths,
-timestamps, and operational timeout/retry policy are excluded from the hash
-payload. Input **content hashes** and capability requirements are included, so
-moving an identical fixture does not change request identity while changing
-the desired scene or required DCC/renderer does.
+The projection above is constructed from the validated Job Envelope and its
+verified semantic JSON content hashes. Implementations must not hash the whole
+envelope and remove fields ad hoc. `requestHash` is not a member of its own
+preimage, so the definition is non-circular.
+
+`jobEnvelopeVersion`, `jobId`, `idempotencyKey`, `requestHash`, filesystem
+paths, output paths, timestamps, and operational timeout/retry policy are
+excluded from the hash payload. Input **content hashes** and capability
+requirements are included, so moving an identical fixture does not change
+request identity while changing the desired scene or required DCC/renderer
+does. The `idempotencyKey + requestHash` pair, rather than either field alone,
+identifies the stable logical request.
 
 ### 27.2 Durable replay rules
 
@@ -1149,7 +1181,7 @@ Normative success example:
   "reportVersion": "0.1.0",
   "jobId": "job_golden_build_0001",
   "idempotencyKey": "living-room-golden.build.rev_golden_0001",
-  "requestHash": "sha256:a64497044294b989569f1027e96b722bede0fce8a8fa229314647c9e2e09df72",
+  "requestHash": "sha256:87c19d97c399a72e3b4a10773d3f3ca9123182cacd53b74e6226dbcb6acf28f6",
   "projectId": "project_golden_living_001",
   "sceneId": "scene_golden_living_001",
   "revisionId": "rev_golden_0001",

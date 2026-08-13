@@ -530,9 +530,15 @@ tests/fixtures/living-room-golden/scene-spec.json
 tests/fixtures/living-room-golden/expected-scene-manifest.json
 tests/fixtures/living-room-golden/fixture-manifest.json
 tests/fixtures/living-room-golden/job-envelope.json
+tests/fixtures/living-room-golden/hash-vectors.json
 ```
 
 No `version/walls/surfaces/objects` root variant is accepted.
+
+`hash-vectors.json` freezes semantic JSON content hashing across key order,
+indentation, LF/CRLF, and trailing-newline differences. It also proves that a
+semantic value change produces a different hash. The normative algorithm is
+defined in `docs/architecture/3DS-MAX-WORKER-ARCHITECTURE.md`.
 
 ---
 

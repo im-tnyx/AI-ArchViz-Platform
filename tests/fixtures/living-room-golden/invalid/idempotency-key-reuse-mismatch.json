@@ -2,7 +2,7 @@
   "fixtureCaseVersion": "0.1.0",
   "existingLedgerEntry": {
     "idempotencyKey": "living-room-golden.build.rev_golden_0001",
-    "requestHash": "sha256:a64497044294b989569f1027e96b722bede0fce8a8fa229314647c9e2e09df72",
+    "requestHash": "sha256:87c19d97c399a72e3b4a10773d3f3ca9123182cacd53b74e6226dbcb6acf28f6",
     "status": "SUCCESS"
   },
   "submittedJob": {
