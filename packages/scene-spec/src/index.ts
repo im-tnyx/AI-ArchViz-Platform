@@ -14,9 +14,15 @@ export type ValidationResult<T> =
   | { ok: false; errors: ContractValidationError[] };
 
 export type SceneSpec = Record<string, unknown>;
+export type SceneChangeSet = Record<string, unknown>;
 
 const schemaUrl = new URL("../schema/scene-spec-v0.1.schema.json", import.meta.url);
+const changeSetSchemaUrl = new URL("../schema/scene-change-set-v0.1.schema.json", import.meta.url);
 const sceneSpecSchema = JSON.parse(readFileSync(schemaUrl, "utf8")) as Record<string, unknown>;
+const sceneChangeSetSchema = JSON.parse(readFileSync(changeSetSchemaUrl, "utf8")) as Record<
+  string,
+  unknown
+>;
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -26,6 +32,7 @@ const ajv = new Ajv2020({
 addFormatsModule.default.default(ajv);
 
 const validate = ajv.compile(sceneSpecSchema) as ValidateFunction<SceneSpec>;
+const validateChangeSet = ajv.compile(sceneChangeSetSchema) as ValidateFunction<SceneChangeSet>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -50,4 +57,11 @@ export function validateSceneSpec(value: unknown): ValidationResult<SceneSpec> {
   return { ok: false, errors: normalizeErrors(validate.errors) };
 }
 
-export { sceneSpecSchema };
+export function validateSceneChangeSet(value: unknown): ValidationResult<SceneChangeSet> {
+  if (validateChangeSet(value)) {
+    return { ok: true, value };
+  }
+  return { ok: false, errors: normalizeErrors(validateChangeSet.errors) };
+}
+
+export { sceneChangeSetSchema, sceneSpecSchema };

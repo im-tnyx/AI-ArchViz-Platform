@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_golden_move_coffee_table_r2",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0001",
+  "targetRevisionId": "rev_golden_0002",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Move the Golden living-room coffee table to the approved absolute position.",
+  "riskLevel": "low",
+  "operations": [
+    {
+      "operationId": "op_golden_move_coffee_table_r2",
+      "type": "MoveObject",
+      "targetId": "asset_living_coffee_table_main",
+      "reason": "Apply the approved 250 mm eastward placement as an absolute transform.",
+      "riskLevel": "low",
+      "parameters": {
+        "transform": {
+          "position": [3250, 2200, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        }
+      },
+      "preconditions": [
+        {
+          "type": "ObjectExists",
+          "targetId": "asset_living_coffee_table_main"
+        },
+        {
+          "type": "TransformUnlocked",
+          "targetId": "asset_living_coffee_table_main"
+        }
+      ],
+      "provenance": [
+        {
+          "evidenceId": "source_golden_fixture",
+          "field": "assets.asset_living_coffee_table_main.transform"
+        }
+      ],
+      "expectedImpact": {
+        "affectedLogicalIds": ["asset_living_coffee_table_main"]
+      }
+    }
+  ],
+  "preconditions": [
+    {
+      "type": "ObjectExists",
+      "targetId": "asset_living_coffee_table_main"
+    },
+    {
+      "type": "TransformUnlocked",
+      "targetId": "asset_living_coffee_table_main"
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-08-13T10:00:00Z"
+  }
+}

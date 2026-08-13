@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/scene-change-set-v0.1.schema.json",
+  "title": "AI ArchViz SceneChangeSet v0.1 — Spike 2 MoveObject subset",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "changeSetId",
+    "projectId",
+    "sceneId",
+    "baseRevisionId",
+    "targetRevisionId",
+    "requestedBy",
+    "source",
+    "intent",
+    "riskLevel",
+    "operations",
+    "preconditions",
+    "metadata"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1.0" },
+    "changeSetId": { "$ref": "#/$defs/id" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "baseRevisionId": { "$ref": "#/$defs/id" },
+    "targetRevisionId": { "$ref": "#/$defs/id" },
+    "requestedBy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "enum": ["user", "system", "worker", "operator"] },
+        "id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "referenceIds"],
+      "properties": {
+        "type": { "enum": ["manual_edit", "system_repair"] },
+        "referenceIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/id" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "intent": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "riskLevel": { "enum": ["low", "medium", "high"] },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/moveObject" }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/precondition" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt"],
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "vector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "type": "number" },
+        { "type": "number" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "positiveVector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "number", "exclusiveMinimum": 0 }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "rotationEuler", "scale"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vector3" },
+        "rotationEuler": { "$ref": "#/$defs/vector3" },
+        "scale": { "$ref": "#/$defs/positiveVector3" }
+      }
+    },
+    "precondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "targetId"],
+      "properties": {
+        "type": { "enum": ["ObjectExists", "TransformUnlocked"] },
+        "targetId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "field"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/id" },
+        "field": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "moveObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "MoveObject" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "low" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["transform"],
+          "properties": { "transform": { "$ref": "#/$defs/transform" } }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["affectedLogicalIds"],
+          "properties": {
+            "affectedLogicalIds": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/id" },
+              "uniqueItems": true
+            }
+          }
+        }
+      }
+    }
+  }
+}

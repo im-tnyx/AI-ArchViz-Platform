@@ -10,4 +10,5 @@ export * from "./manifest.js";
 export * from "./paths.js";
 export * from "./probe.js";
 export * from "./process.js";
+export * from "./revision.js";
 export * from "./workspace.js";

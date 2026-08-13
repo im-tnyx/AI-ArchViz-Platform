@@ -16,6 +16,7 @@ import { inspectWorkerHealth } from "./health.js";
 import { readLedger } from "./ledger.js";
 import { logStructured } from "./logger.js";
 import { runThreeDsMaxProbe } from "./probe.js";
+import { applySceneChangeSet } from "./revision.js";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -69,6 +70,19 @@ async function execute(argv: string[]): Promise<CliResult> {
         output: record ?? { ok: false, errorCode: "LEDGER_ENTRY_NOT_FOUND" },
       };
     }
+    case "apply-change-set": {
+      const [baseJobPath, changeSetPath] = args;
+      if (!baseJobPath || !changeSetPath) {
+        return usage("apply-change-set requires a base Job Envelope and SceneChangeSet path");
+      }
+      const config = loadWorkerConfig(repositoryRoot);
+      const result = await applySceneChangeSet(config, baseJobPath, changeSetPath, {
+        ...(process.env.AI_ARCHVIZ_REVISION_JOB_ID
+          ? { jobId: process.env.AI_ARCHVIZ_REVISION_JOB_ID }
+          : {}),
+      });
+      return { exitCode: result.status === "SUCCESS" ? 0 : 1, output: result };
+    }
     case "validate-scene": {
       const [path] = args;
       if (!path) return usage("validate-scene requires a JSON path");
@@ -118,6 +132,7 @@ function usage(error?: string): CliResult {
         "probe-3ds-max",
         "build-scene <job-envelope-path>",
         "inspect-ledger <idempotency-key>",
+        "apply-change-set <base-job> <scene-change-set>",
         "validate-scene <path>",
         "validate-job <path>",
         "verify-hashes <job> <scene-spec> <expected-manifest>",
