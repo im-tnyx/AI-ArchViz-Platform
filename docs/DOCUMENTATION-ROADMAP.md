@@ -1,8 +1,8 @@
 # Documentation Roadmap
 
-**Status:** Active  
+**Status:** Implementation Ready  
 **Project:** AI ArchViz Platform  
-**Goal:** Define the minimum architecture documentation required before implementation, while avoiding endless planning.
+**Goal:** Maintain the minimum architecture documentation needed for reliable implementation without allowing planning to delay practical testing.
 
 ---
 
@@ -10,9 +10,7 @@
 
 Documentation exists to remove expensive ambiguity before implementation.
 
-It should not delay practical testing indefinitely.
-
-The project will use a staged approach:
+It must evolve with real testing rather than become a substitute for implementation.
 
 ```text
 Architecture Foundation
@@ -21,14 +19,18 @@ Production Contracts
         ↓
 Execution Architecture
         ↓
-MVP Test Specification
+Golden Test
         ↓
-Implementation Starts
+Implementation
+        ↓
+Measured Findings
+        ↓
+Documentation Updates / ADRs
 ```
 
 ---
 
-## 2. Completed Foundation Documents
+## 2. Foundation Status
 
 ### Project Direction
 
@@ -61,6 +63,10 @@ Implementation Starts
 
 - [x] `architecture/VALIDATION-ENGINE.md`
 
+### Execution Architecture
+
+- [x] `architecture/3DS-MAX-WORKER-ARCHITECTURE.md`
+
 ### Architecture Decisions
 
 - [x] `decisions/0001-real-3d-source-of-truth.md`
@@ -70,385 +76,9 @@ Implementation Starts
 
 ---
 
-## 3. Required Before First Serious 3D Implementation
+## 3. Documentation Stop Gate — COMPLETE
 
-These documents should be completed before the first production-oriented SceneSpec → 3ds Max prototype.
-
-### P0.1 Coordinates, Units & Spatial Conventions ✅
-
-File:
-
-```text
-architecture/COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md
-```
-
-Defined:
-
-- canonical unit: millimeters
-- world origin
-- up axis
-- handedness
-- rotation convention
-- transform order
-- local vs world coordinates
-- pivot rules
-- room coordinate frames
-- asset normalization
-- CAD → SceneSpec mapping
-- SceneSpec → 3ds Max mapping
-- tolerance rules
-
-### P0.2 Object Identity & Revision Model ✅
-
-File:
-
-```text
-architecture/OBJECT-IDENTITY-AND-REVISION-MODEL.md
-```
-
-Defined:
-
-- stable logical IDs
-- project, scene, asset-definition and DCC identity layers
-- immutable logical identity
-- asset replacement semantics
-- object lifecycle states
-- soft delete and restoration
-- parent/child identity
-- approval and property-level locks
-- transactional revision history
-- revision impact analysis
-- render invalidation
-- branch and merge behavior
-- 3ds Max DCC mapping and reconciliation
-- managed vs unmanaged object workflows
-- AI identity boundaries
-
-### P0.3 SceneChangeSet Specification ✅
-
-File:
-
-```text
-architecture/SCENE-CHANGESET-SPEC.md
-```
-
-Defined:
-
-- canonical mutation contract
-- deterministic operation envelope
-- Create/Delete/Restore/Replace semantics
-- transform, geometry, material, light and camera operations
-- lock and approval operations
-- preconditions
-- optimistic concurrency using `baseRevisionId`
-- atomic changes
-- dry-run behavior
-- risk classification
-- evidence/provenance links
-- AI and UI mutation boundaries
-- DCC execution boundary
-- idempotency and replay
-- rollback and revision diff
-- affected-render invalidation
-- dependency handling
-- structured errors
-- arbitrary code execution prevention
-
-### P0.4 Validation Engine ✅
-
-File:
-
-```text
-architecture/VALIDATION-ENGINE.md
-```
-
-Defined:
-
-- schema validation
-- identity and revision validation
-- evidence/provenance validation
-- conflict detection
-- lock and approval checks
-- spatial and room-boundary validation
-- collision and clearance validation
-- architectural rule validation
-- asset validation
-- renderer/DCC compatibility
-- contextual risk classification
-- blast-radius estimation
-- dry-run and atomicity
-- AI-specific validation boundaries
-- human approval gates
-- post-execution verification
-- scene reconciliation
-- deterministic policy versioning
-- structured errors and testing strategy
-
----
-
-## 4. Required Before Local Worker Development
-
-### P1.1 3ds Max Worker Architecture
-
-File:
-
-```text
-architecture/3DS-MAX-WORKER-ARCHITECTURE.md
-```
-
-Must define:
-
-- process lifecycle
-- communication protocol
-- job format
-- local service responsibilities
-- 3ds Max launch / attach strategy
-- script execution
-- failure recovery
-- timeout handling
-- logging
-- scene save strategy
-- crash recovery
-- idempotency
-
-### P1.2 Scene Compiler Architecture
-
-File:
-
-```text
-architecture/SCENE-COMPILER.md
-```
-
-Must define:
-
-```text
-SceneSpec
-   ↓
-Validated Intermediate Model
-   ↓
-DCC Commands
-   ↓
-3ds Max Scene
-```
-
-Compiler responsibilities must be separated from AI responsibilities.
-
-### P1.3 Corona Adapter
-
-File:
-
-```text
-architecture/CORONA-ADAPTER.md
-```
-
-Must define:
-
-- renderer setup
-- material compilation
-- lights
-- camera compatibility
-- preview render settings
-- production render settings
-- render elements
-- output naming
-- error handling
-
-V-Ray documentation can follow after Corona MVP is stable.
-
----
-
-## 5. Required Before CAD Automation
-
-### P2.1 CAD / Drawing Ingestion
-
-File:
-
-```text
-architecture/CAD-AND-DRAWING-INGESTION.md
-```
-
-Must define:
-
-- DWG
-- DXF
-- vector PDF
-- raster PDF
-- plans
-- elevations
-- sections
-- drawing registration
-- scale detection
-- layer mapping
-- dimensions
-- openings
-- room boundary extraction
-
-### P2.2 Drawing Registration
-
-File:
-
-```text
-architecture/PLAN-ELEVATION-SECTION-REGISTRATION.md
-```
-
-Must define how plan, elevation, and section data refer to the same physical objects.
-
-Example:
-
-```text
-Plan Window W01
-        ↕
-Elevation Window W01
-        ↕
-SceneSpec Opening opening_w01
-```
-
-This will be important for progressive project accuracy.
-
----
-
-## 6. Required Before Asset Automation
-
-### P3.1 Asset Library Architecture
-
-File:
-
-```text
-architecture/ASSET-LIBRARY.md
-```
-
-Must define:
-
-- asset metadata
-- dimensions
-- category taxonomy
-- tags
-- styles
-- renderer support
-- native file path
-- preview image
-- material slots
-- pivot standard
-- bounding boxes
-- licensing/source metadata
-- versioning
-
-### P3.2 Placement & Constraint Engine
-
-File:
-
-```text
-architecture/PLACEMENT-AND-CONSTRAINT-ENGINE.md
-```
-
-Must define:
-
-- room containment
-- collision checks
-- clearance
-- door swings
-- furniture relationships
-- focal-point relationships
-- placement scoring
-- deterministic constraints
-- AI proposal boundaries
-
----
-
-## 7. Required Before Design Automation
-
-### P4.1 Material System
-
-```text
-architecture/MATERIAL-SYSTEM.md
-```
-
-### P4.2 Lighting System
-
-```text
-architecture/LIGHTING-SYSTEM.md
-```
-
-### P4.3 Camera System
-
-```text
-architecture/CAMERA-SYSTEM.md
-```
-
-These documents should describe semantic intent separately from renderer implementation.
-
----
-
-## 8. Required Before AI Is Connected to Production
-
-### P5.1 AI Provider Gateway
-
-```text
-architecture/AI-PROVIDER-GATEWAY.md
-```
-
-### P5.2 AI Task Contracts
-
-```text
-architecture/AI-TASK-CONTRACTS.md
-```
-
-Each task should have explicit schemas.
-
-Examples:
-
-```text
-AnalyzePlan
-AnalyzeElevation
-AnalyzeReference
-ProposeLayout
-FindAssets
-InterpretRevision
-CritiqueCamera
-CritiqueRender
-```
-
-### P5.3 Model Routing Policy
-
-```text
-architecture/AI-MODEL-ROUTING.md
-```
-
-Models should be selected by task eval performance, latency, cost, availability, and risk.
-
----
-
-## 9. MVP Test Documents
-
-Before real implementation expands, create:
-
-```text
-testing/LIVING-ROOM-GOLDEN-PROJECT.md
-testing/SCENESPEC-CONFORMANCE.md
-testing/REVISION-SAFETY-TESTS.md
-testing/3DS-MAX-AUTOMATION-TESTS.md
-```
-
-The first golden project should include:
-
-```text
-Plan
-Reference Images
-Optional Elevation
-Verified Dimensions
-Known Expected SceneSpec
-Known Expected Room Geometry
-Known Camera Targets
-Expected Revision Cases
-```
-
----
-
-## 10. Documentation Stop Gate
-
-Do **not** complete every future document before coding.
-
-Implementation should start once these six are ready:
+The minimum architecture gate required before local implementation is now complete:
 
 ```text
 1. SCENE-SPEC-v0.1.md                              ✅
@@ -456,62 +86,259 @@ Implementation should start once these six are ready:
 3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md    ✅
 4. OBJECT-IDENTITY-AND-REVISION-MODEL.md           ✅
 5. SCENE-CHANGESET-SPEC.md                         ✅
-6. 3DS-MAX-WORKER-ARCHITECTURE.md                  ⏳
+6. 3DS-MAX-WORKER-ARCHITECTURE.md                  ✅
 ```
 
-`VALIDATION-ENGINE.md` is also complete and will protect production mutations once implementation begins.
+`VALIDATION-ENGINE.md` is also complete.
 
-At that point the first technical spike begins:
-
-```text
-SceneSpec JSON
-      ↓
-Local Worker
-      ↓
-3ds Max
-      ↓
-Create Room
-      ↓
-Create Camera
-      ↓
-Save .max
-      ↓
-Render Preview
-```
-
-Other documents can then evolve alongside real implementation findings.
+Do not create another large architecture phase before beginning the deterministic technical spike.
 
 ---
 
-## 11. Immediate Order
+## 4. Immediate Next Step
 
-Recommended next sequence:
+Create the first golden test specification:
 
 ```text
-NEXT 01
-3DS-MAX-WORKER-ARCHITECTURE.md
+testing/LIVING-ROOM-GOLDEN-PROJECT.md
+```
 
-NEXT 02
-LIVING-ROOM-GOLDEN-PROJECT.md
+It should define one tiny, deterministic room that can be reproduced repeatedly.
+
+Required test data:
+
+```text
+Room dimensions
+Wall geometry
+One door or opening
+One camera
+Known coordinate values
+Expected logical object IDs
+Expected .max output
+Expected validation results
+Expected revision case
+```
+
+Reference images may be included for future design tests, but the first worker test must not depend on AI.
+
+---
+
+## 5. First Technical Spike
+
+After the golden test exists:
+
+```text
+SceneSpec Test Fixture
+        ↓
+Worker Skeleton
+        ↓
+3ds Max Environment Health Check
+        ↓
+3ds Max Batch Launch
+        ↓
+Trusted Python + pymxs Runner
+        ↓
+Create Room
+        ↓
+Create Camera
+        ↓
+Write Logical IDs
+        ↓
+Save Candidate .max
+        ↓
+Verify Artifact
+        ↓
+Execution Report
+```
+
+Success means the same input produces the same managed scene repeatedly.
+
+---
+
+## 6. First Implementation Packages
+
+Expected initial implementation areas:
+
+```text
+apps/worker/
+packages/scene-spec/
+packages/worker-contracts/
+packages/validation/
+tools/3ds-max/python/
+tools/3ds-max/maxscript/
+tests/
+```
+
+Do not initialize unnecessary cloud infrastructure before local execution is proven.
+
+---
+
+## 7. Documents to Create Alongside Implementation
+
+These are important, but should be written when implementation exposes real requirements.
+
+### Scene Execution
+
+- [ ] `architecture/SCENE-COMPILER.md`
+- [ ] `architecture/CORONA-ADAPTER.md`
+- [ ] `testing/3DS-MAX-AUTOMATION-TESTS.md`
+- [ ] `testing/SCENESPEC-CONFORMANCE.md`
+- [ ] `testing/REVISION-SAFETY-TESTS.md`
+
+### CAD / Drawings
+
+- [ ] `architecture/CAD-AND-DRAWING-INGESTION.md`
+- [ ] `architecture/PLAN-ELEVATION-SECTION-REGISTRATION.md`
+
+### Asset Automation
+
+- [ ] `architecture/ASSET-LIBRARY.md`
+- [ ] `architecture/PLACEMENT-AND-CONSTRAINT-ENGINE.md`
+
+### Design Automation
+
+- [ ] `architecture/MATERIAL-SYSTEM.md`
+- [ ] `architecture/LIGHTING-SYSTEM.md`
+- [ ] `architecture/CAMERA-SYSTEM.md`
+
+### AI Production Integration
+
+- [ ] `architecture/AI-PROVIDER-GATEWAY.md`
+- [ ] `architecture/AI-TASK-CONTRACTS.md`
+- [ ] `architecture/AI-MODEL-ROUTING.md`
+
+---
+
+## 8. Renderer Order
+
+For initial work:
+
+```text
+3ds Max scene automation
+        ↓
+Stable .max save/reopen
+        ↓
+Camera
+        ↓
+Corona preview adapter
+        ↓
+Materials / lights
+        ↓
+V-Ray adapter later
+```
+
+Renderer automation should not block proof of the basic scene pipeline.
+
+---
+
+## 9. CAD Order
+
+Do not connect real DWG ingestion before the deterministic scene compiler works with known test geometry.
+
+Recommended order:
+
+```text
+Known SceneSpec
+↓
+Known 3ds Max output
+↓
+Verified geometry
+↓
+Then DWG / DXF parser
+↓
+Then Plan + Elevation registration
+```
+
+This isolates CAD parsing errors from DCC automation errors.
+
+---
+
+## 10. AI Order
+
+Do not place AI inside the first worker execution path.
+
+Recommended order:
+
+```text
+Deterministic SceneSpec
+↓
+Deterministic Validation
+↓
+Deterministic Worker
+↓
+Revision-safe SceneChangeSet
+↓
+Golden tests
+↓
+Then AI proposes structured inputs
+```
+
+AI remains upstream of validation.
+
+---
+
+## 11. Next Milestones
+
+### Milestone A — Worker Proof
+
+```text
+SceneSpec → 3ds Max → .max
+```
+
+### Milestone B — Revision Proof
+
+```text
+Existing Scene + SceneChangeSet
+→ deterministic object revision
+→ new .max revision
+```
+
+### Milestone C — Render Proof
+
+```text
+Managed Scene + Camera
+→ Corona preview
+```
+
+### Milestone D — CAD Proof
+
+```text
+Known DWG/DXF
+→ normalized geometry
+→ SceneSpec
+→ matching 3ds Max scene
+```
+
+### Milestone E — Reference/AI Proof
+
+```text
+Plan + Reference
+→ structured proposal
+→ validation
+→ managed scene revision
+```
+
+---
+
+## 12. Documentation Rule Going Forward
+
+Use:
+
+- **Architecture documents** for system contracts and boundaries.
+- **ADRs** for important decisions that are expensive to reverse.
+- **Testing documents** for measurable correctness and golden cases.
+- **Workflow documents** for operator/studio procedures.
+
+When implementation disproves an assumption, update the document rather than forcing code to match an outdated plan.
+
+---
+
+## 13. Current Next Action
+
+```text
+NEXT
+Create testing/LIVING-ROOM-GOLDEN-PROJECT.md
 
 THEN
-Start local implementation
+Initialize worker implementation and run the first local 3ds Max technical spike.
 ```
-
-`SCENE-COMPILER.md` can be drafted alongside the first worker implementation when real command-generation requirements are visible.
-
----
-
-## 12. Long-Term Documentation Rule
-
-Documents should be updated when real implementation proves an assumption wrong.
-
-Architecture is a controlled evolving system, not a frozen initial guess.
-
-Use ADRs for important irreversible or expensive decisions.
-
-Use architecture documents for contracts and system behavior.
-
-Use testing documents for measurable correctness.
-
-Use workflow documents for human/operator procedures.
