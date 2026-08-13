@@ -167,33 +167,14 @@ These are future phases, not abandoned goals.
 
 `SceneSpec` is the central software-independent contract.
 
-Example:
+The normative v0.1 machine vocabulary and fixture are maintained at:
 
-```json
-{
-  "version": "0.1",
-  "project": {
-    "id": "project_living_001",
-    "name": "Living Room 001",
-    "units": "mm"
-  },
-  "spaces": [
-    {
-      "id": "space_living",
-      "type": "living_room",
-      "height": 3000
-    }
-  ],
-  "objects": [],
-  "materials": [],
-  "lights": [],
-  "cameras": [],
-  "render": {
-    "engine": "corona",
-    "quality": "preview"
-  }
-}
+```text
+packages/scene-spec/schema/scene-spec-v0.1.schema.json
+tests/fixtures/living-room-golden/scene-spec.json
 ```
+
+Planning examples must not introduce alternate `version/walls/objects` roots.
 
 `SceneSpec` should eventually describe:
 
@@ -771,15 +752,13 @@ Do not introduce infrastructure until a real requirement appears.
 
 ## 26. Development Phases
 
-### Phase 0: Foundation
+### Phase 0: Contracts / SceneSpec / Golden Fixture
 
-- repository initialization
-- documentation
-- architecture decisions
-- SceneSpec v0.1
-- local development conventions
+- normative SceneSpec and worker schemas
+- exact Golden fixture and expected semantic manifest
+- coordinate, identity, transform, idempotency, and verification contracts
 
-### Phase 1: 3ds Max proof
+### Phase 1: SceneSpec to 3ds Max deterministic build
 
 Prove that external structured data can cause 3ds Max to:
 
@@ -787,51 +766,50 @@ Prove that external structured data can cause 3ds Max to:
 - create a wall
 - create a camera
 - save a `.max` scene
-- execute a render
+- stamp logical IDs
+- save an editable candidate `.max`
 
-### Phase 2: SceneSpec to 3ds Max
-
-```text
-scene.json
-   ↓
-Worker
-   ↓
-3ds Max
-   ↓
-Generated Room
-```
-
-### Phase 3: CAD
+### Phase 2: Verification / idempotency
 
 ```text
-DWG / DXF
+candidate/project.max
    ↓
-Geometry Extraction
+fresh second 3ds Max process
    ↓
-SceneSpec
+normalized scene-manifest.json
    ↓
-3ds Max Geometry
+semantic comparison and safe replay
 ```
 
-### Phase 4: Asset engine
+### Phase 3: Minimal revision proof
 
-- asset metadata
-- local search
-- asset loading
-- transforms
-- collision validation
+```text
+One absolute SceneChangeSet
+   ↓
+stale-revision and lock validation
+   ↓
+targeted object update
+   ↓
+new verified revision
+```
 
-### Phase 5: Materials
+### Phase 4: CAD ingestion
 
-- logical material schema
-- Corona material compiler
-- texture path management
+- DWG/DXF parsing
+- evidence-linked geometry extraction
+- normalized SceneSpec output
 
-### Phase 6: Lighting and cameras
+### Phase 5: Assets / materials / lighting / cameras
 
+- asset metadata, local search, and loading
+- logical materials and texture paths
 - architectural lighting rules
-- camera candidate generation
-- preview rendering
+- deterministic camera generation
+
+### Phase 6: Corona preview
+
+- Corona adapter and material compilation
+- deterministic preview rendering
 
 ### Phase 7: AI integration
 
@@ -841,7 +819,7 @@ SceneSpec
 - camera critique
 - render critique
 
-### Phase 8: Revision engine
+### Phase 8: Post-AI revision expansion
 
 - object replacement
 - material changes
@@ -861,15 +839,15 @@ Local Windows Worker
       ↓
 3ds Max
       ↓
-Generated Room
+Exact Golden Scene
       ↓
-Camera
+Candidate .max
       ↓
-Basic Lighting
+Fresh second-process reopen
       ↓
-Corona Preview
+Normalized semantic manifest
       ↓
-Saved Editable .max Scene
+Verified editable output .max
 ```
 
 This proves the production spine before introducing probabilistic AI behavior.
@@ -937,13 +915,13 @@ After the production core is stable:
 
 ## 31. Immediate Next Work
 
-1. Define `SceneSpec v0.1` in detail.
-2. Document coordinate-system and units rules.
-3. Document object identity and revision semantics.
-4. Build the local Windows worker skeleton.
-5. Create the smallest possible 3ds Max automation experiment.
-6. Generate a room and camera from static JSON.
-7. Save the first automatically generated `.max` scene.
-8. Validate Corona preview rendering.
-9. Add a real floor-plan test fixture.
-10. Only then start provider-specific AI integrations.
+1. Validate the normative SceneSpec/worker schemas and Golden fixtures.
+2. Build the minimal local Windows worker CLI and trusted configuration.
+3. Add 3ds Max discovery/health check and batch launch.
+4. Generate the Golden scene from the normative Job Envelope and SceneSpec.
+5. Stamp logical IDs and save `candidate/project.max`.
+6. Reopen in a fresh process and extract the normalized manifest.
+7. Compare expected/actual state and promote only on PASS.
+8. Persist idempotency state and prove safe replay/failure handling.
+9. Prove one minimal targeted revision.
+10. Only then proceed to CAD, lookdev/Corona preview, and AI phases in order.

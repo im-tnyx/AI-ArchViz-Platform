@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/job-envelope-v0.1.schema.json",
+  "title": "AI ArchViz Worker Job Envelope v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "jobEnvelopeVersion",
+    "jobId",
+    "idempotencyKey",
+    "requestHash",
+    "projectId",
+    "sceneId",
+    "jobType",
+    "baseRevisionId",
+    "requestedRevisionId",
+    "inputs",
+    "workerRequirements",
+    "policy"
+  ],
+  "properties": {
+    "jobEnvelopeVersion": { "const": "0.1.0" },
+    "jobId": { "$ref": "#/$defs/id" },
+    "idempotencyKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{7,127}$"
+    },
+    "requestHash": { "$ref": "#/$defs/sha256" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "jobType": { "const": "buildScene" },
+    "baseRevisionId": {
+      "oneOf": [
+        { "$ref": "#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
+    "requestedRevisionId": { "$ref": "#/$defs/id" },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sceneSpecPath",
+        "sceneSpecHash",
+        "expectedManifestPath",
+        "expectedManifestHash"
+      ],
+      "properties": {
+        "sceneSpecPath": { "const": "input/scene-spec.json" },
+        "sceneSpecHash": { "$ref": "#/$defs/sha256" },
+        "expectedManifestPath": { "const": "input/expected-scene-manifest.json" },
+        "expectedManifestHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "workerRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "dcc", "renderer"],
+      "properties": {
+        "os": { "const": "windows" },
+        "dcc": { "const": "3ds_max" },
+        "renderer": { "const": "none" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "timeoutSeconds", "retryPolicy"],
+      "properties": {
+        "mode": { "const": "batch" },
+        "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+        "retryPolicy": { "const": "safe" }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

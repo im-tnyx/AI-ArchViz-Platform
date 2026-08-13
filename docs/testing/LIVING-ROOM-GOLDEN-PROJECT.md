@@ -1,9 +1,9 @@
 # Living Room Golden Project
 
-**Status:** Test Specification Draft  
+**Status:** Contract Ready for Technical Spike
 **Version:** `0.1.0`  
 **Project:** AI ArchViz Platform  
-**Purpose:** Define the first deterministic end-to-end benchmark for SceneSpec, validation, worker execution, 3ds Max scene generation, revision safety, and preview rendering.
+**Purpose:** Define the first deterministic end-to-end benchmark for SceneSpec, validation, worker execution, 3ds Max scene generation, fresh-process verification, and safe replay.
 
 ---
 
@@ -46,7 +46,8 @@ Project Name: Living Room Golden Project 001
 Units: mm
 SceneSpec Version: 0.1.0
 Primary DCC: 3ds Max
-Primary Renderer: Corona
+Spike 1 Renderer: none
+Future Preview Renderer: Corona
 ```
 
 All test fixtures must use stable logical IDs.
@@ -55,7 +56,9 @@ All test fixtures must use stable logical IDs.
 
 ## 3. Test Modes
 
-The golden project must support two input modes.
+The broader Golden project may later support the two evidence-input modes
+below. Technical Spike 1 consumes the repository-controlled SceneSpec fixture
+directly and does not parse plans, elevations, or reference images.
 
 ### Mode A: Plan + References
 
@@ -88,6 +91,10 @@ Reference images are design evidence only. They must not override verified archi
 ## 4. Canonical Room Geometry
 
 The test room is a simple rectangular living room.
+
+The authoritative machine fixture is
+`tests/fixtures/living-room-golden/scene-spec.json`. This document explains
+that fixture; it does not define an alternate serialization.
 
 ```text
 Internal Width X: 6000 mm
@@ -184,10 +191,14 @@ Height: 2100 mm
 Sill: 0 mm
 ```
 
-Expected position:
+Authoritative host-local placement:
 
 ```text
-1200 mm from the south internal corner along wall_west
+offset from directed wall_west start: 2400 mm
+opening interval along +U: [2400, 3300] mm
+world Y interval: [2100, 1200] mm along directed -Y
+hingeSide: start_jamb
+swingDirection: into_room
 ```
 
 Door swing metadata must be preserved even if the first 3ds Max prototype represents the opening with simplified geometry.
@@ -217,10 +228,12 @@ Sill: 750 mm
 Head: 2250 mm
 ```
 
-Expected horizontal center:
+Authoritative host-local placement:
 
 ```text
-Centered on wall_north
+offset from directed wall_north start: 1800 mm
+opening interval along +U: [1800, 4200] mm
+world X interval: [4200, 1800] mm along directed -X
 ```
 
 Expected left/right wall clearance:
@@ -291,16 +304,13 @@ Depth: 950 mm
 Height: 780 mm
 ```
 
-Expected canonical position:
+Authoritative transform and pivot:
 
 ```text
-[3000, 3350, 0]
-```
-
-Expected orientation:
-
-```text
-Facing south toward focal wall
+position: [3000, 3350, 0]
+rotationEuler: [0, 0, 180]
+scale: [1, 1, 1]
+pivotPolicy: floor_center
 ```
 
 ### Coffee Table
@@ -319,10 +329,13 @@ Depth: 650 mm
 Height: 380 mm
 ```
 
-Expected canonical position:
+Authoritative transform and pivot:
 
 ```text
-[3000, 2200, 0]
+position: [3000, 2200, 0]
+rotationEuler: [0, 0, 0]
+scale: [1, 1, 1]
+pivotPolicy: floor_center
 ```
 
 ### TV / Focal Unit Proxy
@@ -347,10 +360,14 @@ Depth: 400 mm
 Height: 500 mm
 ```
 
-Expected position:
+Authoritative transform and pivot:
 
 ```text
-Centered on wall_south
+position: [3000, 200, 0]
+rotationEuler: [0, 0, 0]
+scale: [1, 1, 1]
+pivotPolicy: floor_center
+hostGeometryId: wall_south
 ```
 
 Proxy assets are temporary execution fixtures. Their logical IDs must survive later replacement with real production assets.
@@ -415,13 +432,8 @@ Logical ID:
 light_primary
 ```
 
-Initial implementation may use one of:
-
-- Corona Sun + Sky
-- simple directional/daylight equivalent
-- controlled test light if renderer automation is not yet available
-
-The test requirement is deterministic scene creation and renderability, not artistic lighting quality.
+Spike 1 creates no light node and uses `render.engine=none`. Lighting and
+renderer-specific values are outside the deterministic base-build oracle.
 
 Renderer-specific values belong in the Corona adapter, not in the canonical architectural logic.
 
@@ -443,12 +455,14 @@ Purpose:
 Primary hero view toward south focal wall
 ```
 
-Suggested canonical transform:
+Authoritative target-based camera:
 
 ```text
-Position: [1200, 800, 1500]
-Target:   [3000, 3200, 1300]
+Position: [1200, 3800, 1500]
+RotationEuler: [-2.844710, 0, 206.565051]
+Target:   [3000, 200, 1300]
 Focal Length: 24 mm
+Sensor Width: 36 mm
 ```
 
 ### Camera B
@@ -463,12 +477,14 @@ Purpose:
 Secondary diagonal room view
 ```
 
-Suggested canonical transform:
+Authoritative target-based camera:
 
 ```text
 Position: [5000, 800, 1500]
+RotationEuler: [-3.762330, 0, 43.667780]
 Target:   [2900, 3000, 1300]
 Focal Length: 24 mm
+Sensor Width: 36 mm
 ```
 
 ### Camera C
@@ -483,57 +499,40 @@ Purpose:
 Window-side reverse view
 ```
 
-Suggested canonical transform:
+Authoritative target-based camera:
 
 ```text
 Position: [3000, 3950, 1500]
+RotationEuler: [-3.878525, 0, 180]
 Target:   [3000, 1000, 1300]
 Focal Length: 28 mm
+Sensor Width: 36 mm
 ```
 
 These are test fixtures, not final architectural-photography recommendations.
+
+For the Golden profile, `orientationPolicy=look_at_target`; target is the
+orientation authority and `rotationEuler` is its precomputed canonical value.
+Camera A direction is `[1800,-3600,-200]`, so its negative Y component proves
+that it looks toward `wall_south`.
 
 The worker must preserve camera logical IDs and transforms within tolerance.
 
 ---
 
-## 13. Expected Minimal SceneSpec Shape
+## 13. Normative Machine Contracts
 
-The first implementation fixture should be serializable approximately as:
+The Golden fixture uses only the canonical root vocabulary defined by:
 
-```json
-{
-  "version": "0.1.0",
-  "project": {
-    "id": "project_golden_living_001",
-    "name": "Living Room Golden Project 001",
-    "units": "mm"
-  },
-  "scene": {
-    "id": "scene_golden_living_001"
-  },
-  "spaces": [
-    {
-      "id": "space_living_main",
-      "type": "living_room",
-      "height": 3000
-    }
-  ],
-  "walls": [],
-  "openings": [],
-  "surfaces": [],
-  "objects": [],
-  "materials": [],
-  "lights": [],
-  "cameras": [],
-  "render": {
-    "engine": "corona",
-    "quality": "preview"
-  }
-}
+```text
+packages/scene-spec/schema/scene-spec-v0.1.schema.json
+tests/fixtures/living-room-golden/scene-spec.json
+tests/fixtures/living-room-golden/expected-scene-manifest.json
+tests/fixtures/living-room-golden/fixture-manifest.json
+tests/fixtures/living-room-golden/job-envelope.json
 ```
 
-The exact machine schema may evolve, but the logical IDs and fixture intent defined in this document must remain stable unless the test version is deliberately revised.
+No `version/walls/surfaces/objects` root variant is accepted.
 
 ---
 
@@ -550,12 +549,14 @@ Example:
   "provenance": {
     "sourceType": "verified_test_fixture",
     "sourceId": "golden_living_001",
-    "authority": "authoritative"
+    "authority": "A5"
   }
 }
 ```
 
-For the golden test, canonical dimensions are authoritative test fixtures.
+For the Golden test, canonical dimensions use `A5` because the existing
+evidence hierarchy defines it as locked/approved truth. Authority and
+confidence remain separate; the fixture also records confidence `1.0`.
 
 AI is not allowed to override them.
 
@@ -580,10 +581,14 @@ The first deterministic worker run should perform:
 12. Create cameras
 13. Stamp logical IDs into managed nodes
 14. Save candidate .max
-15. Re-open or verify candidate scene
-16. Produce preview render if renderer is available
-17. Write execution report
-18. Promote candidate output on success
+15. Exit the build process
+16. Start a fresh second 3ds Max process
+17. Reopen candidate/project.max
+18. Extract verification/scene-manifest.json
+19. Compare against expected-scene-manifest.json
+20. Promote output/project.max only on PASS
+21. Write output/execution-report.json
+22. Persist the idempotency result
 ```
 
 No AI call is required for this test.
@@ -592,26 +597,17 @@ No AI call is required for this test.
 
 ## 16. Required Output Artifacts
 
-A passing golden run should produce a project folder similar to:
+A passing Golden run produces these exact artifact roles:
 
 ```text
-outputs/golden-living-001/
-├── scene/
-│   ├── candidate.max
-│   └── project.max
-├── renders/
-│   ├── camera_living_a_preview.jpg
-│   ├── camera_living_b_preview.jpg
-│   └── camera_living_c_preview.jpg
-├── reports/
-│   ├── execution.json
-│   ├── validation.json
-│   └── reconciliation.json
-└── logs/
-    └── worker.log
+.workspace/job_<jobId>/
+  candidate/project.max
+  verification/scene-manifest.json
+  output/project.max
+  output/execution-report.json
 ```
 
-Initial implementation may produce fewer preview images while renderer automation is being proven, but `project.max` and structured execution reporting are mandatory milestones.
+No render artifact is required for Spike 1.
 
 ---
 
@@ -632,6 +628,14 @@ Window height = 1500 mm ± tolerance
 Window sill = 750 mm ± tolerance
 ```
 
+Golden comparison tolerances are fixed by `fixture-manifest.json`:
+
+```text
+geometryToleranceMm  = 0.01
+transformToleranceMm = 0.01
+rotationToleranceDeg = 0.001
+```
+
 No critical object may have non-uniform scale unless explicitly allowed.
 
 No managed object may be mirrored accidentally.
@@ -645,10 +649,10 @@ Every managed test object must contain recoverable platform identity.
 At minimum:
 
 ```text
-logicalObjectId
-projectId
-sceneId
-managed=true
+AIArchViz.LogicalObjectId
+AIArchViz.ProjectId
+AIArchViz.SceneId
+AIArchViz.RevisionId
 ```
 
 The reconciliation layer must be able to resolve:
@@ -774,10 +778,11 @@ Change ceiling elevation from 3000 mm to 2850 mm
 Expected outcome:
 
 ```text
-BLOCK or REQUIRE_APPROVAL according to policy
+BLOCK
 ```
 
-No DCC mutation may occur before the lock policy is resolved.
+Approval cannot override a hard lock. An explicit auditable unlock operation
+must create a new valid state before any DCC mutation.
 
 ---
 
@@ -881,9 +886,9 @@ A retry starts from a known scene state
 
 ---
 
-## 30. Preview Render Requirements
+## 30. Future Preview Render Requirements (Excluded from Spike 1)
 
-Initial preview target:
+Future preview target:
 
 ```text
 1280 × 720
@@ -899,7 +904,7 @@ Required checks:
 - image dimensions match requested output
 - image is not zero-byte/corrupt
 
-Visual quality scoring is not part of the first worker spike.
+No renderer invocation or image output is part of the first worker spike.
 
 ---
 
@@ -916,12 +921,14 @@ The first worker spike passes when all mandatory items below succeed:
 - proxy sofa, coffee table and TV unit are created
 - three cameras are created with stable IDs
 - `.max` file is saved successfully
-- generated scene can be reopened
+- candidate is reopened in a fresh second 3ds Max process
+- normalized semantic manifest matches the expected manifest
 - managed identity can be reconciled
 - repeating the same job does not duplicate objects
-- execution report is written
+- idempotency result survives worker restart
+- `output/execution-report.json` is written
 
-Renderer preview is highly desirable but may be treated as the next sub-milestone if Corona automation is the only remaining blocker.
+Renderer preview is explicitly excluded from Technical Spike 1.
 
 ---
 
@@ -982,23 +989,27 @@ If expected behavior intentionally changes:
 
 ## 35. Repository Test Fixture Direction
 
-When implementation begins, corresponding machine-readable fixtures should live under a structure similar to:
+The v0.1 machine-readable fixtures live at:
 
 ```text
 tests/fixtures/living-room-golden/
 ├── scene-spec.json
-├── expected/
-│   ├── geometry.json
-│   ├── identities.json
-│   └── revisions.json
-├── changesets/
-│   ├── r1-replace-sofa.json
-│   ├── r2-move-coffee-table.json
-│   ├── r3-change-tv-wall-material.json
-│   ├── r4-locked-ceiling-change.json
-│   └── r5-revised-window-elevation.json
-└── references/
+├── expected-scene-manifest.json
+├── fixture-manifest.json
+├── job-envelope.json
+└── invalid/
+    ├── invalid-schema-version.json
+    ├── missing-scene-id.json
+    ├── negative-scale.json
+    ├── stale-revision-job.json
+    └── idempotency-key-reuse-mismatch.json
 ```
+
+The first three invalid files are deterministic mutation cases: load
+`baseFixture`, apply the stated JSON Pointer operation, and assert the named
+error. `stale-revision-job.json` is structurally valid but must fail semantic
+revision validation. `idempotency-key-reuse-mismatch.json` is a two-record
+ledger/submission scenario and must return its named deterministic error.
 
 Reference images should be added only when licensing and repository-storage decisions are clear.
 
@@ -1013,22 +1024,20 @@ The next engineering task should create the minimum code needed to satisfy this 
 Recommended first implementation sequence:
 
 ```text
-1. Monorepo skeleton
-2. packages/scene-spec
-3. tests/fixtures/living-room-golden/scene-spec.json
-4. apps/worker skeleton
-5. worker health check
-6. 3ds Max executable discovery
-7. trusted Python/pymxs runner
-8. create one box
-9. create room shell
-10. create camera
-11. save .max
-12. reconcile logical IDs
-13. add openings
-14. add proxy assets
-15. add Corona preview
-16. implement first revision change
+1. Minimal repository/toolchain skeleton
+2. Consume the existing SceneSpec and worker schemas
+3. Consume the existing Golden fixture and expected manifest
+4. Local worker CLI and trusted local configuration
+5. 3ds Max health check and batch discovery
+6. Trusted repository-controlled Python/pymxs runner
+7. Generate the exact room, openings, proxies, and cameras
+8. Stamp embedded logical IDs
+9. Save candidate/project.max
+10. Reopen in a fresh second process
+11. Extract and compare the normalized semantic manifest
+12. Write output/execution-report.json
+13. Persist and prove safe idempotent replay
+14. Exercise forced failure and timeout behavior
 ```
 
 Do not connect generative AI to this path until the deterministic base test is stable.

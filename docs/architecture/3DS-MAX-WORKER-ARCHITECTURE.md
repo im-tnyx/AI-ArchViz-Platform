@@ -305,10 +305,11 @@ Allowed concept:
 
 ```json
 {
-  "jobType": "applySceneChangeSet",
-  "sceneSpecPath": "...",
-  "changeSetPath": "...",
-  "outputPath": "..."
+  "jobType": "buildScene",
+  "inputs": {
+    "sceneSpecPath": "input/scene-spec.json",
+    "expectedManifestPath": "input/expected-scene-manifest.json"
+  }
 }
 ```
 
@@ -332,28 +333,35 @@ The runner code is developed, reviewed, versioned, and shipped with the platform
 
 Every worker job must have a stable envelope.
 
+The normative Spike 1 schema is
+`packages/worker-contracts/schema/job-envelope-v0.1.schema.json`. Job paths are
+workspace-relative data paths. Executable locations, trusted runner paths, and
+workspace roots come only from local trusted configuration and are never job
+fields.
+
 Example:
 
 ```json
 {
-  "jobId": "job_01JABC...",
-  "projectId": "project_living_001",
-  "sceneId": "scene_main",
+  "jobEnvelopeVersion": "0.1.0",
+  "jobId": "job_golden_build_0001",
+  "idempotencyKey": "living-room-golden.build.rev_golden_0001",
+  "requestHash": "sha256:a64497044294b989569f1027e96b722bede0fce8a8fa229314647c9e2e09df72",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
   "jobType": "buildScene",
-  "requestedRevisionId": "rev_0007",
-  "baseRevisionId": "rev_0006",
+  "baseRevisionId": null,
+  "requestedRevisionId": "rev_golden_0001",
+  "inputs": {
+    "sceneSpecPath": "input/scene-spec.json",
+    "sceneSpecHash": "sha256:a9b20409428a7a49556603d890898c09d1af9a0bde3674a40eeb41d675a004eb",
+    "expectedManifestPath": "input/expected-scene-manifest.json",
+    "expectedManifestHash": "sha256:c2085c501a5b2e2d5b3407c20491ae5ef1109537738d723be1dc8b55c84f3b4e"
+  },
   "workerRequirements": {
     "os": "windows",
     "dcc": "3ds_max",
-    "dccVersion": "2026",
-    "renderer": "corona"
-  },
-  "inputs": {
-    "sceneSpec": "workspace/input/scene-spec.json"
-  },
-  "outputs": {
-    "scene": "workspace/output/project.max",
-    "report": "workspace/output/execution-report.json"
+    "renderer": "none"
   },
   "policy": {
     "mode": "batch",
@@ -363,7 +371,12 @@ Example:
 }
 ```
 
-Exact schemas will eventually live in code, not only documentation.
+`jobId` identifies one execution attempt. `idempotencyKey` identifies the
+stable logical request across attempts. `requestHash` identifies normalized
+immutable request content. `projectId`, `sceneId`, and `requestedRevisionId`
+must match the loaded SceneSpec. `baseRevisionId` is `null` only when there is
+no previous verified artifact; otherwise it must equal that artifact's
+revision.
 
 ---
 
@@ -397,6 +410,10 @@ packageProject
 ```
 
 Each job type must have a dedicated typed input contract.
+
+The list above is the architectural job catalog. The only normative Job
+Envelope v0.1 profile for Technical Spike 1 is `buildScene`; every other job
+type requires its own future schema before implementation.
 
 ---
 
@@ -444,25 +461,18 @@ A job must never remain indefinitely in an ambiguous `RUNNING` state.
 
 Every job runs inside an isolated workspace.
 
-Example:
+Normative Spike 1 workspace:
 
 ```text
-.workspaces/
-└── job_01JABC/
-    ├── input/
-    │   ├── job.json
-    │   ├── scene-spec.json
-    │   └── change-set.json
-    ├── project/
-    │   └── working.max
-    ├── assets/
-    ├── textures/
-    ├── temp/
-    ├── logs/
-    └── output/
-        ├── project.max
-        ├── preview-01.jpg
-        └── execution-report.json
+.workspace/job_<jobId>/
+  input/job.json
+  input/scene-spec.json
+  input/expected-scene-manifest.json
+  candidate/project.max
+  verification/scene-manifest.json
+  output/project.max
+  output/execution-report.json
+  logs/worker.log
 ```
 
 Production asset libraries should normally remain referenced from managed library locations rather than copied for every job unless packaging is requested.
@@ -473,28 +483,33 @@ Production asset libraries should normally remain referenced from managed librar
 
 The worker must never directly overwrite the only known-good project scene.
 
-Recommended pattern:
+Mandatory Spike 1 pattern:
 
 ```text
-Approved Scene
+Validated SceneSpec
      ↓
-Create Working Copy / Checkpoint
+Fresh 3ds Max build process
      ↓
-Apply Changes
+candidate/project.max
      ↓
-Verify
+Build process exits and closes the file
      ↓
-Save Candidate Scene
+Fresh second 3ds Max verification process
      ↓
-Atomic Promote
+verification/scene-manifest.json
+     ↓
+Semantic comparison PASS
+     ↓
+output/project.max
 ```
 
-Conceptual filenames:
+Normative Spike 1 artifact names:
 
 ```text
-project.rev0006.max
-project.rev0007.candidate.max
-project.rev0007.max
+candidate/project.max
+verification/scene-manifest.json
+output/project.max
+output/execution-report.json
 ```
 
 A failed job leaves the last approved revision untouched.
@@ -503,25 +518,33 @@ A failed job leaves the last approved revision untouched.
 
 ## 15. Atomic Promotion
 
-A scene becomes the active revision only after:
+A scene becomes a successful verified output only after:
 
 ```text
-DCC Execution Success
+Build-process success and exit
 +
-Scene Save Success
+Candidate save success
 +
-Post-save Verification
+Fresh second-process reopen
 +
-Required Render/Geometry Checks
+Normalized semantic manifest extraction
++
+Expected-manifest comparison PASS
 ```
 
 Then:
 
 ```text
-candidate → approved revision artifact
+candidate/project.max → output/project.max
 ```
 
-Database/project metadata should only move the active revision pointer after successful artifact promotion.
+Spike 1 promotion uses filesystem artifacts only. Candidate and output should
+reside on the same volume, but the worker must not assume rename is atomic
+across volumes. After both 3ds Max processes have closed their file handles and
+verification passes, copy the candidate to a temporary file under `output/`,
+flush/close it, then replace `output/project.max`. A failed copy/replace leaves
+the previous verified output untouched. On verification failure, retain the
+candidate for diagnostics, do not modify output, and write a failed report.
 
 ---
 
@@ -550,11 +573,19 @@ Wait for structured completion marker
 ↓
 Collect exit code
 ↓
-Verify outputs
+End build process
 ↓
-Terminate process if still alive
+Launch a fresh second 3ds Max process and capture its PID
 ↓
-Finalize job
+Reopen candidate and extract normalized manifest
+↓
+End verification process
+↓
+Compare expected and actual semantic state
+↓
+Promote only on PASS
+↓
+Finalize job and execution report
 ```
 
 The worker must track the OS process ID for every DCC execution.
@@ -863,6 +894,69 @@ This may become useful for recovery.
 
 Re-running the same approved job must not duplicate scene objects or apply movement twice.
 
+### 27.1 Normative identifiers
+
+- `jobId` is the immutable identifier of one submitted Job Envelope. Exact
+  duplicate delivery of that envelope preserves the same `jobId`; it is not a
+  new execution attempt. A policy-authorized retry after a retryable failure
+  creates a new `jobId` while preserving `idempotencyKey` and `requestHash`.
+- `idempotencyKey` is stable for one logical request and is reused for safe
+  replay/retry attempts.
+- `requestHash` is `sha256:` plus the lowercase SHA-256 digest of the RFC 8785
+  JSON Canonicalization Scheme serialization of this immutable object:
+
+```json
+{
+  "baseRevisionId": null,
+  "expectedManifestHash": "sha256:<content-hash>",
+  "jobType": "buildScene",
+  "projectId": "project_golden_living_001",
+  "requestedRevisionId": "rev_golden_0001",
+  "sceneId": "scene_golden_living_001",
+  "sceneSpecHash": "sha256:<content-hash>",
+  "workerRequirements": {
+    "dcc": "3ds_max",
+    "os": "windows",
+    "renderer": "none"
+  }
+}
+```
+
+`jobId`, `idempotencyKey`, `requestHash`, filesystem paths, output paths,
+timestamps, and operational timeout/retry policy are excluded from the hash
+payload. Input **content hashes** and capability requirements are included, so
+moving an identical fixture does not change request identity while changing
+the desired scene or required DCC/renderer does.
+
+### 27.2 Durable replay rules
+
+The Spike 1 worker persists one local ledger record at
+`.workspace/idempotency/<sha256(idempotencyKey)>.json`. File names use the key
+hash rather than raw user input. The record contains the original key,
+`requestHash`, original `jobId`, `replayJobIds`, terminal status, report path,
+and verified output path, and must survive worker process restart.
+
+```text
+same idempotencyKey + same requestHash + previous SUCCESS
+→ for an exact duplicate jobId, return the prior successful report/output without launching 3ds Max
+→ for a different jobId, return the prior report/output unchanged and append the replay jobId to the ledger audit list; do not rewrite or relabel the original report
+
+same idempotencyKey + different requestHash
+→ BLOCK with IDEMPOTENCY_KEY_REUSE_MISMATCH
+
+previous retryable failure + same key/hash
+→ a new jobId may retry under policy
+
+previous non-retryable failure + same key/hash
+→ return the stored failure; caller must use a new idempotencyKey to make a new request
+```
+
+The ledger entry is written through a temporary sibling file, flushed/closed,
+then replaced. A per-key exclusive lock prevents concurrent duplicate
+execution. If the worker restarts with a non-terminal entry, it performs crash
+recovery and must not promote any candidate until fresh-process verification
+passes.
+
 Example:
 
 ```text
@@ -884,6 +978,8 @@ changeSetId
 operationId
 baseRevisionId
 targetRevisionId
+idempotencyKey
+requestHash
 ```
 
 ---
@@ -947,6 +1043,11 @@ preserve logs and diagnostic workspace
 
 Never leave orphaned `3dsmax.exe` processes indefinitely.
 
+The timeout applies independently to both build and verification processes.
+The worker tracks and terminates each captured PID plus its owned child process
+tree, retains diagnostics, writes a structured timeout error, and never
+promotes a candidate after either timeout.
+
 ---
 
 ## 30. Crash Recovery
@@ -992,7 +1093,7 @@ checkpoint_00_input.max
 checkpoint_01_geometry.max
 checkpoint_02_assets.max
 checkpoint_03_materials.max
-candidate.max
+candidate/project.max
 ```
 
 MVP should keep checkpointing simple to avoid unnecessary disk overhead.
@@ -1035,31 +1136,38 @@ execution-report.json
 
 Every completed DCC job returns a structured report.
 
-Example:
+The normative report contract is
+`packages/worker-contracts/schema/execution-report-v0.1.schema.json`. The only
+top-level statuses are `SUCCESS`, `FAILED`, and `BLOCKED`. Validation,
+verification, and errors are structured fields; an error-only string is not a
+machine report. Spike 1 writes exactly `output/execution-report.json`.
+
+Normative success example:
 
 ```json
 {
-  "jobId": "job_01JABC",
-  "status": "SUCCEEDED",
-  "dcc": {
-    "name": "3ds_max",
-    "version": "2026"
+  "reportVersion": "0.1.0",
+  "jobId": "job_golden_build_0001",
+  "idempotencyKey": "living-room-golden.build.rev_golden_0001",
+  "requestHash": "sha256:a64497044294b989569f1027e96b722bede0fce8a8fa229314647c9e2e09df72",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "revisionId": "rev_golden_0001",
+  "status": "SUCCESS",
+  "startedAt": "2026-08-13T09:30:00Z",
+  "completedAt": "2026-08-13T09:31:00Z",
+  "candidatePath": "candidate/project.max",
+  "verifiedOutputPath": "output/project.max",
+  "manifestPath": "verification/scene-manifest.json",
+  "validationResult": {
+    "status": "PASS",
+    "errors": []
   },
-  "operations": {
-    "requested": 8,
-    "completed": 8,
-    "failed": 0
+  "verificationResult": {
+    "status": "PASS",
+    "errors": []
   },
-  "managedObjects": {
-    "created": 5,
-    "updated": 3,
-    "deleted": 0
-  },
-  "artifacts": [
-    "project.rev0007.max",
-    "preview-01.jpg"
-  ],
-  "warnings": []
+  "error": null
 }
 ```
 
@@ -1083,6 +1191,8 @@ ASSET_ERROR
 TEXTURE_ERROR
 SCENE_MISMATCH_ERROR
 RENDERER_ERROR
+STALE_REVISION
+IDEMPOTENCY_KEY_REUSE_MISMATCH
 RENDER_ERROR
 OUTPUT_ERROR
 TIMEOUT_ERROR
@@ -1212,6 +1322,19 @@ AI visual critique can be added later, after deterministic checks.
 
 ## 40. Scene Verification
 
+Spike 1 verification is mandatory and must execute in a fresh second 3ds Max
+process after the build process exits. A scene inspected only in its build
+process is unverified. The second process reopens `candidate/project.max`,
+reads embedded logical IDs and canonical metadata, converts DCC-native values
+back to canonical units/transforms, and writes
+`verification/scene-manifest.json` conforming to
+`packages/worker-contracts/schema/scene-manifest-v0.1.schema.json`.
+
+The normalized manifest is sorted by `logicalId`; it excludes node handles,
+timestamps, binary `.max` bytes, and other volatile data. Opening transforms
+remain host-local; other root-level transforms are world-equivalent local
+transforms. Comparison uses the exact tolerances in `fixture-manifest.json`.
+
 After scene build or revision, verify at least:
 
 ```text
@@ -1221,12 +1344,15 @@ no duplicate logical IDs
 scene units correct
 managed transforms within tolerance
 required camera exists
-required renderer available
 output scene saved successfully
 scene revision metadata correct
+wall/opening dimensions and host relationships correct
+camera target/lens values correct
 ```
 
-Later verification can include geometry hashes and bounding-box comparisons.
+Any mismatch, duplicate ID, missing metadata, reopen failure, timeout, or
+corrupt save fails verification and prevents promotion. Binary `.max` equality
+is never the oracle.
 
 ---
 
@@ -1243,7 +1369,7 @@ Inputs exist
 Output directory writable
 Disk space sufficient
 3ds Max executable exists
-Required renderer available
+Required renderer available when renderer is not `none`
 Required asset roots reachable
 No conflicting active project lock
 ```
@@ -1442,7 +1568,7 @@ Expected response:
 ```json
 {
   "worker": "ok",
-  "3dsMax": "ok",
+  "3ds_max": "ok",
   "python": "ok",
   "pymxs": "ok",
   "corona": "available",
@@ -1459,38 +1585,41 @@ The health check should use actual executable/runtime inspection rather than con
 
 The first real implementation should be intentionally small.
 
-### Input
+### Normative input
 
 ```json
 {
-  "room": {
-    "width": 5000,
-    "length": 4000,
-    "height": 3000
-  },
-  "camera": {
-    "position": [2500, -1500, 1500],
-    "target": [2500, 2000, 1400]
+  "jobType": "buildScene",
+  "inputs": {
+    "sceneSpecPath": "input/scene-spec.json",
+    "expectedManifestPath": "input/expected-scene-manifest.json"
   }
 }
 ```
 
+This is a shortened non-executable view of the normative Job Envelope. The
+complete fixture is `tests/fixtures/living-room-golden/job-envelope.json`.
+There is no second ad-hoc scene contract.
+
 ### Worker must
 
 ```text
-1. Validate input
-2. Create job workspace
-3. Launch 3ds Max Batch
-4. Execute trusted Python runner
-5. Create floor / walls
-6. Create camera
-7. Save .max
-8. Exit cleanly
-9. Verify .max exists
-10. Return execution-report.json
+1. Validate Job Envelope, hashes, SceneSpec, and expected manifest
+2. Create the isolated job workspace
+3. Launch a fresh 3ds Max Batch build process
+4. Execute the trusted repository-controlled Python runner
+5. Create exact walls, openings, floor, ceiling, proxy assets, and cameras
+6. Stamp authoritative embedded logical IDs
+7. Save candidate/project.max and exit the build process
+8. Launch a fresh second process and reopen the candidate
+9. Extract verification/scene-manifest.json
+10. Compare against the expected semantic manifest
+11. Promote output/project.max only on PASS
+12. Write output/execution-report.json
+13. Persist/replay the idempotency result
 ```
 
-No AI is involved.
+No AI, CAD, renderer, network service, external asset, database, or queue is involved. `renderer=none` is normative for this spike.
 
 ---
 
@@ -1547,13 +1676,13 @@ Worker foundation is successful when all of these are repeatable:
 [ ] Logical object IDs can be written/read
 [ ] Camera can be created deterministically
 [ ] .max can be saved to candidate path
-[ ] Candidate can be verified
+[ ] Candidate is reopened and verified in a fresh second process
 [ ] Failed job does not overwrite approved scene
 [ ] Same job can be retried safely
 [ ] Timeout kills orphan process safely
 [ ] Structured execution report is produced
 [ ] Logs identify failed operation
-[ ] Corona preview can be produced when renderer adapter is enabled
+[ ] Renderer remains optional and `renderer=none` passes the base build
 ```
 
 ---

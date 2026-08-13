@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/scene-manifest-v0.1.schema.json",
+  "title": "AI ArchViz Normalized Scene Manifest v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "projectId",
+    "sceneId",
+    "revisionId",
+    "coordinateSystem",
+    "nodes",
+    "cameras"
+  ],
+  "properties": {
+    "manifestVersion": { "const": "0.1.0" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["linearUnit", "angularUnit", "upAxis", "handedness"],
+      "properties": {
+        "linearUnit": { "const": "mm" },
+        "angularUnit": { "const": "degree" },
+        "upAxis": { "const": "Z" },
+        "handedness": { "const": "right" }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "cameras": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/camera" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "vector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "type": "number" },
+        { "type": "number" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "rotationEuler", "scale"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vector3" },
+        "rotationEuler": { "$ref": "#/$defs/vector3" },
+        "scale": { "$ref": "#/$defs/vector3" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "AIArchViz.LogicalObjectId",
+        "AIArchViz.ProjectId",
+        "AIArchViz.SceneId",
+        "AIArchViz.RevisionId"
+      ],
+      "properties": {
+        "AIArchViz.LogicalObjectId": { "$ref": "#/$defs/id" },
+        "AIArchViz.ProjectId": { "$ref": "#/$defs/id" },
+        "AIArchViz.SceneId": { "$ref": "#/$defs/id" },
+        "AIArchViz.RevisionId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalId", "nodeName", "type", "transform", "dimensions", "embeddedMetadata"],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "nodeName": { "type": "string", "pattern": "^AVZ_[a-z][a-z0-9_]*$" },
+        "type": { "enum": ["wall", "floor", "ceiling", "door_opening", "window_opening", "proxy_asset"] },
+        "transform": { "$ref": "#/$defs/transform" },
+        "dimensions": { "$ref": "#/$defs/vector3" },
+        "hostGeometryId": { "$ref": "#/$defs/id" },
+        "start": { "$ref": "#/$defs/vector3" },
+        "end": { "$ref": "#/$defs/vector3" },
+        "offset": { "type": "number", "minimum": 0 },
+        "sill": { "type": "number", "minimum": 0 },
+        "embeddedMetadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalId",
+        "nodeName",
+        "transform",
+        "target",
+        "focalLengthMm",
+        "sensorWidthMm",
+        "embeddedMetadata"
+      ],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "nodeName": { "type": "string", "pattern": "^AVZ_[a-z][a-z0-9_]*$" },
+        "transform": { "$ref": "#/$defs/transform" },
+        "target": { "$ref": "#/$defs/vector3" },
+        "focalLengthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "sensorWidthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "embeddedMetadata": { "$ref": "#/$defs/metadata" }
+      }
+    }
+  }
+}

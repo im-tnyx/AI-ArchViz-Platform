@@ -1,0 +1,367 @@
+{
+  "sceneSpecVersion": "0.1.0",
+  "project": {
+    "id": "project_golden_living_001",
+    "name": "Living Room Golden Project 001"
+  },
+  "scene": {
+    "id": "scene_golden_living_001",
+    "revisionId": "rev_golden_0001",
+    "headRevisionId": "rev_golden_0001"
+  },
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right",
+    "axisConvention": "X_east_Y_north_Z_up",
+    "worldOrigin": [0, 0, 0]
+  },
+  "sources": [
+    {
+      "id": "source_golden_fixture",
+      "type": "synthetic_fixture",
+      "uri": "fixture://living-room-golden/0.1.0",
+      "authority": "A5",
+      "confidence": 1,
+      "verified": true
+    }
+  ],
+  "levels": [
+    {
+      "id": "level_ground",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 3000
+    }
+  ],
+  "spaces": [
+    {
+      "id": "space_living_main",
+      "levelId": "level_ground",
+      "type": "living_room",
+      "boundary": [
+        [0, 0, 0],
+        [6000, 0, 0],
+        [6000, 4500, 0],
+        [0, 4500, 0]
+      ],
+      "boundaryWinding": "counter_clockwise",
+      "floorElevation": 0,
+      "ceilingHeight": 3000,
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "geometry": [
+    {
+      "id": "wall_south",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [0, 0, 0],
+      "end": [6000, 0, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "wall_east",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [6000, 0, 0],
+      "end": [6000, 4500, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "wall_north",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [6000, 4500, 0],
+      "end": [0, 4500, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "wall_west",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [0, 4500, 0],
+      "end": [0, 0, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "surface_floor_main",
+      "type": "floor",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "boundary": [
+        [0, 0, 0],
+        [6000, 0, 0],
+        [6000, 4500, 0],
+        [0, 4500, 0]
+      ],
+      "elevation": 0,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "surface_ceiling_main",
+      "type": "ceiling",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "boundary": [
+        [0, 0, 0],
+        [6000, 0, 0],
+        [6000, 4500, 0],
+        [0, 4500, 0]
+      ],
+      "elevation": 3000,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [0, 0, 3000],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening_d01",
+      "type": "door",
+      "hostGeometryId": "wall_west",
+      "offset": 2400,
+      "width": 900,
+      "sill": 0,
+      "height": 2100,
+      "hingeSide": "start_jamb",
+      "swingDirection": "into_room",
+      "transform": {
+        "position": [2400, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "opening_w01",
+      "type": "window",
+      "hostGeometryId": "wall_north",
+      "offset": 1800,
+      "width": 2400,
+      "sill": 750,
+      "height": 1500,
+      "transform": {
+        "position": [1800, 0, 750],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_living_sofa_main",
+      "type": "proxy_asset",
+      "category": "sofa",
+      "spaceId": "space_living_main",
+      "dimensions": [2400, 950, 780],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false,
+      "transform": {
+        "position": [3000, 3350, 0],
+        "rotationEuler": [0, 0, 180],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "asset_living_coffee_table_main",
+      "type": "proxy_asset",
+      "category": "coffee_table",
+      "spaceId": "space_living_main",
+      "dimensions": [1200, 650, 380],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false,
+      "transform": {
+        "position": [3000, 2200, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "asset_living_tv_unit_main",
+      "type": "proxy_asset",
+      "category": "tv_unit",
+      "spaceId": "space_living_main",
+      "hostGeometryId": "wall_south",
+      "dimensions": [2400, 400, 500],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false,
+      "transform": {
+        "position": [3000, 200, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "materials": [
+    {
+      "id": "material_wall_neutral",
+      "name": "Wall Neutral",
+      "baseColorRgb": [0.78, 0.74, 0.68]
+    },
+    {
+      "id": "material_floor_neutral",
+      "name": "Floor Neutral",
+      "baseColorRgb": [0.66, 0.64, 0.6]
+    },
+    {
+      "id": "material_sofa_proxy",
+      "name": "Sofa Proxy Beige",
+      "baseColorRgb": [0.72, 0.62, 0.5]
+    }
+  ],
+  "materialAssignments": [
+    {
+      "id": "assign_wall_south_neutral",
+      "targetId": "wall_south",
+      "materialId": "material_wall_neutral"
+    },
+    {
+      "id": "assign_wall_east_neutral",
+      "targetId": "wall_east",
+      "materialId": "material_wall_neutral"
+    },
+    {
+      "id": "assign_wall_north_neutral",
+      "targetId": "wall_north",
+      "materialId": "material_wall_neutral"
+    },
+    {
+      "id": "assign_wall_west_neutral",
+      "targetId": "wall_west",
+      "materialId": "material_wall_neutral"
+    },
+    {
+      "id": "assign_floor_neutral",
+      "targetId": "surface_floor_main",
+      "materialId": "material_floor_neutral"
+    },
+    {
+      "id": "assign_sofa_proxy",
+      "targetId": "asset_living_sofa_main",
+      "materialId": "material_sofa_proxy"
+    }
+  ],
+  "cameras": [
+    {
+      "id": "camera_living_a",
+      "type": "camera",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [1200, 3800, 1500],
+        "rotationEuler": [-2.84471, 0, 206.565051],
+        "scale": [1, 1, 1]
+      },
+      "target": [3000, 200, 1300],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 24,
+      "sensorWidthMm": 36
+    },
+    {
+      "id": "camera_living_b",
+      "type": "camera",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [5000, 800, 1500],
+        "rotationEuler": [-3.76233, 0, 43.66778],
+        "scale": [1, 1, 1]
+      },
+      "target": [2900, 3000, 1300],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 24,
+      "sensorWidthMm": 36
+    },
+    {
+      "id": "camera_living_c",
+      "type": "camera",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [3000, 3950, 1500],
+        "rotationEuler": [-3.878525, 0, 180],
+        "scale": [1, 1, 1]
+      },
+      "target": [3000, 1000, 1300],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 28,
+      "sensorWidthMm": 36
+    }
+  ],
+  "render": {
+    "engine": "none",
+    "mode": "build_only"
+  },
+  "revisions": [
+    {
+      "revisionId": "rev_golden_0001",
+      "parentRevisionId": null,
+      "status": "committed",
+      "createdAt": "2026-08-13T00:00:00Z"
+    }
+  ],
+  "extensions": {}
+}

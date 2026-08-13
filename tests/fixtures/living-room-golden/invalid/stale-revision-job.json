@@ -1,0 +1,27 @@
+{
+  "jobEnvelopeVersion": "0.1.0",
+  "jobId": "job_golden_stale_0001",
+  "idempotencyKey": "living-room-golden.stale.rev_golden_0001",
+  "requestHash": "sha256:4fb6f4f85b6ea0f6e4c561bbc5a91a4168a93583abbb84349b9d5646fb1ef94c",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "jobType": "buildScene",
+  "baseRevisionId": "rev_golden_0000",
+  "requestedRevisionId": "rev_golden_0001",
+  "inputs": {
+    "sceneSpecPath": "input/scene-spec.json",
+    "sceneSpecHash": "sha256:a9b20409428a7a49556603d890898c09d1af9a0bde3674a40eeb41d675a004eb",
+    "expectedManifestPath": "input/expected-scene-manifest.json",
+    "expectedManifestHash": "sha256:c2085c501a5b2e2d5b3407c20491ae5ef1109537738d723be1dc8b55c84f3b4e"
+  },
+  "workerRequirements": {
+    "os": "windows",
+    "dcc": "3ds_max",
+    "renderer": "none"
+  },
+  "policy": {
+    "mode": "batch",
+    "timeoutSeconds": 900,
+    "retryPolicy": "safe"
+  }
+}

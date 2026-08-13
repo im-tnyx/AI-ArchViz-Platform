@@ -141,11 +141,30 @@ Example:
 {
   "dcc": "3ds_max",
   "nodeHandle": "0x00003F12",
-  "nodeName": "AAV_asset_living_sofa_main"
+  "nodeName": "AVZ_asset_living_sofa_main"
 }
 ```
 
 This mapping is replaceable and must never become the canonical project identity.
+
+### 3.7 Normative state and transition ownership
+
+| Identifier | Owner | Meaning |
+|---|---|---|
+| `project.id` / `projectId` | SceneSpec / envelope reference | Immutable project workspace identity. |
+| `scene.id` / `sceneId` | SceneSpec / envelope reference | Immutable scene or branch identity; survives rebuilds. |
+| `scene.revisionId` | SceneSpec | Exact state serialized by the snapshot. |
+| `scene.headRevisionId` | SceneSpec | Current committed head known to that snapshot. Equal to `revisionId` for a normal committed snapshot. |
+| `baseRevisionId` | SceneChangeSet or Job Envelope | State against which a transition/request was prepared. `null` is allowed only for the first build with no prior verified output. |
+| `targetRevisionId` | SceneChangeSet | Proposed committed state after applying the change. |
+| `requestedRevisionId` | Job Envelope | Exact SceneSpec revision the worker must build or verify. |
+
+A worker rejects `projectId` or `sceneId` mismatches. For a build, the loaded
+SceneSpec must satisfy
+`scene.revisionId == requestedRevisionId == scene.headRevisionId`. For a
+mutation, `baseRevisionId` must equal the current verified output revision;
+otherwise the worker returns `STALE_REVISION` before launching 3ds Max.
+Retries reuse the same identifiers and cannot silently retarget newer state.
 
 ---
 
@@ -887,12 +906,13 @@ The original revisions remain auditable.
 
 ## 30. DCC Mapping
 
-SceneSpec logical IDs must be stored in DCC metadata when possible.
+SceneSpec logical IDs must be stored in DCC metadata on every managed node.
 
-Recommended 3ds Max node metadata:
+Normative 3ds Max node metadata:
 
 ```text
 AIArchViz.LogicalObjectId
+AIArchViz.ProjectId
 AIArchViz.SceneId
 AIArchViz.AssetDefinitionId
 AIArchViz.RevisionId
@@ -901,10 +921,14 @@ AIArchViz.RevisionId
 Node names should also include a readable form where practical:
 
 ```text
-AAV_asset_living_sofa_main
+AVZ_asset_living_sofa_main
 ```
 
-But metadata remains more reliable than the visible node name.
+`AIArchViz.LogicalObjectId` is authoritative for managed-node reconciliation.
+`AIArchViz.SceneId` and `AIArchViz.RevisionId` bind it to the generated scene
+state. `AVZ_<logicalId>` is a readable/debugging node name. Node handles,
+sidecar maps, extracted names, and adapter mappings are runtime/cache state
+only; node handles may change after reopen and must never be canonical.
 
 ---
 

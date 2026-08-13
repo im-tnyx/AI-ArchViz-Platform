@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/execution-report-v0.1.schema.json",
+  "title": "AI ArchViz Execution Report v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reportVersion",
+    "jobId",
+    "idempotencyKey",
+    "requestHash",
+    "projectId",
+    "sceneId",
+    "revisionId",
+    "status",
+    "startedAt",
+    "completedAt",
+    "candidatePath",
+    "verifiedOutputPath",
+    "manifestPath",
+    "validationResult",
+    "verificationResult",
+    "error"
+  ],
+  "properties": {
+    "reportVersion": { "const": "0.1.0" },
+    "jobId": { "$ref": "#/$defs/id" },
+    "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "requestHash": { "$ref": "#/$defs/sha256" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "status": { "enum": ["SUCCESS", "FAILED", "BLOCKED"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "candidatePath": {
+      "oneOf": [
+        { "const": "candidate/project.max" },
+        { "type": "null" }
+      ]
+    },
+    "verifiedOutputPath": {
+      "oneOf": [
+        { "const": "output/project.max" },
+        { "type": "null" }
+      ]
+    },
+    "manifestPath": {
+      "oneOf": [
+        { "const": "verification/scene-manifest.json" },
+        { "type": "null" }
+      ]
+    },
+    "validationResult": { "$ref": "#/$defs/result" },
+    "verificationResult": { "$ref": "#/$defs/result" },
+    "error": {
+      "oneOf": [
+        { "$ref": "#/$defs/error" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "SUCCESS" } } },
+      "then": {
+        "properties": {
+          "candidatePath": { "type": "string" },
+          "verifiedOutputPath": { "type": "string" },
+          "manifestPath": { "type": "string" },
+          "validationResult": { "properties": { "status": { "const": "PASS" } } },
+          "verificationResult": { "properties": { "status": { "const": "PASS" } } },
+          "error": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "errors"],
+      "properties": {
+        "status": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "errors": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/error" }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" }
+      }
+    }
+  }
+}

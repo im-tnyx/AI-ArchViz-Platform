@@ -244,6 +244,12 @@ Critical production transforms must always be resolvable to world space.
 
 A hierarchical object may store a local transform, but the platform must be able to calculate its world transform deterministically.
 
+SceneSpec v0.1 does not support arbitrary transform hierarchies. `spaceId` and
+`levelId` do not create transform parents. All stored transforms are
+world-equivalent local values except opening transforms, which are explicitly
+host-wall-local as `[offset, 0, sill]`. A future `parentId` contract requires a
+schema version change and explicit composition tests.
+
 ### 8.2 Example
 
 A pendant light may be positioned relative to a ceiling group, but its final world position must be calculable without opening 3ds Max.
@@ -254,13 +260,13 @@ A pendant light may be positioned relative to a ceiling group, but its final wor
 
 Every transform must be explicit.
 
-Recommended base representation:
+Normative SceneSpec v0.1 representation:
 
 ```json
 {
   "transform": {
     "position": [3200, 1800, 0],
-    "rotation": [0, 0, 180],
+    "rotationEuler": [0, 0, 180],
     "scale": [1, 1, 1]
   }
 }
@@ -273,6 +279,9 @@ Position values are in canonical millimeters.
 ### 9.2 Rotation
 
 Human-facing SceneSpec v0.1 uses degrees.
+
+The three components are `rotationEuler[0]=X`,
+`rotationEuler[1]=Y`, and `rotationEuler[2]=Z`.
 
 Canonical axis interpretation:
 
@@ -306,16 +315,17 @@ Canonical yaw:
 rotation around +Z
 ```
 
-Initial human-readable convention:
+The normative right-handed v0.1 yaw mapping for asset forward `+Y` is:
 
 ```text
-0°   → asset forward aligns with +Y
-90°  → asset forward aligns with +X
-180° → asset forward aligns with -Y
-270° → asset forward aligns with -X
+0 deg   = +Y
+90 deg  = -X
+180 deg = -Y
+270 deg = +X
 ```
 
-Adapters are responsible for translating this convention into application-specific transforms.
+Adapters must implement this normative mapping and must not rely on
+application-specific rotation defaults.
 
 For advanced hierarchical or animation workflows, the platform may later use quaternions or transformation matrices internally while preserving a clear SceneSpec representation.
 
@@ -341,7 +351,10 @@ Parent Transform
 World Transform
 ```
 
-If matrix-based transforms are introduced, matrix multiplication order must be explicitly documented in the schema implementation and covered by tests.
+For column vectors, the normative v0.1 composition is
+`M = T * Rz(z) * Ry(y) * Rx(x) * S`. Components are applied X, then Y, then Z
+using the right-hand rule. Adapters must test this mapping instead of relying
+on DCC Euler defaults.
 
 ---
 
@@ -455,19 +468,66 @@ A wall should include enough information to derive:
 - openings
 - level
 
-Example concept:
+Normative v0.1 wall contract:
 
 ```json
 {
   "id": "wall_living_north",
+  "type": "wall",
+  "spaceId": "space_living_main",
   "start": [0, 5800, 0],
   "end": [7200, 5800, 0],
+  "baseElevation": 0,
   "thickness": 150,
-  "height": 3000
+  "height": 3000,
+  "referenceLine": "interior_face",
+  "thicknessDirection": "exterior_right_of_u"
 }
 ```
 
-The exact wall-side convention will be implemented consistently in the SceneSpec schema and geometry compiler.
+For every directed wall:
+
+```text
+u = normalize(end - start)
+z = [0, 0, 1]
+nExterior = cross(u, z)
+nInterior = cross(z, u)
+```
+
+`start` and `end` are points on the finished room-interior face at
+`baseElevation`. Local `+U` runs from `start` to `end`, local `+Z` is world
+`+Z`, and the wall solid occupies offsets `[0, thickness]` along
+`nExterior`. The associated room interior is always on the left of the
+directed wall, along `nInterior`. Reversing a wall reverses its semantic sides;
+v0.1 validation rejects a boundary edge that no longer follows its space's
+counter-clockwise polygon.
+
+Wall height occupies `[baseElevation, baseElevation + height]`. Spike 1 walls
+are independent capped rectangular prisms. No automatic miter, junction
+extension, boolean union, or curved-wall behavior is permitted. Openings
+subtract only from their host prism.
+
+For the Golden polygon, the south/east/north/west directions produce exterior
+normals `-Y`, `+X`, `+Y`, and `-X`. The stored 6000 x 4500 polygon therefore
+remains the exact finished interior size.
+
+### 15.1 Geometry fields versus Transform
+
+Spike 1 does not apply semantic coordinates and transforms twice:
+
+- Wall `start`, `end`, and `baseElevation` are already world-equivalent
+  canonical coordinates. Wall `transform` must be the identity transform and
+  is preserved only for uniform manifest shape.
+- A floor/ceiling `boundary` is local XY geometry at local Z=0.
+  `transform.position` places that surface; `elevation` must equal
+  `transform.position[2]` and is a semantic validation mirror, not an
+  additional translation.
+- An opening `transform` is a required derived verification mirror:
+  `position=[offset,0,sill]`, identity rotation, unit scale. Placement uses the
+  host-local opening equations once; the transform is not added again.
+- Asset and camera transforms are direct world-equivalent local transforms.
+
+Any equality violation is a semantic validation error before DCC launch.
 
 ---
 
@@ -489,6 +549,33 @@ leaf thickness where needed
 
 Door swing must use host-wall-local orientation so that plan rotations do not corrupt hinge semantics.
 
+Normative host-local opening fields are:
+
+```json
+{
+  "hostGeometryId": "wall_west",
+  "offset": 2400,
+  "width": 900,
+  "sill": 0,
+  "height": 2100,
+  "hingeSide": "start_jamb",
+  "swingDirection": "into_room"
+}
+```
+
+`offset` is measured from directed host `start` to the first jamb along `+U`:
+
+```text
+openingStart = wall.start + u * offset
+openingEnd   = wall.start + u * (offset + width)
+bottom       = wall.baseElevation + sill
+top          = bottom + height
+```
+
+`hingeSide` is `start_jamb` or `end_jamb`, naming the jamb at
+`openingStart` or `openingEnd`. `swingDirection` is `into_room` or
+`out_of_room`; `into_room` means toward `nInterior`.
+
 ---
 
 ## 17. Window Convention
@@ -506,6 +593,10 @@ orientation
 ```
 
 Elevation data should override inferred vertical window values according to the Evidence and Provenance policy.
+
+Windows use the same `offset`, `width`, `sill`, and `height` equations. They do
+not carry door hinge or swing fields. Head elevation is derived exactly as
+`baseElevation + sill + height` and is not an independent input.
 
 ---
 
@@ -565,9 +656,9 @@ Example:
 {
   "sourceTransform": {
     "sourceUnit": "m",
-    "scaleToMm": 1000,
-    "translation": [-45210, -78120, 0],
-    "rotationDegrees": 0
+    "position": [-45210, -78120, 0],
+    "rotationEuler": [0, 0, 0],
+    "scale": [1000, 1000, 1000]
   }
 }
 ```
@@ -768,14 +859,14 @@ Example uses:
 
 Camera data must be fully reproducible.
 
-Minimum canonical fields:
+Normative target-based camera fields:
 
 ```text
-position
-target or orientation
-focal length / field of view
-vertical correction intent
-sensor assumptions where required
+transform
+target
+orientationPolicy = look_at_target
+focalLengthMm
+sensorWidthMm
 ```
 
 Example:
@@ -783,14 +874,32 @@ Example:
 ```json
 {
   "camera": {
-    "position": [1600, -800, 1500],
-    "target": [3600, 2900, 1300],
-    "focalLengthMm": 24
+    "transform": {
+      "position": [1200, 3800, 1500],
+      "rotationEuler": [-2.844710, 0, 206.565051],
+      "scale": [1, 1, 1]
+    },
+    "target": [3000, 200, 1300],
+    "orientationPolicy": "look_at_target",
+    "focalLengthMm": 24,
+    "sensorWidthMm": 36
   }
 }
 ```
 
-Camera transforms must follow the same canonical spatial rules as scene objects.
+For `look_at_target`, target is authoritative and `rotationEuler` is a
+precomputed verification value. Let `d = target - position`,
+`h = sqrt(dx^2 + dy^2)`, and use degrees:
+
+```text
+rotationEuler.x = atan2(dz, h)
+rotationEuler.y = 0
+rotationEuler.z = normalize_0_360(atan2(-dx, dy))
+```
+
+This formula assumes canonical forward `+Y` and the v0.1 matrix composition.
+Validators reject `target == position` and reject a stored Euler value that
+differs from the formula beyond `rotationToleranceDeg`.
 
 ---
 
@@ -869,7 +978,7 @@ Objects that cannot be safely normalized must be flagged rather than silently al
 
 Negative scale is dangerous because it may create mirrored geometry, reversed normals, and inconsistent renderer behavior.
 
-Production SceneSpec should avoid negative scale.
+SceneSpec v0.1 prohibits negative scale. Schema validation must reject it.
 
 Mirroring should be expressed as an explicit semantic or geometry operation when possible.
 
@@ -887,7 +996,7 @@ Non-uniform scale may distort:
 - child transforms
 - collision geometry
 
-Default policy:
+Default v0.1 policy:
 
 ```text
 Uniform scale → allowed with validation
@@ -895,6 +1004,10 @@ Non-uniform scale → discouraged / requires explicit approval
 ```
 
 Asset matching should prefer selecting the correct asset size rather than stretching production furniture arbitrarily.
+
+Uniform positive scale is allowed. Non-uniform positive scale is allowed only
+when the owning object explicitly sets `allowNonUniformScale: true`; otherwise
+semantic validation rejects it.
 
 ---
 

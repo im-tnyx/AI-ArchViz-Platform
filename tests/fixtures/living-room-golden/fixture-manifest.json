@@ -1,0 +1,12 @@
+{
+  "fixtureId": "living_room_golden",
+  "fixtureVersion": "0.1.0",
+  "sceneSpecSchemaVersion": "0.1.0",
+  "validationProfile": "deterministic_spike_1",
+  "expectedManifestVersion": "0.1.0",
+  "comparisonMode": "normalized_semantic",
+  "nodeOrdering": "logicalId_ascending",
+  "geometryToleranceMm": 0.01,
+  "transformToleranceMm": 0.01,
+  "rotationToleranceDeg": 0.001
+}

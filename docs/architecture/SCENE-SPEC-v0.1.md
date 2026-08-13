@@ -207,12 +207,22 @@ Heavy geometry should live in external files or scene packages and be referenced
 
 ## 4. Top-Level Structure
 
-Proposed `v0.1` structure:
+### 4.1 Normative status
+
+The machine-readable schema at
+`packages/scene-spec/schema/scene-spec-v0.1.schema.json` is the **normative
+SceneSpec v0.1 contract**. This document defines the matching semantic rules.
+JSON examples elsewhere in the repository are illustrative unless they
+explicitly state that they conform to that schema. A parser must not accept an
+alternate root vocabulary such as `version`, `walls`, `surfaces`, or `objects`.
+
+Normative `v0.1` root vocabulary:
 
 ```json
 {
   "sceneSpecVersion": "0.1.0",
   "project": {},
+  "scene": {},
   "coordinateSystem": {},
   "sources": [],
   "levels": [],
@@ -232,7 +242,28 @@ Proposed `v0.1` structure:
 }
 ```
 
-Not every field is required in every processing stage.
+The first deterministic profile requires the fields marked as required by the
+schema. Optional root fields are omitted when they have no semantic content;
+empty arrays are not placeholders for a second contract.
+
+### 4.2 Required cross-field validation
+
+JSON Schema validation runs first. The deterministic profile then performs
+these mandatory semantic checks before any DCC launch:
+
+| Check | Deterministic error |
+|---|---|
+| `scene.revisionId == scene.headRevisionId` for a committed snapshot | `REVISION_STATE_MISMATCH` |
+| Logical IDs are unique across geometry, openings, assets, lights, and cameras | `DUPLICATE_LOGICAL_ID` |
+| Every referenced project/scene/level/space/host/material ID exists | `UNRESOLVED_REFERENCE` |
+| Space polygon is counter-clockwise and wall directions follow its edges | `WALL_BOUNDARY_DIRECTION_MISMATCH` |
+| Opening interval satisfies `0 <= offset` and `offset + width <= host length` | `OPENING_OUT_OF_HOST_RANGE` |
+| Wall/surface/opening derived Transform equalities hold | `DERIVED_TRANSFORM_MISMATCH` |
+| Negative scale is absent and non-uniform scale is explicitly supported | `NON_UNIFORM_SCALE_UNSUPPORTED` |
+| Target-based camera Euler values match the normative look-at formula | `CAMERA_ORIENTATION_MISMATCH` |
+
+These checks are part of the v0.1 contract even where JSON Schema cannot
+express reference equality or vector math.
 
 The same project may move through states such as:
 
@@ -318,6 +349,34 @@ product
 mixed
 ```
 
+### 6.1 Scene and revision identity
+
+Canonical SceneSpec state owns these values:
+
+```json
+{
+  "project": {
+    "id": "project_golden_living_001"
+  },
+  "scene": {
+    "id": "scene_golden_living_001",
+    "revisionId": "rev_golden_0001",
+    "headRevisionId": "rev_golden_0001"
+  }
+}
+```
+
+- `project.id` is immutable for the project workspace.
+- `scene.id` is immutable for one scene/design branch and survives rebuilds.
+- `scene.revisionId` identifies the exact state serialized by this snapshot.
+- `scene.headRevisionId` identifies the current committed head when the
+  snapshot was written.
+- A normal committed snapshot requires
+  `scene.revisionId == scene.headRevisionId`.
+- Transition/request identifiers such as `baseRevisionId` and
+  `requestedRevisionId` do not belong at the SceneSpec root; they belong to a
+  SceneChangeSet or worker Job Envelope.
+
 ---
 
 ## 7. Coordinate System and Units
@@ -364,6 +423,30 @@ Adapters are responsible for converting canonical coordinates to application-nat
 ```
 
 For `v0.1`, Euler rotation is sufficient for authoring and debugging.
+
+This `Transform` shape is normative everywhere, including SceneChangeSet:
+
+- `position`: parent-local millimeters.
+- `rotationEuler`: parent-local degrees in `[x, y, z]` order.
+- `scale`: unitless positive values; default `[1, 1, 1]`.
+- Root-level objects have no transformed parent, so their parent-local values
+  are world-equivalent.
+- In the v0.1 schema, `spaceId` and `levelId` are semantic membership/host
+  references, not transform parents. Spaces, walls, surfaces, assets, and
+  cameras therefore store world-equivalent local transforms. Only openings
+  store host-wall-local transforms: `[offset, 0, sill]` relative to directed
+  host axes. Arbitrary transform parenting is outside v0.1.
+- Euler composition uses column vectors and
+  `M = T * Rz(z) * Ry(y) * Rx(x) * S`; local X rotation is applied first,
+  followed by local Y, then local Z.
+- Positive rotations follow the right-hand rule. With asset forward `+Y`, a
+  positive `90` degree Z rotation faces `-X`.
+- Negative scale is invalid. Non-uniform scale is valid only when the owning
+  object explicitly sets `allowNonUniformScale: true`; otherwise semantic
+  validation rejects it.
+- Missing transforms are not inferred in the deterministic profile. The
+  explicit identity transform is `position=[0,0,0]`,
+  `rotationEuler=[0,0,0]`, `scale=[1,1,1]`.
 
 A later version may add quaternions and matrices for interchange-heavy workflows.
 
@@ -1167,7 +1250,7 @@ Example runtime mapping:
 ```json
 {
   "dccMappings": {
-    "3dsMax": {
+    "3ds_max": {
       "wall_living_north": {
         "nodeHandle": "12345",
         "nodeName": "AVZ_wall_living_north"
@@ -1181,9 +1264,13 @@ Example runtime mapping:
 }
 ```
 
-This mapping should generally be treated as runtime/adapter state rather than core design intent.
+This mapping is runtime/cache/diagnostic state, not canonical design intent.
+`nodeHandle` is volatile and may change after reopen. The authoritative logical
+identity inside a generated `.max` file is node metadata
+`AIArchViz.LogicalObjectId`. `nodeName` uses `AVZ_<logicalId>` for human
+debugging but is not authoritative.
 
-Naming convention proposal for 3ds Max:
+Normative node naming convention for 3ds Max:
 
 ```text
 AVZ_<SceneSpec ID>
@@ -1511,7 +1598,10 @@ Adapters resolve logical URIs to actual local or remote paths.
 
 ## 32. Complete Living Room Example
 
-The following example is intentionally simplified but demonstrates how the major concepts connect.
+The following legacy example is **illustrative and non-normative**. It
+demonstrates how broad concepts connect, but the executable Golden fixture at
+`tests/fixtures/living-room-golden/scene-spec.json` is the only v0.1 living-room
+machine example. Implementations must validate against the normative schema.
 
 ```json
 {
@@ -2056,18 +2146,17 @@ The exact validation library should be selected during implementation rather tha
 
 These questions should be decided using real scene tests rather than theory alone:
 
-1. Should wall paths represent centerline, interior face, exterior face, or explicitly support all three?
-2. How should complex wall joins and curved walls be represented?
-3. Should room boundaries be derived from walls or stored independently after validation?
-4. How much mesh-level data should be allowed directly in SceneSpec?
-5. Should transformations use Euler + quaternion or matrix as canonical representation?
-6. What is the best material abstraction shared by Corona and V-Ray?
-7. How should layered ceilings and custom joinery be modeled semantically?
-8. What confidence thresholds require human approval?
-9. What revision representation best supports auditability and deterministic sync?
-10. Which data belongs in SceneSpec versus OpenUSD versus the project database?
-11. How should external asset versions and licensing metadata be tracked?
-12. How should custom client assets override global asset-library metadata?
+1. How should complex wall joins and curved walls be represented beyond the
+   v0.1 independent-prism rule?
+2. Should room boundaries be derived from walls after the deterministic v0.1
+   profile is proven?
+3. How much mesh-level data should be allowed directly in SceneSpec?
+4. What is the best material abstraction shared by Corona and V-Ray?
+5. How should layered ceilings and custom joinery be modeled semantically?
+6. What confidence thresholds require human approval?
+7. Which data belongs in SceneSpec versus OpenUSD versus durable project state?
+8. How should external asset versions and licensing metadata be tracked?
+9. How should custom client assets override global asset-library metadata?
 
 These questions are intentionally deferred until the first real Living Room test exposes practical requirements.
 

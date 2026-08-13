@@ -1,0 +1,10 @@
+{
+  "fixtureCaseVersion": "0.1.0",
+  "baseFixture": "../scene-spec.json",
+  "mutation": {
+    "operation": "replace",
+    "path": "/sceneSpecVersion",
+    "value": "0.2.0"
+  },
+  "expectedErrorCode": "UNSUPPORTED_SCENE_SPEC_VERSION"
+}

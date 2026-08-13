@@ -103,6 +103,7 @@ AI-ArchViz-Platform/
 │   └── max-plugin/
 ├── packages/
 │   ├── scene-spec/
+│   ├── worker-contracts/
 │   ├── ai-gateway/
 │   ├── cad-parser/
 │   ├── asset-engine/
@@ -139,14 +140,21 @@ Local Windows Worker
       ↓
 Room Geometry
       ↓
-Camera + Basic Lighting
+Proxy Assets + Cameras
       ↓
-Corona Render
+Candidate Editable .max
       ↓
-Saved Editable .max Scene
+Fresh-Process Reopen
+      ↓
+Semantic Manifest Verification
+      ↓
+Verified Editable .max Scene
 ```
 
-Once this deterministic path works, AI can be added safely for reference analysis, floor-plan understanding, asset selection, scene planning, camera ranking, and render critique.
+Corona preview follows this base verification spine; it is not required for
+Technical Spike 1. Once deterministic 3D and later renderer stages work, AI can
+be added safely for reference analysis, floor-plan understanding, asset
+selection, scene planning, camera ranking, and render critique.
 
 ## Documentation
 
@@ -156,18 +164,18 @@ Once this deterministic path works, AI can be added safely for reference analysi
 
 ## Status
 
-**Stage:** Foundation / documentation
+**Stage:** Contract closure complete / ready for deterministic technical spike
 
 Current priorities:
 
-1. Finalize architecture documentation.
-2. Define `SceneSpec v0.1`.
-3. Define the Windows local worker contract.
-4. Prove automated communication with 3ds Max.
-5. Generate and save the first deterministic test room.
-6. Add Corona preview rendering.
-7. Integrate real CAD input.
-8. Add AI only after the core 3D pipeline is reliable.
+1. Initialize only the minimal local worker/toolchain skeleton.
+2. Validate and consume the existing SceneSpec/worker schemas and Golden fixture.
+3. Prove controlled communication with 3ds Max.
+4. Generate, save, fresh-reopen, and semantically verify the Golden scene.
+5. Prove durable idempotent replay and forced-failure safety.
+6. Prove one minimal deterministic revision.
+7. Add CAD, assets/lookdev, and Corona preview in the documented sequence.
+8. Add AI only after the deterministic 3D pipeline is reliable.
 
 ## License
 

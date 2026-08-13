@@ -134,7 +134,9 @@ Example:
   "schemaVersion": "0.1.0",
   "changeSetId": "chg_01JXYZ123456",
   "projectId": "project_living_001",
+  "sceneId": "scene_living_main",
   "baseRevisionId": "rev_0007",
+  "targetRevisionId": "rev_0008",
   "requestedBy": {
     "type": "user",
     "id": "user_001"
@@ -179,11 +181,22 @@ chg_01JXYZ123456
 
 Project that owns the target SceneSpec.
 
+### `sceneId`
+
+Immutable scene/branch identity targeted by the transition.
+
 ### `baseRevisionId`
 
 Revision against which the change was generated.
 
 This prevents stale changes from silently applying to newer scene state.
+
+### `targetRevisionId`
+
+Immutable revision identity proposed for the committed state. It must differ
+from `baseRevisionId`. The validator rejects the entire ChangeSet as
+`STALE_REVISION` when `baseRevisionId` does not equal the current committed
+SceneSpec `scene.headRevisionId`.
 
 ### `requestedBy`
 
@@ -410,8 +423,8 @@ Example:
       "assetDefinitionId": "assetdef_chair_0042",
       "parentId": "space_living",
       "transform": {
-        "positionMm": [2100, 4400, 0],
-        "rotationDeg": [0, 0, 25],
+        "position": [2100, 4400, 0],
+        "rotationEuler": [0, 0, 25],
         "scale": [1, 1, 1]
       }
     }
@@ -520,7 +533,9 @@ Validation must check:
 
 ### `MoveObject`
 
-Prefer explicit absolute or delta semantics.
+SceneChangeSet v0.1 uses absolute desired-state transforms only. Relative
+deltas are outside the v0.1 machine contract because blind replay would not be
+idempotent.
 
 ```json
 {
@@ -528,8 +543,11 @@ Prefer explicit absolute or delta semantics.
   "type": "MoveObject",
   "targetId": "asset_living_sofa_main",
   "parameters": {
-    "mode": "delta",
-    "deltaMm": [0, 250, 0]
+    "transform": {
+      "position": [3000, 2450, 0],
+      "rotationEuler": [0, 0, 0],
+      "scale": [1, 1, 1]
+    }
   }
 }
 ```
@@ -542,8 +560,11 @@ Prefer explicit absolute or delta semantics.
   "type": "RotateObject",
   "targetId": "asset_living_chair_accent_01",
   "parameters": {
-    "mode": "absolute",
-    "rotationDeg": [0, 0, 35]
+    "transform": {
+      "position": [2100, 4400, 0],
+      "rotationEuler": [0, 0, 35],
+      "scale": [1, 1, 1]
+    }
   }
 }
 ```
@@ -672,8 +693,12 @@ Example:
   "type": "UpdateCamera",
   "targetId": "camera_living_hero_01",
   "parameters": {
-    "positionMm": [1200, -1800, 1500],
-    "targetMm": [3600, 3000, 1350],
+    "transform": {
+      "position": [1200, -1800, 1500],
+      "rotationEuler": [-1.601049, 0, 333.434949],
+      "scale": [1, 1, 1]
+    },
+    "target": [3600, 3000, 1350],
     "focalLengthMm": 24,
     "verticalCorrection": true
   }
@@ -967,7 +992,11 @@ AI Intent Parser
 {
   type: "MoveObject",
   targetId: "asset_living_sofa_main",
-  deltaMm: [...]
+  transform: {
+    position: [3000, 3100, 0],
+    rotationEuler: [0, 0, 180],
+    scale: [1, 1, 1]
+  }
 }
         ↓
 Deterministic validation

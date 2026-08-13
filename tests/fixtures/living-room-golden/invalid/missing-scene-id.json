@@ -1,0 +1,9 @@
+{
+  "fixtureCaseVersion": "0.1.0",
+  "baseFixture": "../scene-spec.json",
+  "mutation": {
+    "operation": "remove",
+    "path": "/scene/id"
+  },
+  "expectedErrorCode": "SCHEMA_REQUIRED_PROPERTY"
+}

@@ -36,26 +36,41 @@ SceneSpec
 
 Initial representation will use JSON-compatible data structures and a versioned schema.
 
-Example:
+Normative v0.1 root vocabulary:
 
 ```json
 {
-  "version": "0.1",
+  "sceneSpecVersion": "0.1.0",
   "project": {
-    "id": "project_living_001",
-    "units": "mm"
+    "id": "project_living_001"
   },
+  "scene": {
+    "id": "scene_living_main",
+    "revisionId": "rev_0001",
+    "headRevisionId": "rev_0001"
+  },
+  "coordinateSystem": {},
+  "sources": [],
+  "levels": [],
   "spaces": [],
-  "architecture": [],
-  "objects": [],
+  "geometry": [],
+  "openings": [],
+  "assets": [],
   "materials": [],
+  "materialAssignments": [],
   "lights": [],
   "cameras": [],
-  "render": {
-    "engine": "corona"
-  }
+  "references": [],
+  "constraints": [],
+  "render": {},
+  "revisions": [],
+  "extensions": {}
 }
 ```
+
+The strict machine contract is
+`packages/scene-spec/schema/scene-spec-v0.1.schema.json`; the abbreviated root
+above is not a valid fixture by itself.
 
 ## Responsibilities
 
@@ -158,7 +173,7 @@ Example:
 
 ```json
 {
-  "version": "0.1"
+  "sceneSpecVersion": "0.1.0"
 }
 ```
 

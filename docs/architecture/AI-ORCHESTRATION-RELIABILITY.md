@@ -1124,9 +1124,12 @@ The revision engine then validates the requested change.
 
 ---
 
-## 37. Provider Strategy for Initial Experiments
+## 37. Provider Strategy for the Initial AI Integration Phase
 
-The initial implementation should support at least two provider adapters so provider independence is real, not theoretical.
+The initial **AI integration phase** should support at least two provider
+adapters so provider independence is real, not theoretical. This does not mean
+the first project implementation phase: AI and provider adapters are explicitly
+excluded from deterministic Technical Spike 1.
 
 Suggested experiment set:
 

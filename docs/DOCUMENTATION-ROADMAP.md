@@ -1,6 +1,6 @@
 # Documentation Roadmap
 
-**Status:** Implementation Ready  
+**Status:** Ready for Technical Spike
 **Project:** AI ArchViz Platform  
 **Goal:** Maintain the minimum architecture documentation needed for reliable implementation without allowing planning to delay practical testing.
 
@@ -75,14 +75,15 @@ Documentation Updates / ADRs
 
 - [x] `decisions/0001-real-3d-source-of-truth.md`
 - [x] `decisions/0002-scenespec-canonical-contract.md`
-- [x] `decisions/0003-progressive-input-evidence.md`
+- [x] `decisions/0003-flexible-input-evidence-modes.md`
 - [x] `decisions/0004-ai-proposes-platform-validates.md`
 
 ---
 
-## 3. Documentation Stop Gate — COMPLETE
+## 3. Contract Closure Gate
 
-The minimum architecture gate required before local implementation is complete:
+The deterministic contract gate requires the architecture documents plus the
+machine-readable schemas and Golden fixtures:
 
 ```text
 1. SCENE-SPEC-v0.1.md                              ✅
@@ -95,7 +96,8 @@ The minimum architecture gate required before local implementation is complete:
 8. LIVING-ROOM-GOLDEN-PROJECT.md                   ✅
 ```
 
-Do not create another large architecture phase before beginning the deterministic technical spike.
+Do not create another large architecture phase. Complete the contract checklist
+and then begin only the deterministic technical spike.
 
 ---
 
@@ -149,28 +151,27 @@ tools/3ds-max/maxscript/
 tests/fixtures/living-room-golden/
 ```
 
-Suggested first fixture files:
+Normative v0.1 fixture files:
 
 ```text
 tests/fixtures/living-room-golden/
 ├── scene-spec.json
-├── expected/
-│   ├── geometry.json
-│   ├── identities.json
-│   └── revisions.json
-└── changesets/
-    ├── r1-replace-sofa.json
-    ├── r2-move-coffee-table.json
-    ├── r3-change-tv-wall-material.json
-    ├── r4-locked-ceiling-change.json
-    └── r5-revised-window-elevation.json
+├── expected-scene-manifest.json
+├── fixture-manifest.json
+├── job-envelope.json
+└── invalid/
+    ├── invalid-schema-version.json
+    ├── missing-scene-id.json
+    ├── negative-scale.json
+    ├── stale-revision-job.json
+    └── idempotency-key-reuse-mismatch.json
 ```
 
 ---
 
 ## 6. Technical Spike Milestones
 
-### Spike 01 — Environment Proof
+### Spike 01A — Environment Proof
 
 Pass when:
 
@@ -182,7 +183,7 @@ Trusted script executes
 Structured success/failure report returns
 ```
 
-### Spike 02 — Scene Proof
+### Spike 01B — Scene and Fresh-Reopen Proof
 
 Pass when:
 
@@ -200,9 +201,10 @@ Required:
 - stable logical IDs
 - camera
 - save candidate `.max`
-- re-open or verify output
+- exit build process and reopen candidate in a fresh second process
+- extract and compare normalized semantic manifest
 
-### Spike 03 — Idempotency Proof
+### Spike 01C — Idempotency, Failure, and Timeout Proof
 
 Run the same input twice.
 
@@ -212,9 +214,12 @@ Pass when:
 No duplicated managed objects
 Same logical scene state
 Safe job replay
+Durable replay survives worker restart
+Forced failure leaves verified output untouched
+Timeout terminates owned child processes
 ```
 
-### Spike 04 — Revision Proof
+### Spike 02 — Minimal Revision Proof
 
 Apply one SceneChangeSet.
 
@@ -231,7 +236,7 @@ Pass when:
 - revision is recorded
 - unrelated scene objects remain unchanged
 
-### Spike 05 — Corona Preview Proof
+### Spike 03 — Corona Preview Proof
 
 Pass when:
 
@@ -239,7 +244,7 @@ Pass when:
 Managed scene + camera → preview render
 ```
 
-Renderer automation should not block Spikes 01-04.
+Renderer automation must not block Spike 01 or the minimal revision proof.
 
 ---
 
@@ -412,14 +417,49 @@ When implementation disproves an assumption, update the document rather than for
 
 ---
 
-## 13. Current Status
+## 13. Contract Closure Acceptance
+
+- [x] One normative SceneSpec root
+- [x] JSON Schema exists
+- [x] `scene.id` exists
+- [x] Revision ownership frozen
+- [x] Shared Transform type frozen
+- [x] Euler order frozen
+- [x] Wall baseline semantics frozen
+- [x] Thickness side frozen
+- [x] Opening offset semantics frozen
+- [x] Hinge/swing semantics frozen
+- [x] Golden transforms are numeric
+- [x] Camera A mathematically faces south
+- [x] Golden `scene-spec.json` exists
+- [x] `expected-scene-manifest.json` exists
+- [x] `fixture-manifest.json` exists
+- [x] Job Envelope schema exists
+- [x] `idempotencyKey` exists
+- [x] `requestHash` exists
+- [x] Replay semantics frozen
+- [x] DCC enum is `3ds_max`
+- [x] Node prefix is `AVZ_`
+- [x] `AIArchViz.LogicalObjectId` is authoritative in `.max`
+- [x] `nodeHandle` is runtime-only
+- [x] Fresh second-process reopen is mandatory
+- [x] Semantic manifest verification is mandatory
+- [x] Execution Report schema exists
+- [x] Artifact naming is unified
+- [x] Hard locks always `BLOCK`
+- [x] Ad-hoc scene input contract removed
+- [x] ADR filename reference corrected
+
+## 14. Current Status
 
 ```text
 FOUNDATION DOCUMENTATION   ✅ COMPLETE
-GOLDEN TEST SPEC           ✅ COMPLETE
+MACHINE CONTRACTS          ✅ READY
+GOLDEN FIXTURES            ✅ READY
 LOCAL IMPLEMENTATION       ▶ NEXT
 AI PRODUCTION INTEGRATION  ⏸ NOT YET
 CAD INGESTION              ⏸ AFTER WORKER PROOF
 ```
 
-The next repository change should initialize the implementation skeleton and create the first machine-readable living-room golden SceneSpec fixture.
+After schema/fixture validation passes, the next repository change should
+initialize only the minimal deterministic worker/toolchain skeleton.
