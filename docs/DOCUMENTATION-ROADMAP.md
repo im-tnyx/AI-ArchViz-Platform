@@ -52,6 +52,10 @@ Implementation Starts
 
 - [x] `architecture/COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md`
 
+### Revision Safety
+
+- [x] `architecture/OBJECT-IDENTITY-AND-REVISION-MODEL.md`
+
 ### Architecture Decisions
 
 - [x] `decisions/0001-real-3d-source-of-truth.md`
@@ -89,7 +93,7 @@ Defined:
 - SceneSpec → 3ds Max mapping
 - tolerance rules
 
-### P0.2 Object Identity & Revision Model
+### P0.2 Object Identity & Revision Model ✅
 
 File:
 
@@ -97,17 +101,23 @@ File:
 architecture/OBJECT-IDENTITY-AND-REVISION-MODEL.md
 ```
 
-Must define:
+Defined:
 
 - stable logical IDs
-- asset instance IDs
+- project, scene, asset-definition and DCC identity layers
+- immutable logical identity
+- asset replacement semantics
+- object lifecycle states
+- soft delete and restoration
 - parent/child identity
-- approved/locked objects
-- property-level locking
-- revision history
-- replacement semantics
-- object resurrection / deletion
-- version comparison
+- approval and property-level locks
+- transactional revision history
+- revision impact analysis
+- render invalidation
+- branch and merge behavior
+- 3ds Max DCC mapping and reconciliation
+- managed vs unmanaged object workflows
+- AI identity boundaries
 
 ### P0.3 SceneChangeSet Specification
 
@@ -122,6 +132,7 @@ Must define deterministic operations such as:
 ```text
 CreateObject
 DeleteObject
+RestoreObject
 ReplaceAsset
 MoveObject
 RotateObject
@@ -423,10 +434,10 @@ Do **not** complete every future document before coding.
 Implementation should start once these six are ready:
 
 ```text
-1. SCENE-SPEC-v0.1.md                         ✅
-2. EVIDENCE-PROVENANCE-AND-CONFIDENCE.md      ✅
-3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md ✅
-4. OBJECT-IDENTITY-AND-REVISION-MODEL.md
+1. SCENE-SPEC-v0.1.md                              ✅
+2. EVIDENCE-PROVENANCE-AND-CONFIDENCE.md           ✅
+3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md    ✅
+4. OBJECT-IDENTITY-AND-REVISION-MODEL.md           ✅
 5. SCENE-CHANGESET-SPEC.md
 6. 3DS-MAX-WORKER-ARCHITECTURE.md
 ```
@@ -459,18 +470,15 @@ Recommended next sequence:
 
 ```text
 NEXT 01
-OBJECT-IDENTITY-AND-REVISION-MODEL.md
-
-NEXT 02
 SCENE-CHANGESET-SPEC.md
 
-NEXT 03
+NEXT 02
 VALIDATION-ENGINE.md
 
-NEXT 04
+NEXT 03
 3DS-MAX-WORKER-ARCHITECTURE.md
 
-NEXT 05
+NEXT 04
 LIVING-ROOM-GOLDEN-PROJECT.md
 
 THEN
