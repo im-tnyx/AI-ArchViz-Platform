@@ -2,7 +2,7 @@
   "jobEnvelopeVersion": "0.1.0",
   "jobId": "job_golden_stale_0001",
   "idempotencyKey": "living-room-golden.stale.rev_golden_0001",
-  "requestHash": "sha256:50de8dedb5682b28ad35c81e336ec25077792654f939864f66746dbab77197a7",
+  "requestHash": "sha256:d08cc009b899103b70f3b79ac2febad4606fbf0e50016e4e0eb358c312654766",
   "projectId": "project_golden_living_001",
   "sceneId": "scene_golden_living_001",
   "jobType": "buildScene",
@@ -12,7 +12,7 @@
     "sceneSpecPath": "input/scene-spec.json",
     "sceneSpecHash": "sha256:105d9770d8fd3edaeffe07b1f21d1c0a59aebbfa701d3bf561bf6dd5f70cd7d7",
     "expectedManifestPath": "input/expected-scene-manifest.json",
-    "expectedManifestHash": "sha256:8de35bd41191a0f7904dfc160b096e4bc6b8a4f9f4462644ca5bad5f8e6427a7"
+    "expectedManifestHash": "sha256:1016ccf027d85367fb9ce6f6cdf470c625dba658a59313770064b472a89f3cde"
   },
   "workerRequirements": {
     "os": "windows",

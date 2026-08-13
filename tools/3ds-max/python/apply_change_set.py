@@ -47,13 +47,17 @@ def _point(value: list[float]) -> Any:
     return rt.Point3(float(value[0]), float(value[1]), float(value[2]))
 
 
-def _create_wall_segment(segment: dict[str, Any], host: Any) -> Any:
+def _create_wall_segment(
+    segment: dict[str, Any], host: Any, material: Any, material_id: str
+) -> Any:
     width, length, height = segment["dimensions"]
     node = rt.Box(width=float(width), length=float(length), height=float(height))
     node.name = str(segment["name"])
     node.rotation = rt.EulerAngles(0.0, 0.0, float(segment["rotationZ"]))
     node.pos = _point(segment["center"])
     node.parent = host
+    node.material = material
+    rt.setUserProp(node, "AIArchViz.MaterialId", material_id)
     rt.setUserProp(node, "AIArchViz.HostLogicalId", str(segment["hostLogicalId"]))
     rt.setUserProp(
         node,
@@ -158,17 +162,43 @@ def apply_revision() -> dict[str, Any]:
                 "DUPLICATE_LOGICAL_ID", f"Host {rebuilt_host_id} is not unique"
             )
         host = hosts[0]
+        host_material_id = _user_prop(host, "AIArchViz.MaterialId")
+        if not host_material_id:
+            raise MutationError(
+                "MATERIAL_ID_MISSING", f"Host {rebuilt_host_id} has no canonical material ID"
+            )
+        segments = [
+            node
+            for node in list(rt.objects)
+            if _user_prop(node, "AIArchViz.HostLogicalId") == rebuilt_host_id
+        ]
+        if not segments:
+            raise MutationError(
+                "MATERIAL_ASSIGNMENT_MISMATCH",
+                f"Host {rebuilt_host_id} has no physical segments to preserve",
+            )
+        host_material = segments[0].material
+        if host_material is None or str(host_material.name) != f"AVZ_MATERIAL_{host_material_id}":
+            raise MutationError(
+                "MATERIAL_ASSIGNMENT_MISMATCH",
+                f"Host {rebuilt_host_id} native material disagrees with canonical material ID",
+            )
+        for segment in segments:
+            if (
+                _user_prop(segment, "AIArchViz.MaterialId") != host_material_id
+                or segment.material is None
+                or str(segment.material.name) != f"AVZ_MATERIAL_{host_material_id}"
+            ):
+                raise MutationError(
+                    "MATERIAL_ASSIGNMENT_MISMATCH",
+                    f"Host {rebuilt_host_id} physical segment material disagrees with canonical material ID",
+                )
         unrelated_before = sorted(
             _segment_signature(node)
             for node in list(rt.objects)
             if _user_prop(node, "AIArchViz.HostLogicalId")
             and _user_prop(node, "AIArchViz.HostLogicalId") != rebuilt_host_id
         )
-        segments = [
-            node
-            for node in list(rt.objects)
-            if _user_prop(node, "AIArchViz.HostLogicalId") == rebuilt_host_id
-        ]
         deleted_segment_count = len(segments)
         for segment in segments:
             rt.delete(segment)
@@ -177,7 +207,7 @@ def apply_revision() -> dict[str, Any]:
                 raise MutationError(
                     "REVISION_PLAN_INVALID", "Plan contains an unrelated wall segment"
                 )
-            _create_wall_segment(segment, host)
+            _create_wall_segment(segment, host, host_material, host_material_id)
             created_segment_count += 1
         unrelated_after = sorted(
             _segment_signature(node)

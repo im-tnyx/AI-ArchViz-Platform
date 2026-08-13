@@ -60,10 +60,10 @@ describe("RFC 8785 semantic JSON hashing", () => {
       "sha256:105d9770d8fd3edaeffe07b1f21d1c0a59aebbfa701d3bf561bf6dd5f70cd7d7",
     );
     expect(semanticJsonHash(expectedManifest)).toBe(
-      "sha256:8de35bd41191a0f7904dfc160b096e4bc6b8a4f9f4462644ca5bad5f8e6427a7",
+      "sha256:1016ccf027d85367fb9ce6f6cdf470c625dba658a59313770064b472a89f3cde",
     );
     expect(calculateRequestHash(jobValidation.value)).toBe(
-      "sha256:87c19d97c399a72e3b4a10773d3f3ca9123182cacd53b74e6226dbcb6acf28f6",
+      "sha256:671c64497af894348533c6012d04bc0b647dcffc52e14cc6ec012a7d09dd06cb",
     );
     expect(verifyJobHashes(jobValidation.value, sceneSpec, expectedManifest)).toEqual({
       ok: true,

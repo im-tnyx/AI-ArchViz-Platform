@@ -67,6 +67,7 @@
     },
     "materials": {
       "type": "array",
+      "uniqueItems": true,
       "items": { "$ref": "#/$defs/material" }
     },
     "materialAssignments": {

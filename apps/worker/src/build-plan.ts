@@ -25,6 +25,19 @@ export interface BuildPlanNode {
   end?: Vector3;
   offset?: number;
   sill?: number;
+  materialId?: string;
+  materialBaseColorRgb?: Vector3;
+}
+
+export interface BuildPlanMaterial {
+  id: string;
+  baseColorRgb: Vector3;
+}
+
+export interface BuildPlanMaterialAssignment {
+  id: string;
+  targetId: string;
+  materialId: string;
 }
 
 export interface WallSegment {
@@ -65,6 +78,8 @@ export interface GoldenBuildPlan {
   wallSegments: WallSegment[];
   openingMarkers: OpeningMarker[];
   cameras: BuildPlanCamera[];
+  materials: BuildPlanMaterial[];
+  materialAssignments: BuildPlanMaterialAssignment[];
 }
 
 interface SceneSpecSubset {
@@ -79,6 +94,8 @@ interface SceneSpecSubset {
   geometry: Array<Record<string, unknown>>;
   openings: Array<Record<string, unknown>>;
   assets: Array<Record<string, unknown>>;
+  materials: Array<{ id: string; baseColorRgb: Vector3 }>;
+  materialAssignments: Array<{ id: string; targetId: string; materialId: string }>;
   cameras: Array<Record<string, unknown>>;
 }
 
@@ -231,8 +248,54 @@ function boundaryDimensions(boundary: Vector3[]): Vector3 {
   return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), 0];
 }
 
+function nativeMaterialColor(value: Vector3): Vector3 {
+  return value.map((channel) => Math.round(channel * 255) / 255) as Vector3;
+}
+
+function resolveMaterialAssignments(scene: SceneSpecSubset): {
+  materials: BuildPlanMaterial[];
+  assignments: BuildPlanMaterialAssignment[];
+  byTarget: Map<string, BuildPlanMaterial>;
+} {
+  const materials = scene.materials.map((material) => ({
+    id: String(material.id),
+    baseColorRgb: nativeMaterialColor(vector(material.baseColorRgb)),
+  }));
+  const materialById = new Map<string, BuildPlanMaterial>();
+  for (const material of materials) {
+    if (materialById.has(material.id)) {
+      throw new Error(`Duplicate material id ${material.id}`);
+    }
+    materialById.set(material.id, material);
+  }
+  const assignments = scene.materialAssignments.map((assignment) => ({
+    id: String(assignment.id),
+    targetId: String(assignment.targetId),
+    materialId: String(assignment.materialId),
+  }));
+  const byTarget = new Map<string, BuildPlanMaterial>();
+  for (const assignment of assignments) {
+    const material = materialById.get(assignment.materialId);
+    if (!material) {
+      throw new Error(
+        `Material assignment ${assignment.id} references missing material ${assignment.materialId}`,
+      );
+    }
+    if (byTarget.has(assignment.targetId)) {
+      throw new Error(`Duplicate material assignment target ${assignment.targetId}`);
+    }
+    byTarget.set(assignment.targetId, material);
+  }
+  return {
+    materials: materials.sort((left, right) => left.id.localeCompare(right.id)),
+    assignments: assignments.sort((left, right) => left.id.localeCompare(right.id)),
+    byTarget,
+  };
+}
+
 export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBuildPlan {
   const scene = value as unknown as SceneSpecSubset;
+  const materialResolution = resolveMaterialAssignments(scene);
   const walls = scene.geometry.filter((entry) => entry.type === "wall") as unknown as WallInput[];
   const surfaces = scene.geometry.filter(
     (entry) => entry.type === "floor" || entry.type === "ceiling",
@@ -254,56 +317,83 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
   }
 
   const nodes: BuildPlanNode[] = [];
+  const appendMaterial = <T extends BuildPlanNode>(node: T): T => {
+    const material = materialResolution.byTarget.get(node.logicalId);
+    return material
+      ? {
+          ...node,
+          materialId: material.id,
+          materialBaseColorRgb: structuredClone(material.baseColorRgb),
+        }
+      : node;
+  };
   for (const wall of walls) {
-    nodes.push({
-      logicalId: wall.id,
-      nodeName: `AVZ_${wall.id}`,
-      type: "wall",
-      transform: transform(wall.transform),
-      dimensions: [wallFrame(wall).length, wall.thickness, wall.height],
-      start: vector(wall.start),
-      end: vector(wall.end),
-      embeddedMetadata: metadata(scene, wall.id),
-    });
+    nodes.push(
+      appendMaterial({
+        logicalId: wall.id,
+        nodeName: `AVZ_${wall.id}`,
+        type: "wall",
+        transform: transform(wall.transform),
+        dimensions: [wallFrame(wall).length, wall.thickness, wall.height],
+        start: vector(wall.start),
+        end: vector(wall.end),
+        embeddedMetadata: metadata(scene, wall.id),
+      }),
+    );
   }
   for (const surface of surfaces) {
     const logicalId = String(surface.id);
-    nodes.push({
-      logicalId,
-      nodeName: `AVZ_${logicalId}`,
-      type: surface.type as "floor" | "ceiling",
-      transform: transform(surface.transform),
-      dimensions: boundaryDimensions((surface.boundary as Vector3[]).map(vector)),
-      embeddedMetadata: metadata(scene, logicalId),
-    });
+    nodes.push(
+      appendMaterial({
+        logicalId,
+        nodeName: `AVZ_${logicalId}`,
+        type: surface.type as "floor" | "ceiling",
+        transform: transform(surface.transform),
+        dimensions: boundaryDimensions((surface.boundary as Vector3[]).map(vector)),
+        embeddedMetadata: metadata(scene, logicalId),
+      }),
+    );
   }
   for (const opening of openings) {
     const wall = wallById.get(opening.hostGeometryId) as WallInput;
     openingWorldBounds(wall, opening);
-    nodes.push({
-      logicalId: opening.id,
-      nodeName: `AVZ_${opening.id}`,
-      type: opening.type === "door" ? "door_opening" : "window_opening",
-      transform: transform(opening.transform),
-      dimensions: [opening.width, wall.thickness, opening.height],
-      hostGeometryId: opening.hostGeometryId,
-      offset: opening.offset,
-      sill: opening.sill,
-      embeddedMetadata: metadata(scene, opening.id),
-    });
+    nodes.push(
+      appendMaterial({
+        logicalId: opening.id,
+        nodeName: `AVZ_${opening.id}`,
+        type: opening.type === "door" ? "door_opening" : "window_opening",
+        transform: transform(opening.transform),
+        dimensions: [opening.width, wall.thickness, opening.height],
+        hostGeometryId: opening.hostGeometryId,
+        offset: opening.offset,
+        sill: opening.sill,
+        embeddedMetadata: metadata(scene, opening.id),
+      }),
+    );
   }
   for (const asset of scene.assets) {
     if (asset.type !== "proxy_asset") throw new Error("Unsupported asset entity in Spike 1B");
     const logicalId = String(asset.id);
-    nodes.push({
-      logicalId,
-      nodeName: `AVZ_${logicalId}`,
-      type: "proxy_asset",
-      transform: transform(asset.transform),
-      dimensions: vector(asset.dimensions),
-      ...(asset.hostGeometryId ? { hostGeometryId: String(asset.hostGeometryId) } : {}),
-      embeddedMetadata: metadata(scene, logicalId),
-    });
+    nodes.push(
+      appendMaterial({
+        logicalId,
+        nodeName: `AVZ_${logicalId}`,
+        type: "proxy_asset",
+        transform: transform(asset.transform),
+        dimensions: vector(asset.dimensions),
+        ...(asset.hostGeometryId ? { hostGeometryId: String(asset.hostGeometryId) } : {}),
+        embeddedMetadata: metadata(scene, logicalId),
+      }),
+    );
+  }
+
+  const nodeIds = new Set(nodes.map((node) => node.logicalId));
+  for (const assignment of materialResolution.assignments) {
+    if (!nodeIds.has(assignment.targetId)) {
+      throw new Error(
+        `Material assignment ${assignment.id} references missing target ${assignment.targetId}`,
+      );
+    }
   }
 
   const cameras = scene.cameras.map((camera) => {
@@ -352,5 +442,7 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
       };
     }),
     cameras: cameras.sort((left, right) => left.logicalId.localeCompare(right.logicalId)),
+    materials: materialResolution.materials,
+    materialAssignments: materialResolution.assignments,
   };
 }

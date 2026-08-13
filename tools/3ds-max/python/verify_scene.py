@@ -72,6 +72,65 @@ def _check_rotation(errors: list[str], label: str, expected: list[float], actual
         errors.append(f"{label}: expected {expected}, actual {actual}")
 
 
+def _normalized_material_color(material: Any) -> list[float] | None:
+    try:
+        color = material.diffuse
+        return [float(color.r) / 255.0, float(color.g) / 255.0, float(color.b) / 255.0]
+    except Exception:
+        return None
+
+
+def _validate_material(
+    node: Any,
+    entry: dict[str, Any],
+    errors: list[str],
+    recover_manifest_state: bool,
+    require_native_material: bool = True,
+) -> None:
+    expected_id = entry.get("materialId")
+    expected_color = entry.get("materialBaseColorRgb")
+    node_id = _user_prop(node, "AIArchViz.MaterialId")
+    if expected_id is None:
+        if node_id is not None:
+            errors.append(f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH unexpected {node_id}")
+        return
+    if not node_id:
+        errors.append(f"{entry['logicalId']}: MATERIAL_ID_MISSING")
+        return
+    if node_id != str(expected_id):
+        errors.append(
+            f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH expected {expected_id}, actual {node_id}"
+        )
+        return
+    if not require_native_material:
+        return
+    material = node.material
+    if material is None:
+        errors.append(f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH no native material")
+        return
+    if str(material.name) != f"AVZ_MATERIAL_{expected_id}":
+        errors.append(
+            f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH native {material.name}"
+        )
+        return
+    actual_color = _normalized_material_color(material)
+    if actual_color is None:
+        errors.append(f"{entry['logicalId']}: MATERIAL_COLOR_MISMATCH unreadable native color")
+        return
+    if not isinstance(expected_color, list):
+        errors.append(f"{entry['logicalId']}: MATERIAL_COLOR_MISMATCH expected color missing")
+        return
+    _check_vector(
+        errors,
+        f"{entry['logicalId']}: MATERIAL_COLOR_MISMATCH",
+        expected_color,
+        actual_color,
+    )
+    if recover_manifest_state:
+        entry["materialId"] = node_id
+        entry["materialBaseColorRgb"] = actual_color
+
+
 def _validate_metadata(node: Any, entry: dict[str, Any], errors: list[str]) -> None:
     if str(node.name) != entry["nodeName"]:
         errors.append(f"{entry['logicalId']}: node name mismatch")
@@ -139,7 +198,8 @@ def _validate_wall(node: Any, entry: dict[str, Any], all_nodes: list[Any], error
     if not segments:
         errors.append(f"{entry['logicalId']}: no physical wall segments")
         return
-    for segment in segments:
+    for index, segment in enumerate(segments):
+        _validate_material(segment, entry, errors, index == 0)
         if str(rt.classOf(segment)).lower() != "box":
             errors.append(f"{entry['logicalId']}: physical segment is not a Box")
             continue
@@ -261,12 +321,16 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
             cameras.append(entry)
         else:
             if entity_type == "proxy_asset":
+                _validate_material(node, entry, errors, True)
                 _validate_proxy(node, entry, errors)
             elif entity_type in {"floor", "ceiling"}:
+                _validate_material(node, entry, errors, True)
                 _validate_surface(node, entry, errors)
             elif entity_type == "wall":
+                _validate_material(node, entry, errors, False, False)
                 _validate_wall(node, entry, all_nodes, errors)
             elif entity_type in {"door_opening", "window_opening"}:
+                _validate_material(node, entry, errors, True)
                 _validate_opening(node, entry, managed_ids, errors)
             else:
                 errors.append(f"{entry.get('logicalId')}: unsupported managed entity type")

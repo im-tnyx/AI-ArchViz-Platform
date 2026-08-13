@@ -37,6 +37,11 @@ def _point(value: list[float]) -> Any:
     return rt.Point3(float(value[0]), float(value[1]), float(value[2]))
 
 
+def _user_prop(value: Any, key: str) -> str | None:
+    result = rt.getUserProp(value, key)
+    return str(result) if result is not None else None
+
+
 def _set_metadata(node: Any, entry: dict[str, Any], entity_type: str) -> None:
     rt.setUserProp(node, "AIArchViz.Managed", "true")
     rt.setUserProp(node, "AIArchViz.EntityType", entity_type)
@@ -47,6 +52,32 @@ def _set_metadata(node: Any, entry: dict[str, Any], entity_type: str) -> None:
         "AIArchViz.ManifestEntry",
         json.dumps(entry, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
     )
+
+
+def _native_color(value: list[float]) -> Any:
+    return rt.Color(
+        int(round(float(value[0]) * 255.0)),
+        int(round(float(value[1]) * 255.0)),
+        int(round(float(value[2]) * 255.0)),
+    )
+
+
+def _create_native_materials(plan: dict[str, Any]) -> dict[str, Any]:
+    materials: dict[str, Any] = {}
+    for entry in plan["materials"]:
+        material_id = str(entry["id"])
+        if material_id in materials:
+            raise RuntimeError(f"Duplicate trusted material ID: {material_id}")
+        material = rt.StandardMaterial()
+        material.name = f"AVZ_MATERIAL_{material_id}"
+        material.diffuse = _native_color(entry["baseColorRgb"])
+        materials[material_id] = material
+    return materials
+
+
+def _assign_native_material(node: Any, material: Any, material_id: str) -> None:
+    node.material = material
+    rt.setUserProp(node, "AIArchViz.MaterialId", material_id)
 
 
 def _normalize_units() -> None:
@@ -112,7 +143,9 @@ def _create_proxy(entry: dict[str, Any]) -> Any:
     return node
 
 
-def _create_wall_segments(plan: dict[str, Any], helpers: dict[str, Any]) -> int:
+def _create_wall_segments(
+    plan: dict[str, Any], helpers: dict[str, Any], materials_by_target: dict[str, Any]
+) -> int:
     created = 0
     for segment in plan["wallSegments"]:
         width, length, height = segment["dimensions"]
@@ -121,6 +154,18 @@ def _create_wall_segments(plan: dict[str, Any], helpers: dict[str, Any]) -> int:
         node.rotation = rt.EulerAngles(0.0, 0.0, float(segment["rotationZ"]))
         node.pos = _point(segment["center"])
         node.parent = helpers[segment["hostLogicalId"]]
+        material = materials_by_target.get(str(segment["hostLogicalId"]))
+        if material is not None:
+            material_id = _user_prop(helpers[segment["hostLogicalId"]], "AIArchViz.MaterialId")
+            if not material_id:
+                raise RuntimeError(
+                    f"Wall helper material identity is missing: {segment['hostLogicalId']}"
+                )
+            _assign_native_material(
+                node,
+                material,
+                material_id,
+            )
         rt.setUserProp(node, "AIArchViz.HostLogicalId", segment["hostLogicalId"])
         rt.setUserProp(
             node,
@@ -167,7 +212,20 @@ def build() -> dict[str, Any]:
     if os.environ.get("AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE") == "1":
         raise RuntimeError("TRUSTED_TEST_FORCED_BUILD_FAILURE")
 
+    materials = _create_native_materials(plan)
+    materials_by_target: dict[str, Any] = {}
+    for assignment in plan["materialAssignments"]:
+        target_id = str(assignment["targetId"])
+        material_id = str(assignment["materialId"])
+        if target_id in materials_by_target:
+            raise RuntimeError(f"Duplicate trusted material assignment target: {target_id}")
+        material = materials.get(material_id)
+        if material is None:
+            raise RuntimeError(f"Missing trusted material: {material_id}")
+        materials_by_target[target_id] = material
+
     helpers: dict[str, Any] = {}
+    logical_nodes: dict[str, Any] = {}
     opening_positions = {
         marker["logicalId"]: marker["position"] for marker in plan["openingMarkers"]
     }
@@ -177,13 +235,27 @@ def build() -> dict[str, Any]:
             node = _create_semantic_helper(entry, opening_positions.get(entry["logicalId"]))
             helpers[entry["logicalId"]] = node
         elif entity_type in {"floor", "ceiling"}:
-            _create_surface(entry)
+            node = _create_surface(entry)
         elif entity_type == "proxy_asset":
-            _create_proxy(entry)
+            node = _create_proxy(entry)
         else:
             raise RuntimeError(f"Unsupported build-plan node type: {entity_type}")
+        logical_nodes[str(entry["logicalId"])] = node
 
-    wall_segment_count = _create_wall_segments(plan, helpers)
+    for target_id, material in materials_by_target.items():
+        node = logical_nodes.get(target_id)
+        if node is None:
+            raise RuntimeError(f"Material assignment target is missing: {target_id}")
+        material_id = str(
+            next(
+                assignment["materialId"]
+                for assignment in plan["materialAssignments"]
+                if str(assignment["targetId"]) == target_id
+            )
+        )
+        _assign_native_material(node, material, material_id)
+
+    wall_segment_count = _create_wall_segments(plan, helpers, materials_by_target)
     for entry in plan["cameras"]:
         _create_camera(entry)
 
@@ -200,6 +272,8 @@ def build() -> dict[str, Any]:
         "candidateSizeBytes": candidate_path.stat().st_size,
         "managedNodeCount": len(plan["nodes"]) + len(plan["cameras"]),
         "wallSegmentCount": wall_segment_count,
+        "nativeMaterialCount": len(materials),
+        "materialAssignmentCount": len(materials_by_target),
         "units": {
             "systemType": str(rt.units.SystemType),
             "systemScale": float(rt.units.SystemScale),

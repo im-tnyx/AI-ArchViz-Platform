@@ -58,6 +58,18 @@
       "minItems": 3,
       "maxItems": 3
     },
+    "colorRgb": {
+      "type": "array",
+      "description": "Normalized sRGB base color recovered from the native DCC material, with each component in the inclusive [0, 1] range.",
+      "prefixItems": [
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "number", "minimum": 0, "maximum": 1 }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
     "transform": {
       "type": "object",
       "additionalProperties": false,
@@ -99,6 +111,14 @@
         "end": { "$ref": "#/$defs/vector3" },
         "offset": { "type": "number", "minimum": 0 },
         "sill": { "type": "number", "minimum": 0 },
+        "materialId": {
+          "description": "Optional canonical SceneSpec material identity recovered from the persisted DCC node assignment. Omitted when no canonical assignment exists.",
+          "$ref": "#/$defs/id"
+        },
+        "materialBaseColorRgb": {
+          "description": "Optional normalized native-material base color recovered during fresh reopen. Present only with materialId.",
+          "$ref": "#/$defs/colorRgb"
+        },
         "embeddedMetadata": { "$ref": "#/$defs/metadata" }
       }
     },

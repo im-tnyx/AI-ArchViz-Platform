@@ -31,6 +31,8 @@
       "logicalId": "asset_living_sofa_main",
       "nodeName": "AVZ_asset_living_sofa_main",
       "type": "proxy_asset",
+      "materialId": "material_sofa_proxy",
+      "materialBaseColorRgb": [0.7215686274509804, 0.6196078431372549, 0.5019607843137255],
       "transform": {
         "position": [3000, 3350, 0],
         "rotationEuler": [0, 0, 180],
@@ -123,6 +125,8 @@
       "logicalId": "surface_floor_main",
       "nodeName": "AVZ_surface_floor_main",
       "type": "floor",
+      "materialId": "material_floor_neutral",
+      "materialBaseColorRgb": [0.6588235294117647, 0.6392156862745098, 0.6],
       "transform": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],
@@ -140,6 +144,8 @@
       "logicalId": "wall_east",
       "nodeName": "AVZ_wall_east",
       "type": "wall",
+      "materialId": "material_wall_neutral",
+      "materialBaseColorRgb": [0.7803921568627451, 0.7411764705882353, 0.6784313725490196],
       "transform": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],
@@ -159,6 +165,8 @@
       "logicalId": "wall_north",
       "nodeName": "AVZ_wall_north",
       "type": "wall",
+      "materialId": "material_wall_neutral",
+      "materialBaseColorRgb": [0.7803921568627451, 0.7411764705882353, 0.6784313725490196],
       "transform": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],
@@ -178,6 +186,8 @@
       "logicalId": "wall_south",
       "nodeName": "AVZ_wall_south",
       "type": "wall",
+      "materialId": "material_wall_neutral",
+      "materialBaseColorRgb": [0.7803921568627451, 0.7411764705882353, 0.6784313725490196],
       "transform": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],
@@ -197,6 +207,8 @@
       "logicalId": "wall_west",
       "nodeName": "AVZ_wall_west",
       "type": "wall",
+      "materialId": "material_wall_neutral",
+      "materialBaseColorRgb": [0.7803921568627451, 0.7411764705882353, 0.6784313725490196],
       "transform": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],

@@ -7,6 +7,8 @@ export type ManifestDifferenceCode =
   | "DIMENSION_MISMATCH"
   | "HOST_MISMATCH"
   | "CAMERA_MISMATCH"
+  | "MATERIAL_ID_MISMATCH"
+  | "MATERIAL_COLOR_MISMATCH"
   | "UNIT_MISMATCH"
   | "LOGICAL_ID_MISSING";
 
@@ -33,6 +35,8 @@ interface SemanticManifest {
   nodes: Array<Record<string, unknown>>;
   cameras: Array<Record<string, unknown>>;
 }
+
+const materialColorTolerance = 0.01;
 
 function difference(
   differences: ManifestDifference[],
@@ -217,6 +221,23 @@ function compareNode(
         tolerances.geometryToleranceMm,
       );
     }
+  }
+  compareExact(
+    differences,
+    "MATERIAL_ID_MISMATCH",
+    `${path}/materialId`,
+    expected.materialId,
+    actual.materialId,
+  );
+  if ("materialBaseColorRgb" in expected || "materialBaseColorRgb" in actual) {
+    compareVector(
+      differences,
+      "MATERIAL_COLOR_MISMATCH",
+      `${path}/materialBaseColorRgb`,
+      expected.materialBaseColorRgb,
+      actual.materialBaseColorRgb,
+      materialColorTolerance,
+    );
   }
   compareExact(
     differences,
