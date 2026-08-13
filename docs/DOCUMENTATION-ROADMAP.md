@@ -67,6 +67,10 @@ Documentation Updates / ADRs
 
 - [x] `architecture/3DS-MAX-WORKER-ARCHITECTURE.md`
 
+### Golden Test
+
+- [x] `testing/LIVING-ROOM-GOLDEN-PROJECT.md`
+
 ### Architecture Decisions
 
 - [x] `decisions/0001-real-3d-source-of-truth.md`
@@ -78,7 +82,7 @@ Documentation Updates / ADRs
 
 ## 3. Documentation Stop Gate — COMPLETE
 
-The minimum architecture gate required before local implementation is now complete:
+The minimum architecture gate required before local implementation is complete:
 
 ```text
 1. SCENE-SPEC-v0.1.md                              ✅
@@ -87,48 +91,22 @@ The minimum architecture gate required before local implementation is now comple
 4. OBJECT-IDENTITY-AND-REVISION-MODEL.md           ✅
 5. SCENE-CHANGESET-SPEC.md                         ✅
 6. 3DS-MAX-WORKER-ARCHITECTURE.md                  ✅
+7. VALIDATION-ENGINE.md                             ✅
+8. LIVING-ROOM-GOLDEN-PROJECT.md                   ✅
 ```
-
-`VALIDATION-ENGINE.md` is also complete.
 
 Do not create another large architecture phase before beginning the deterministic technical spike.
 
 ---
 
-## 4. Immediate Next Step
+## 4. Current Next Action — IMPLEMENTATION
 
-Create the first golden test specification:
+The next work is code, not another planning document.
 
-```text
-testing/LIVING-ROOM-GOLDEN-PROJECT.md
-```
-
-It should define one tiny, deterministic room that can be reproduced repeatedly.
-
-Required test data:
+First technical spike:
 
 ```text
-Room dimensions
-Wall geometry
-One door or opening
-One camera
-Known coordinate values
-Expected logical object IDs
-Expected .max output
-Expected validation results
-Expected revision case
-```
-
-Reference images may be included for future design tests, but the first worker test must not depend on AI.
-
----
-
-## 5. First Technical Spike
-
-After the golden test exists:
-
-```text
-SceneSpec Test Fixture
+Golden SceneSpec Fixture
         ↓
 Worker Skeleton
         ↓
@@ -138,6 +116,8 @@ Worker Skeleton
         ↓
 Trusted Python + pymxs Runner
         ↓
+Create Basic Geometry
+        ↓
 Create Room
         ↓
 Create Camera
@@ -146,18 +126,18 @@ Write Logical IDs
         ↓
 Save Candidate .max
         ↓
-Verify Artifact
+Re-open / Verify
         ↓
 Execution Report
 ```
 
-Success means the same input produces the same managed scene repeatedly.
+No AI is required in this path.
 
 ---
 
-## 6. First Implementation Packages
+## 5. Initial Repository Implementation Areas
 
-Expected initial implementation areas:
+Create only the pieces needed by the golden project:
 
 ```text
 apps/worker/
@@ -166,16 +146,106 @@ packages/worker-contracts/
 packages/validation/
 tools/3ds-max/python/
 tools/3ds-max/maxscript/
-tests/
+tests/fixtures/living-room-golden/
 ```
 
-Do not initialize unnecessary cloud infrastructure before local execution is proven.
+Suggested first fixture files:
+
+```text
+tests/fixtures/living-room-golden/
+├── scene-spec.json
+├── expected/
+│   ├── geometry.json
+│   ├── identities.json
+│   └── revisions.json
+└── changesets/
+    ├── r1-replace-sofa.json
+    ├── r2-move-coffee-table.json
+    ├── r3-change-tv-wall-material.json
+    ├── r4-locked-ceiling-change.json
+    └── r5-revised-window-elevation.json
+```
+
+---
+
+## 6. Technical Spike Milestones
+
+### Spike 01 — Environment Proof
+
+Pass when:
+
+```text
+Worker finds configured 3ds Max executable
+Worker records 3ds Max version
+Worker starts controlled process
+Trusted script executes
+Structured success/failure report returns
+```
+
+### Spike 02 — Scene Proof
+
+Pass when:
+
+```text
+SceneSpec → 3ds Max → valid .max
+```
+
+Required:
+
+- millimeter units
+- room shell
+- floor
+- ceiling
+- one opening minimum
+- stable logical IDs
+- camera
+- save candidate `.max`
+- re-open or verify output
+
+### Spike 03 — Idempotency Proof
+
+Run the same input twice.
+
+Pass when:
+
+```text
+No duplicated managed objects
+Same logical scene state
+Safe job replay
+```
+
+### Spike 04 — Revision Proof
+
+Apply one SceneChangeSet.
+
+Recommended first change:
+
+```text
+Move coffee table +250 mm on X
+```
+
+Pass when:
+
+- only the target object changes
+- logical ID remains stable
+- revision is recorded
+- unrelated scene objects remain unchanged
+
+### Spike 05 — Corona Preview Proof
+
+Pass when:
+
+```text
+Managed scene + camera → preview render
+```
+
+Renderer automation should not block Spikes 01-04.
 
 ---
 
 ## 7. Documents to Create Alongside Implementation
 
-These are important, but should be written when implementation exposes real requirements.
+These are important, but should be written when real implementation exposes real requirements.
 
 ### Scene Execution
 
@@ -277,7 +347,7 @@ AI remains upstream of validation.
 
 ---
 
-## 11. Next Milestones
+## 11. Major Product Milestones
 
 ### Milestone A — Worker Proof
 
@@ -309,13 +379,22 @@ Known DWG/DXF
 → matching 3ds Max scene
 ```
 
-### Milestone E — Reference/AI Proof
+### Milestone E — Reference / AI Proof
 
 ```text
 Plan + Reference
 → structured proposal
 → validation
 → managed scene revision
+```
+
+### Milestone F — Plan + Elevation Proof
+
+```text
+Plan + Elevation + Reference
+→ registered architectural evidence
+→ higher-confidence SceneSpec
+→ targeted scene update
 ```
 
 ---
@@ -333,12 +412,14 @@ When implementation disproves an assumption, update the document rather than for
 
 ---
 
-## 13. Current Next Action
+## 13. Current Status
 
 ```text
-NEXT
-Create testing/LIVING-ROOM-GOLDEN-PROJECT.md
-
-THEN
-Initialize worker implementation and run the first local 3ds Max technical spike.
+FOUNDATION DOCUMENTATION   ✅ COMPLETE
+GOLDEN TEST SPEC           ✅ COMPLETE
+LOCAL IMPLEMENTATION       ▶ NEXT
+AI PRODUCTION INTEGRATION  ⏸ NOT YET
+CAD INGESTION              ⏸ AFTER WORKER PROOF
 ```
+
+The next repository change should initialize the implementation skeleton and create the first machine-readable living-room golden SceneSpec fixture.
