@@ -48,6 +48,10 @@ Implementation Starts
 
 - [x] `architecture/EVIDENCE-PROVENANCE-AND-CONFIDENCE.md`
 
+### Spatial Conventions
+
+- [x] `architecture/COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md`
+
 ### Architecture Decisions
 
 - [x] `decisions/0001-real-3d-source-of-truth.md`
@@ -61,7 +65,7 @@ Implementation Starts
 
 These documents should be completed before the first production-oriented SceneSpec → 3ds Max prototype.
 
-### P0.1 Coordinates, Units & Spatial Conventions
+### P0.1 Coordinates, Units & Spatial Conventions ✅
 
 File:
 
@@ -69,7 +73,7 @@ File:
 architecture/COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md
 ```
 
-Must define:
+Defined:
 
 - canonical unit: millimeters
 - world origin
@@ -84,10 +88,6 @@ Must define:
 - CAD → SceneSpec mapping
 - SceneSpec → 3ds Max mapping
 - tolerance rules
-
-Why critical:
-
-A 3D automation system becomes unreliable very quickly if every module interprets position, scale, rotation, or pivots differently.
 
 ### P0.2 Object Identity & Revision Model
 
@@ -425,7 +425,7 @@ Implementation should start once these six are ready:
 ```text
 1. SCENE-SPEC-v0.1.md                         ✅
 2. EVIDENCE-PROVENANCE-AND-CONFIDENCE.md      ✅
-3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md
+3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md ✅
 4. OBJECT-IDENTITY-AND-REVISION-MODEL.md
 5. SCENE-CHANGESET-SPEC.md
 6. 3DS-MAX-WORKER-ARCHITECTURE.md
@@ -459,21 +459,18 @@ Recommended next sequence:
 
 ```text
 NEXT 01
-COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md
-
-NEXT 02
 OBJECT-IDENTITY-AND-REVISION-MODEL.md
 
-NEXT 03
+NEXT 02
 SCENE-CHANGESET-SPEC.md
 
-NEXT 04
+NEXT 03
 VALIDATION-ENGINE.md
 
-NEXT 05
+NEXT 04
 3DS-MAX-WORKER-ARCHITECTURE.md
 
-NEXT 06
+NEXT 05
 LIVING-ROOM-GOLDEN-PROJECT.md
 
 THEN
