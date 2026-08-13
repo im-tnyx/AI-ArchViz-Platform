@@ -11,6 +11,7 @@ import {
 import { loadWorkerConfig } from "./config.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { WorkerError } from "./errors.js";
+import { buildGoldenScene } from "./golden-build.js";
 import { inspectWorkerHealth } from "./health.js";
 import { logStructured } from "./logger.js";
 import { runThreeDsMaxProbe } from "./probe.js";
@@ -49,6 +50,13 @@ async function execute(argv: string[]): Promise<CliResult> {
         exitCode: result.pythonProbe?.status === "SUCCESS" ? 0 : 1,
         output: result,
       };
+    }
+    case "build-scene": {
+      const [jobPath] = args;
+      if (!jobPath) return usage("build-scene requires a Job Envelope path");
+      const config = loadWorkerConfig(repositoryRoot);
+      const result = await buildGoldenScene(config, jobPath);
+      return { exitCode: result.status === "SUCCESS" ? 0 : 1, output: result };
     }
     case "validate-scene": {
       const [path] = args;
@@ -97,6 +105,7 @@ function usage(error?: string): CliResult {
         "health",
         "inspect-3ds-max",
         "probe-3ds-max",
+        "build-scene <job-envelope-path>",
         "validate-scene <path>",
         "validate-job <path>",
         "verify-hashes <job> <scene-spec> <expected-manifest>",

@@ -10,6 +10,13 @@ export const workerErrorCodes = [
   "PYMXS_UNAVAILABLE",
   "PROCESS_TIMEOUT",
   "PROCESS_EXIT_NONZERO",
+  "IDENTITY_MISMATCH",
+  "CANDIDATE_MISSING",
+  "MANIFEST_MISMATCH",
+  "REPORT_INVALID",
+  "PROMOTION_FAILED",
+  "BUILD_FAILED",
+  "VERIFICATION_FAILED",
 ] as const;
 
 export type WorkerErrorCode = (typeof workerErrorCodes)[number];

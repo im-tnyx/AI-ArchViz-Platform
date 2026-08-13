@@ -1,5 +1,6 @@
 {
   "workspaceRoot": ".workspace",
   "processTimeoutMs": 120000,
-  "threeDsMaxInstallationPath": null
+  "threeDsMaxInstallationPath": null,
+  "allowCompatibilityVersionForSpike": false
 }

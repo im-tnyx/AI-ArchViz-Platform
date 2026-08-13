@@ -43,7 +43,16 @@ describe("trusted local paths and config", () => {
       workspaceRoot: join(root, ".workspace"),
       processTimeoutMs: 5_000,
       threeDsMaxInstallationPath: null,
+      allowCompatibilityVersionForSpike: false,
     });
+  });
+
+  it("enables compatibility mode only through explicit trusted config", () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-archviz-compat-config-"));
+    temporaryDirectories.push(root);
+    const configPath = join(root, "local-worker.json");
+    writeFileSync(configPath, JSON.stringify({ allowCompatibilityVersionForSpike: true }), "utf8");
+    expect(loadWorkerConfig(root, configPath).allowCompatibilityVersionForSpike).toBe(true);
   });
 });
 
