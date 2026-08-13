@@ -55,6 +55,7 @@ Implementation Starts
 ### Revision Safety
 
 - [x] `architecture/OBJECT-IDENTITY-AND-REVISION-MODEL.md`
+- [x] `architecture/SCENE-CHANGESET-SPEC.md`
 
 ### Architecture Decisions
 
@@ -119,7 +120,7 @@ Defined:
 - managed vs unmanaged object workflows
 - AI identity boundaries
 
-### P0.3 SceneChangeSet Specification
+### P0.3 SceneChangeSet Specification ✅
 
 File:
 
@@ -127,24 +128,27 @@ File:
 architecture/SCENE-CHANGESET-SPEC.md
 ```
 
-Must define deterministic operations such as:
+Defined:
 
-```text
-CreateObject
-DeleteObject
-RestoreObject
-ReplaceAsset
-MoveObject
-RotateObject
-UpdateMaterial
-UpdateGeometry
-CreateCamera
-UpdateLight
-LockProperty
-UnlockProperty
-```
-
-AI should propose `SceneChangeSet` operations rather than mutate a production scene directly.
+- canonical mutation contract
+- deterministic operation envelope
+- Create/Delete/Restore/Replace semantics
+- transform, geometry, material, light and camera operations
+- lock and approval operations
+- preconditions
+- optimistic concurrency using `baseRevisionId`
+- atomic changes
+- dry-run behavior
+- risk classification
+- evidence/provenance links
+- AI and UI mutation boundaries
+- DCC execution boundary
+- idempotency and replay
+- rollback and revision diff
+- affected-render invalidation
+- dependency handling
+- structured errors
+- arbitrary code execution prevention
 
 ### P0.4 Validation Engine
 
@@ -438,9 +442,11 @@ Implementation should start once these six are ready:
 2. EVIDENCE-PROVENANCE-AND-CONFIDENCE.md           ✅
 3. COORDINATES-UNITS-AND-SPATIAL-CONVENTIONS.md    ✅
 4. OBJECT-IDENTITY-AND-REVISION-MODEL.md           ✅
-5. SCENE-CHANGESET-SPEC.md
+5. SCENE-CHANGESET-SPEC.md                         ✅
 6. 3DS-MAX-WORKER-ARCHITECTURE.md
 ```
+
+`VALIDATION-ENGINE.md` should also be completed before AI-generated production mutations are enabled, but the first deterministic 3ds Max technical spike can begin once the six-document stop gate is complete.
 
 At that point the first technical spike begins:
 
@@ -470,15 +476,12 @@ Recommended next sequence:
 
 ```text
 NEXT 01
-SCENE-CHANGESET-SPEC.md
-
-NEXT 02
 VALIDATION-ENGINE.md
 
-NEXT 03
+NEXT 02
 3DS-MAX-WORKER-ARCHITECTURE.md
 
-NEXT 04
+NEXT 03
 LIVING-ROOM-GOLDEN-PROJECT.md
 
 THEN
