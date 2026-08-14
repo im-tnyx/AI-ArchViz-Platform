@@ -58,7 +58,14 @@ interface UpdateOpeningOperation {
   parameters: { offset: number; width: number; sill: number; height: number };
 }
 
-type SupportedOperation = MoveObjectOperation | UpdateOpeningOperation;
+interface AssignMaterialOperation {
+  operationId: string;
+  type: "AssignMaterial";
+  targetId: string;
+  parameters: { materialId: string };
+}
+
+type SupportedOperation = MoveObjectOperation | UpdateOpeningOperation | AssignMaterialOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
   schemaVersion: "0.1.0";
@@ -87,7 +94,7 @@ interface SceneDocument extends Record<string, unknown> {
     dimensions: Vector3;
     allowNonUniformScale: boolean;
     transform: SemanticTransform;
-    locks: { transform: boolean };
+    locks: { transform: boolean; material: boolean };
   }>;
   geometry: Array<{
     id: string;
@@ -95,7 +102,7 @@ interface SceneDocument extends Record<string, unknown> {
     start?: Vector3;
     end?: Vector3;
     height?: number;
-    locks: { geometry: boolean };
+    locks: { geometry: boolean; material: boolean };
   }>;
   openings: Array<{
     id: string;
@@ -109,6 +116,8 @@ interface SceneDocument extends Record<string, unknown> {
     locks: { geometry: boolean };
   }>;
   cameras: Array<{ id: string }>;
+  materials: Array<{ id: string; baseColorRgb: Vector3 }>;
+  materialAssignments: Array<{ id: string; targetId: string; materialId: string }>;
   revisions: Array<Record<string, unknown>>;
 }
 
@@ -141,6 +150,13 @@ interface OpeningMutation {
   wallSegments: WallSegmentPlan[];
 }
 
+interface MaterialMutation {
+  operationId: string;
+  type: "AssignMaterial";
+  targetId: string;
+  material: { id: string; baseColorRgb: Vector3 };
+}
+
 export interface RevisionMutationPlan {
   revisionPlanVersion: "0.1.0";
   changeSetId: string;
@@ -148,7 +164,7 @@ export interface RevisionMutationPlan {
   sceneId: string;
   baseRevisionId: string;
   targetRevisionId: string;
-  operation: MoveMutation | OpeningMutation;
+  operation: MoveMutation | OpeningMutation | MaterialMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -243,12 +259,14 @@ export function planSceneRevision(
       (operation) =>
         operation &&
         typeof operation === "object" &&
-        !["MoveObject", "UpdateOpening"].includes(String((operation as { type?: unknown }).type)),
+        !["MoveObject", "UpdateOpening", "AssignMaterial"].includes(
+          String((operation as { type?: unknown }).type),
+        ),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject and UpdateOpening only",
+      "Revision runner supports MoveObject, UpdateOpening, and AssignMaterial only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -285,7 +303,7 @@ export function planSceneRevision(
   const targetSceneSpec = structuredClone(baseValue) as SceneDocument;
   targetSceneSpec.scene.revisionId = changeSet.targetRevisionId;
   targetSceneSpec.scene.headRevisionId = changeSet.targetRevisionId;
-  let mutation: MoveMutation | OpeningMutation;
+  let mutation: MoveMutation | OpeningMutation | MaterialMutation;
   if (operation?.type === "MoveObject") {
     const matches = base.assets.filter((asset) => asset.id === operation.targetId);
     if (matches.length === 0) {
@@ -405,6 +423,98 @@ export function planSceneRevision(
       physicalPosition: structuredClone(marker.position),
       wallSegments: buildPlan.wallSegments.filter((segment) => segment.hostLogicalId === host.id),
     };
+  } else if (operation?.type === "AssignMaterial") {
+    const targets = materialTargets(base).filter((target) => target.id === operation.targetId);
+    if (targets.length === 0) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Target ${operation.targetId} was not found`,
+      );
+    }
+    if (targets.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_LOGICAL_ID",
+        `Target ${operation.targetId} is not unique`,
+      );
+    }
+    const target = targets[0] as MaterialTarget;
+    if (!isMaterialAssignable(target.type)) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_MANAGED",
+        `Target ${target.id} does not support material assignment`,
+      );
+    }
+    if (target.locks.material) {
+      throw new RevisionValidationError(
+        "MATERIAL_LOCKED",
+        `Target ${target.id} material is locked`,
+      );
+    }
+    const materials = base.materials.filter(
+      (material) => material.id === operation.parameters.materialId,
+    );
+    if (materials.length === 0) {
+      throw new RevisionValidationError(
+        "MATERIAL_NOT_FOUND",
+        `Material ${operation.parameters.materialId} was not found`,
+      );
+    }
+    if (materials.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_MATERIAL_ID",
+        `Material ${operation.parameters.materialId} is not unique`,
+      );
+    }
+    const assignments = base.materialAssignments.filter(
+      (assignment) => assignment.targetId === operation.targetId,
+    );
+    if (assignments.length === 0) {
+      throw new RevisionValidationError(
+        "MATERIAL_ASSIGNMENT_NOT_FOUND",
+        `Target ${operation.targetId} has no canonical material assignment`,
+      );
+    }
+    if (assignments.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_MATERIAL_ASSIGNMENT",
+        `Target ${operation.targetId} has multiple material assignments`,
+      );
+    }
+    const currentAssignment = assignments[0] as SceneDocument["materialAssignments"][number];
+    if (currentAssignment.materialId === operation.parameters.materialId) {
+      throw new RevisionValidationError(
+        "MATERIAL_ALREADY_ASSIGNED",
+        `Target ${operation.targetId} already has material ${operation.parameters.materialId}`,
+      );
+    }
+    const targetAssignment = targetSceneSpec.materialAssignments.find(
+      (assignment) => assignment.id === currentAssignment.id,
+    );
+    if (!targetAssignment) {
+      throw new RevisionValidationError(
+        "MATERIAL_ASSIGNMENT_NOT_FOUND",
+        `Material assignment for ${operation.targetId} disappeared`,
+      );
+    }
+    targetAssignment.materialId = operation.parameters.materialId;
+    const material = materials[0] as SceneDocument["materials"][number];
+    mutation = {
+      operationId: operation.operationId,
+      type: "AssignMaterial",
+      targetId: operation.targetId,
+      material: {
+        id: material.id,
+        baseColorRgb: normalizedMaterialColor(material.baseColorRgb),
+      },
+    };
+    try {
+      compileGoldenBuildPlan(targetSceneSpec);
+    } catch (error) {
+      throw new RevisionValidationError(
+        "SCHEMA_INVALID",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   } else {
     throw new RevisionValidationError("OPERATION_UNSUPPORTED", "Operation is unsupported");
   }
@@ -435,6 +545,28 @@ export function planSceneRevision(
       expectedManagedLogicalIds: managedLogicalIds(base),
     },
   };
+}
+
+interface MaterialTarget {
+  id: string;
+  type: string;
+  locks: { material: boolean };
+}
+
+function materialTargets(scene: SceneDocument): MaterialTarget[] {
+  return [...scene.geometry, ...scene.assets].map((entry) => ({
+    id: entry.id,
+    type: entry.type,
+    locks: { material: entry.locks.material },
+  }));
+}
+
+function isMaterialAssignable(type: string): boolean {
+  return ["wall", "floor", "ceiling", "proxy_asset"].includes(type);
+}
+
+function normalizedMaterialColor(color: Vector3): Vector3 {
+  return color.map((channel) => Math.round(channel * 255) / 255) as Vector3;
 }
 
 function validatePlacement(
@@ -610,6 +742,24 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
   }
   const [change] = diff.changed;
   const changedFields = Object.keys(change?.changes ?? {}).sort();
+  if (operation?.type === "AssignMaterial") {
+    if (
+      diff.revision.before !== changeSet.baseRevisionId ||
+      diff.revision.after !== changeSet.targetRevisionId ||
+      diff.changed.length !== 1 ||
+      change?.logicalId !== operation.targetId ||
+      changedFields.join() !== "materialBaseColorRgb,materialId" ||
+      diff.added.length !== 0 ||
+      diff.removed.length !== 0 ||
+      diff.unchanged.length !== 13
+    ) {
+      throw new RevisionValidationError(
+        "UNEXPECTED_SEMANTIC_DIFF",
+        `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+      );
+    }
+    return;
+  }
   if (
     operation?.type !== "UpdateOpening" ||
     diff.revision.before !== changeSet.baseRevisionId ||

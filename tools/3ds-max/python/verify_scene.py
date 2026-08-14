@@ -108,6 +108,9 @@ def _validate_material(
     if material is None:
         errors.append(f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH no native material")
         return
+    if "standard" not in str(rt.classOf(material)).lower():
+        errors.append(f"{entry['logicalId']}: MATERIAL_TYPE_MISMATCH native is not StandardMaterial")
+        return
     if str(material.name) != f"AVZ_MATERIAL_{expected_id}":
         errors.append(
             f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH native {material.name}"

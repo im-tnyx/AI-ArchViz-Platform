@@ -84,6 +84,80 @@ def _segment_signature(node: Any) -> tuple[Any, ...]:
     )
 
 
+def _segment_geometry_signature(node: Any) -> tuple[Any, ...]:
+    rotation = rt.quatToEuler(node.rotation)
+    return (
+        str(node.name),
+        _user_prop(node, "AIArchViz.HostLogicalId"),
+        float(node.width),
+        float(node.length),
+        float(node.height),
+        float(node.pos.x),
+        float(node.pos.y),
+        float(node.pos.z),
+        float(rotation.x),
+        float(rotation.y),
+        float(rotation.z),
+        _user_prop(node, "AIArchViz.SegmentDimensions"),
+        _user_prop(node, "AIArchViz.SegmentCenter"),
+        _user_prop(node, "AIArchViz.SegmentRotationZ"),
+    )
+
+
+def _normalized_material_color(material: Any) -> list[float] | None:
+    try:
+        color = material.diffuse
+        return [float(color.r) / 255.0, float(color.g) / 255.0, float(color.b) / 255.0]
+    except Exception:
+        return None
+
+
+def _same_color(left: list[float] | None, right: list[float]) -> bool:
+    return left is not None and len(left) == 3 and all(
+        abs(float(left[index]) - float(right[index])) <= 0.01 for index in range(3)
+    )
+
+
+def _find_existing_material(material: dict[str, Any], all_nodes: list[Any]) -> Any:
+    material_id = str(material["id"])
+    expected_name = f"AVZ_MATERIAL_{material_id}"
+    expected_color = [float(channel) for channel in material["baseColorRgb"]]
+    candidates = [
+        node.material
+        for node in all_nodes
+        if _user_prop(node, "AIArchViz.MaterialId") == material_id
+        and node.material is not None
+        and str(node.material.name) == expected_name
+    ]
+    if not candidates:
+        raise MutationError(
+            "MATERIAL_NOT_FOUND",
+            f"Native material {material_id} was not found in the verified base scene",
+        )
+    native = candidates[0]
+    if "standard" not in str(rt.classOf(native)).lower():
+        raise MutationError(
+            "MATERIAL_TYPE_MISMATCH",
+            f"Native material {material_id} is not a StandardMaterial",
+        )
+    if not _same_color(_normalized_material_color(native), expected_color):
+        raise MutationError(
+            "MATERIAL_COLOR_MISMATCH",
+            f"Native material {material_id} does not match the trusted canonical color",
+        )
+    return native
+
+
+def _wall_material_signature(node: Any) -> tuple[Any, ...]:
+    material = node.material
+    return (
+        _user_prop(node, "AIArchViz.HostLogicalId"),
+        _user_prop(node, "AIArchViz.MaterialId"),
+        str(material.name) if material is not None else None,
+        tuple(_normalized_material_color(material) or []) if material is not None else None,
+    )
+
+
 def apply_revision() -> dict[str, Any]:
     base_path = _required_path("AI_ARCHVIZ_BASE_SCENE_PATH")
     candidate_path = _required_path("AI_ARCHVIZ_CANDIDATE_PATH")
@@ -96,10 +170,11 @@ def apply_revision() -> dict[str, Any]:
     if not isinstance(operation, dict) or operation.get("type") not in {
         "MoveObject",
         "UpdateOpening",
+        "AssignMaterial",
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
-            "Runner supports MoveObject and UpdateOpening only",
+            "Runner supports MoveObject, UpdateOpening, and AssignMaterial only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
@@ -138,12 +213,14 @@ def apply_revision() -> dict[str, Any]:
     if len(targets) > 1:
         raise MutationError("DUPLICATE_LOGICAL_ID", f"Target {target_id} is not unique")
     target = targets[0]
-    transform = operation["transform"]
     rebuilt_host_id: str | None = None
     deleted_segment_count = 0
     created_segment_count = 0
     preserved_segment_count = 0
+    assigned_material_id: str | None = None
+    assigned_wall_segment_count = 0
     if operation["type"] == "MoveObject":
+        transform = operation["transform"]
         target.pos = _point(transform["position"])
         rotation = transform["rotationEuler"]
         target.rotation = rt.EulerAngles(
@@ -152,7 +229,7 @@ def apply_revision() -> dict[str, Any]:
             float(rotation[2]),
         )
         target.scale = _point(transform["scale"])
-    else:
+    elif operation["type"] == "UpdateOpening":
         rebuilt_host_id = str(operation["hostLogicalId"])
         hosts = logical_nodes.get(rebuilt_host_id, [])
         if not hosts:
@@ -227,6 +304,57 @@ def apply_revision() -> dict[str, Any]:
             "AIArchViz.PhysicalPosition",
             json.dumps(operation["physicalPosition"], separators=(",", ":")),
         )
+    else:
+        material_spec = operation.get("material")
+        if not isinstance(material_spec, dict):
+            raise MutationError("REVISION_PLAN_INVALID", "AssignMaterial plan has no material")
+        if not isinstance(material_spec.get("id"), str) or not isinstance(
+            material_spec.get("baseColorRgb"), list
+        ):
+            raise MutationError("REVISION_PLAN_INVALID", "AssignMaterial material is invalid")
+        native_material = _find_existing_material(material_spec, list(rt.objects))
+        assigned_material_id = str(material_spec["id"])
+        target.material = native_material
+        rt.setUserProp(target, "AIArchViz.MaterialId", assigned_material_id)
+        if _user_prop(target, "AIArchViz.EntityType") == "wall":
+            segments = [
+                node
+                for node in list(rt.objects)
+                if _user_prop(node, "AIArchViz.HostLogicalId") == target_id
+            ]
+            if not segments:
+                raise MutationError(
+                    "MATERIAL_ASSIGNMENT_MISMATCH",
+                    f"Wall {target_id} has no physical segments to assign",
+                )
+            geometry_before = sorted(_segment_geometry_signature(node) for node in segments)
+            unrelated_before = sorted(
+                _wall_material_signature(node)
+                for node in list(rt.objects)
+                if _user_prop(node, "AIArchViz.HostLogicalId")
+                and _user_prop(node, "AIArchViz.HostLogicalId") != target_id
+            )
+            for segment in segments:
+                segment.material = native_material
+                rt.setUserProp(segment, "AIArchViz.MaterialId", assigned_material_id)
+            geometry_after = sorted(_segment_geometry_signature(node) for node in segments)
+            unrelated_after = sorted(
+                _wall_material_signature(node)
+                for node in list(rt.objects)
+                if _user_prop(node, "AIArchViz.HostLogicalId")
+                and _user_prop(node, "AIArchViz.HostLogicalId") != target_id
+            )
+            if geometry_before != geometry_after:
+                raise MutationError(
+                    "WALL_GEOMETRY_CHANGED",
+                    f"AssignMaterial changed physical geometry for {target_id}",
+                )
+            if unrelated_before != unrelated_after:
+                raise MutationError(
+                    "UNRELATED_MATERIAL_CHANGED",
+                    "AssignMaterial changed an unrelated wall material",
+                )
+            assigned_wall_segment_count = len(segments)
 
     for logical_id, nodes in logical_nodes.items():
         node = nodes[0]
@@ -239,8 +367,10 @@ def apply_revision() -> dict[str, Any]:
             raise MutationError("MANIFEST_ENTRY_INVALID", f"{logical_id} metadata is invalid")
         metadata["AIArchViz.RevisionId"] = plan["targetRevisionId"]
         if logical_id == target_id:
-            entry["transform"] = transform
-            if operation["type"] == "UpdateOpening":
+            if operation["type"] == "MoveObject":
+                entry["transform"] = operation["transform"]
+            elif operation["type"] == "UpdateOpening":
+                entry["transform"] = operation["transform"]
                 entry["offset"] = operation["offset"]
                 entry["sill"] = operation["sill"]
                 entry["dimensions"] = [
@@ -248,6 +378,9 @@ def apply_revision() -> dict[str, Any]:
                     entry["dimensions"][1],
                     operation["height"],
                 ]
+            elif operation["type"] == "AssignMaterial":
+                entry["materialId"] = operation["material"]["id"]
+                entry["materialBaseColorRgb"] = operation["material"]["baseColorRgb"]
         rt.setUserProp(node, "AIArchViz.RevisionId", str(plan["targetRevisionId"]))
         rt.setUserProp(
             node,
@@ -271,6 +404,8 @@ def apply_revision() -> dict[str, Any]:
         "deletedWallSegmentCount": deleted_segment_count,
         "createdWallSegmentCount": created_segment_count,
         "preservedUnrelatedWallSegmentCount": preserved_segment_count,
+        "assignedMaterialId": assigned_material_id,
+        "assignedWallSegmentCount": assigned_wall_segment_count,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,

@@ -57,7 +57,8 @@
       "items": {
         "oneOf": [
           { "$ref": "#/$defs/moveObject" },
-          { "$ref": "#/$defs/updateOpening" }
+          { "$ref": "#/$defs/updateOpening" },
+          { "$ref": "#/$defs/assignMaterial" }
         ]
       }
     },
@@ -197,6 +198,45 @@
             "width": { "type": "number", "exclusiveMinimum": 0 },
             "sill": { "type": "number", "minimum": 0 },
             "height": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "assignMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "AssignMaterial" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "medium" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["materialId"],
+          "properties": {
+            "materialId": { "$ref": "#/$defs/id" }
           }
         },
         "preconditions": {

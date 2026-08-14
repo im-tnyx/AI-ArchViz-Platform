@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_assign_wall_south_material_r4",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0003",
+  "targetRevisionId": "rev_golden_0004",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Assign the approved existing floor-neutral material to the Golden south wall.",
+  "riskLevel": "medium",
+  "operations": [
+    {
+      "operationId": "op_assign_wall_south_material_r4",
+      "type": "AssignMaterial",
+      "targetId": "wall_south",
+      "reason": "Golden deterministic material-assignment revision.",
+      "riskLevel": "medium",
+      "parameters": {
+        "materialId": "material_floor_neutral"
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["wall_south"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T00:00:00Z"
+  }
+}
