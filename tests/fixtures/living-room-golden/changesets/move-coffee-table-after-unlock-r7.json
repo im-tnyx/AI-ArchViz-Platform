@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_move_coffee_table_after_unlock_r7",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0006",
+  "targetRevisionId": "rev_golden_0007",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Move the explicitly unlocked coffee table to its approved absolute placement.",
+  "riskLevel": "low",
+  "operations": [
+    {
+      "operationId": "op_move_coffee_table_after_unlock_r7",
+      "type": "MoveObject",
+      "targetId": "asset_living_coffee_table_main",
+      "reason": "Apply the approved absolute coffee-table placement after explicit unlock.",
+      "riskLevel": "low",
+      "parameters": {
+        "transform": {
+          "position": [3300, 2200, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        }
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["asset_living_coffee_table_main"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T03:00:00Z"
+  }
+}

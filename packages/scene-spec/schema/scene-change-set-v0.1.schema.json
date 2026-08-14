@@ -59,7 +59,8 @@
           { "$ref": "#/$defs/moveObject" },
           { "$ref": "#/$defs/updateOpening" },
           { "$ref": "#/$defs/assignMaterial" },
-          { "$ref": "#/$defs/lockProperty" }
+          { "$ref": "#/$defs/lockProperty" },
+          { "$ref": "#/$defs/unlockProperty" }
         ]
       }
     },
@@ -276,7 +277,7 @@
           "additionalProperties": false,
           "required": ["propertyPath"],
           "properties": {
-            "propertyPath": { "enum": ["geometry", "transform", "material"] }
+            "propertyPath": { "$ref": "#/$defs/propertyLockPath" }
           }
         },
         "preconditions": {
@@ -289,6 +290,48 @@
         },
         "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
       }
+    },
+    "unlockProperty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "UnlockProperty" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "medium" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["propertyPath"],
+          "properties": {
+            "propertyPath": { "$ref": "#/$defs/propertyLockPath" }
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "propertyLockPath": {
+      "enum": ["geometry", "transform", "material"]
     },
     "expectedImpact": {
       "type": "object",

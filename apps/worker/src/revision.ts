@@ -72,13 +72,21 @@ interface LockPropertyOperation {
   parameters: { propertyPath: LockPropertyPath };
 }
 
+interface UnlockPropertyOperation {
+  operationId: string;
+  type: "UnlockProperty";
+  targetId: string;
+  parameters: { propertyPath: LockPropertyPath };
+}
+
 type LockPropertyPath = "geometry" | "transform" | "material";
+type PropertyLockOperation = LockPropertyOperation | UnlockPropertyOperation;
 
 type SupportedOperation =
   | MoveObjectOperation
   | UpdateOpeningOperation
   | AssignMaterialOperation
-  | LockPropertyOperation;
+  | PropertyLockOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
   schemaVersion: "0.1.0";
@@ -172,7 +180,7 @@ interface MaterialMutation {
 
 interface LockMutation {
   operationId: string;
-  type: "LockProperty";
+  type: "LockProperty" | "UnlockProperty";
   targetId: string;
   propertyPath: LockPropertyPath;
 }
@@ -279,14 +287,18 @@ export function planSceneRevision(
       (operation) =>
         operation &&
         typeof operation === "object" &&
-        !["MoveObject", "UpdateOpening", "AssignMaterial", "LockProperty"].includes(
-          String((operation as { type?: unknown }).type),
-        ),
+        ![
+          "MoveObject",
+          "UpdateOpening",
+          "AssignMaterial",
+          "LockProperty",
+          "UnlockProperty",
+        ].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, and LockProperty only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, and UnlockProperty only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -535,47 +547,8 @@ export function planSceneRevision(
         error instanceof Error ? error.message : String(error),
       );
     }
-  } else if (operation?.type === "LockProperty") {
-    const allMatches = managedLogicalIds(base).filter((id) => id === operation.targetId);
-    if (allMatches.length === 0) {
-      throw new RevisionValidationError(
-        "TARGET_NOT_FOUND",
-        `Target ${operation.targetId} was not found`,
-      );
-    }
-    if (allMatches.length > 1) {
-      throw new RevisionValidationError(
-        "DUPLICATE_LOGICAL_ID",
-        `Target ${operation.targetId} is not unique`,
-      );
-    }
-    const targets = lockableTargets(base).filter((target) => target.id === operation.targetId);
-    const target = targets[0];
-    if (targets.length !== 1 || !target || !(operation.parameters.propertyPath in target.locks)) {
-      throw new RevisionValidationError(
-        "PROPERTY_LOCK_UNSUPPORTED",
-        `Target ${operation.targetId} does not expose ${operation.parameters.propertyPath} lock`,
-      );
-    }
-    if (target.locks[operation.parameters.propertyPath]) {
-      throw new RevisionValidationError(
-        "PROPERTY_ALREADY_LOCKED",
-        `Target ${operation.targetId} ${operation.parameters.propertyPath} is already locked`,
-      );
-    }
-    const targetLock = lockableTargets(targetSceneSpec).find(
-      (entry) => entry.id === operation.targetId,
-    );
-    if (!targetLock) {
-      throw new RevisionValidationError("TARGET_NOT_FOUND", "Lock target disappeared");
-    }
-    targetLock.locks[operation.parameters.propertyPath] = true;
-    mutation = {
-      operationId: operation.operationId,
-      type: "LockProperty",
-      targetId: operation.targetId,
-      propertyPath: operation.parameters.propertyPath,
-    };
+  } else if (operation?.type === "LockProperty" || operation?.type === "UnlockProperty") {
+    mutation = planPropertyLockMutation(base, targetSceneSpec, operation);
     try {
       compileGoldenBuildPlan(targetSceneSpec);
     } catch (error) {
@@ -640,6 +613,56 @@ function lockableTargets(scene: SceneDocument): LockableTarget[] {
     id: entry.id,
     locks: entry.locks,
   }));
+}
+
+function planPropertyLockMutation(
+  base: SceneDocument,
+  targetSceneSpec: SceneDocument,
+  operation: PropertyLockOperation,
+): LockMutation {
+  const allMatches = managedLogicalIds(base).filter((id) => id === operation.targetId);
+  if (allMatches.length === 0) {
+    throw new RevisionValidationError(
+      "TARGET_NOT_FOUND",
+      `Target ${operation.targetId} was not found`,
+    );
+  }
+  if (allMatches.length > 1) {
+    throw new RevisionValidationError(
+      "DUPLICATE_LOGICAL_ID",
+      `Target ${operation.targetId} is not unique`,
+    );
+  }
+  const targets = lockableTargets(base).filter((target) => target.id === operation.targetId);
+  const target = targets[0];
+  if (targets.length !== 1 || !target || !(operation.parameters.propertyPath in target.locks)) {
+    throw new RevisionValidationError(
+      "PROPERTY_LOCK_UNSUPPORTED",
+      `Target ${operation.targetId} does not expose ${operation.parameters.propertyPath} lock`,
+    );
+  }
+  const desiredLockedState = operation.type === "LockProperty";
+  if (target.locks[operation.parameters.propertyPath] === desiredLockedState) {
+    throw new RevisionValidationError(
+      desiredLockedState ? "PROPERTY_ALREADY_LOCKED" : "PROPERTY_ALREADY_UNLOCKED",
+      `Target ${operation.targetId} ${operation.parameters.propertyPath} is already ${
+        desiredLockedState ? "locked" : "unlocked"
+      }`,
+    );
+  }
+  const targetLock = lockableTargets(targetSceneSpec).find(
+    (entry) => entry.id === operation.targetId,
+  );
+  if (!targetLock) {
+    throw new RevisionValidationError("TARGET_NOT_FOUND", "Lock target disappeared");
+  }
+  targetLock.locks[operation.parameters.propertyPath] = desiredLockedState;
+  return {
+    operationId: operation.operationId,
+    type: operation.type,
+    targetId: operation.targetId,
+    propertyPath: operation.parameters.propertyPath,
+  };
 }
 
 function isMaterialAssignable(type: string): boolean {
@@ -843,7 +866,22 @@ export function assertGoldenRevisionDiff(diff: SemanticRevisionDiff): void {
 export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: ChangeSetContract): void {
   const [operation] = changeSet.operations;
   if (operation?.type === "MoveObject") {
-    assertGoldenRevisionDiff(diff);
+    const [change] = diff.changed;
+    if (
+      diff.revision.before !== changeSet.baseRevisionId ||
+      diff.revision.after !== changeSet.targetRevisionId ||
+      diff.changed.length !== 1 ||
+      change?.logicalId !== operation.targetId ||
+      Object.keys(change.changes).sort().join() !== "transform.position" ||
+      diff.added.length !== 0 ||
+      diff.removed.length !== 0 ||
+      diff.unchanged.length !== 13
+    ) {
+      throw new RevisionValidationError(
+        "UNEXPECTED_SEMANTIC_DIFF",
+        `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+      );
+    }
     return;
   }
   const [change] = diff.changed;
@@ -866,13 +904,21 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
     }
     return;
   }
-  if (operation?.type === "LockProperty") {
+  if (operation?.type === "LockProperty" || operation?.type === "UnlockProperty") {
+    const expectedLockChange =
+      operation.type === "LockProperty"
+        ? { before: false, after: true }
+        : { before: true, after: false };
     if (
       diff.revision.before !== changeSet.baseRevisionId ||
       diff.revision.after !== changeSet.targetRevisionId ||
       diff.changed.length !== 1 ||
       change?.logicalId !== operation.targetId ||
       changedFields.join() !== `locks.${operation.parameters.propertyPath}` ||
+      !isDeepStrictEqual(
+        change?.changes[`locks.${operation.parameters.propertyPath}`],
+        expectedLockChange,
+      ) ||
       diff.added.length !== 0 ||
       diff.removed.length !== 0 ||
       diff.unchanged.length !== 13
