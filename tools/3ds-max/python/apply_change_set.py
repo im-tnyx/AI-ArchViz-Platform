@@ -12,6 +12,11 @@ from pymxs import runtime as rt
 
 
 REVISION_RUNNER_VERSION = "0.1.0"
+LOCK_USER_PROPERTIES = {
+    "geometry": "AIArchViz.LockGeometry",
+    "transform": "AIArchViz.LockTransform",
+    "material": "AIArchViz.LockMaterial",
+}
 
 
 class MutationError(RuntimeError):
@@ -171,10 +176,11 @@ def apply_revision() -> dict[str, Any]:
         "MoveObject",
         "UpdateOpening",
         "AssignMaterial",
+        "LockProperty",
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
-            "Runner supports MoveObject, UpdateOpening, and AssignMaterial only",
+            "Runner supports MoveObject, UpdateOpening, AssignMaterial, and LockProperty only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
@@ -219,6 +225,7 @@ def apply_revision() -> dict[str, Any]:
     preserved_segment_count = 0
     assigned_material_id: str | None = None
     assigned_wall_segment_count = 0
+    locked_property_path: str | None = None
     if operation["type"] == "MoveObject":
         transform = operation["transform"]
         target.pos = _point(transform["position"])
@@ -304,7 +311,7 @@ def apply_revision() -> dict[str, Any]:
             "AIArchViz.PhysicalPosition",
             json.dumps(operation["physicalPosition"], separators=(",", ":")),
         )
-    else:
+    elif operation["type"] == "AssignMaterial":
         material_spec = operation.get("material")
         if not isinstance(material_spec, dict):
             raise MutationError("REVISION_PLAN_INVALID", "AssignMaterial plan has no material")
@@ -355,6 +362,12 @@ def apply_revision() -> dict[str, Any]:
                     "AssignMaterial changed an unrelated wall material",
                 )
             assigned_wall_segment_count = len(segments)
+    else:
+        property_path = operation.get("propertyPath")
+        if property_path not in LOCK_USER_PROPERTIES:
+            raise MutationError("REVISION_PLAN_INVALID", "LockProperty path is invalid")
+        rt.setUserProp(target, LOCK_USER_PROPERTIES[property_path], "true")
+        locked_property_path = property_path
 
     for logical_id, nodes in logical_nodes.items():
         node = nodes[0]
@@ -381,6 +394,16 @@ def apply_revision() -> dict[str, Any]:
             elif operation["type"] == "AssignMaterial":
                 entry["materialId"] = operation["material"]["id"]
                 entry["materialBaseColorRgb"] = operation["material"]["baseColorRgb"]
+            elif operation["type"] == "LockProperty":
+                current_locks = entry.get("locks", {})
+                if not isinstance(current_locks, dict):
+                    raise MutationError("MANIFEST_ENTRY_INVALID", "Lock metadata is invalid")
+                entry["locks"] = {
+                    property_path: True
+                    for property_path in LOCK_USER_PROPERTIES
+                    if current_locks.get(property_path) is True
+                }
+                entry["locks"][operation["propertyPath"]] = True
         rt.setUserProp(node, "AIArchViz.RevisionId", str(plan["targetRevisionId"]))
         rt.setUserProp(
             node,
@@ -406,6 +429,7 @@ def apply_revision() -> dict[str, Any]:
         "preservedUnrelatedWallSegmentCount": preserved_segment_count,
         "assignedMaterialId": assigned_material_id,
         "assignedWallSegmentCount": assigned_wall_segment_count,
+        "lockedPropertyPath": locked_property_path,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,

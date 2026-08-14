@@ -119,6 +119,17 @@
           "description": "Optional normalized native-material base color recovered during fresh reopen. Present only with materialId.",
           "$ref": "#/$defs/colorRgb"
         },
+        "locks": {
+          "description": "Active canonical lock categories recovered from persisted DCC metadata. Omission means no active locks; when present, every value is true.",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "geometry": { "const": true },
+            "transform": { "const": true },
+            "material": { "const": true }
+          }
+        },
         "embeddedMetadata": { "$ref": "#/$defs/metadata" }
       }
     },

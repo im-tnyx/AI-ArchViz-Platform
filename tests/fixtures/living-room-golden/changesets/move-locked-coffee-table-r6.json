@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_move_locked_coffee_table_r6",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0005",
+  "targetRevisionId": "rev_golden_0006",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Attempt a valid absolute coffee-table move after transform protection.",
+  "riskLevel": "low",
+  "operations": [
+    {
+      "operationId": "op_move_locked_coffee_table_r6",
+      "type": "MoveObject",
+      "targetId": "asset_living_coffee_table_main",
+      "reason": "Verify persistent transform-lock enforcement before DCC.",
+      "riskLevel": "low",
+      "parameters": {
+        "transform": {
+          "position": [3300, 2200, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        }
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["asset_living_coffee_table_main"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T01:30:00Z"
+  }
+}

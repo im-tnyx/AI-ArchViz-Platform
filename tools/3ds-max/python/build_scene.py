@@ -52,6 +52,16 @@ def _set_metadata(node: Any, entry: dict[str, Any], entity_type: str) -> None:
         "AIArchViz.ManifestEntry",
         json.dumps(entry, ensure_ascii=False, separators=(",", ":"), sort_keys=True),
     )
+    locks = entry.get("locks", {})
+    if not isinstance(locks, dict):
+        raise RuntimeError(f"Invalid trusted lock metadata for {entry['logicalId']}")
+    for property_path, key in {
+        "geometry": "AIArchViz.LockGeometry",
+        "transform": "AIArchViz.LockTransform",
+        "material": "AIArchViz.LockMaterial",
+    }.items():
+        if locks.get(property_path) is True:
+            rt.setUserProp(node, key, "true")
 
 
 def _native_color(value: list[float]) -> Any:

@@ -58,7 +58,8 @@
         "oneOf": [
           { "$ref": "#/$defs/moveObject" },
           { "$ref": "#/$defs/updateOpening" },
-          { "$ref": "#/$defs/assignMaterial" }
+          { "$ref": "#/$defs/assignMaterial" },
+          { "$ref": "#/$defs/lockProperty" }
         ]
       }
     },
@@ -237,6 +238,45 @@
           "required": ["materialId"],
           "properties": {
             "materialId": { "$ref": "#/$defs/id" }
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "lockProperty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "LockProperty" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "medium" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["propertyPath"],
+          "properties": {
+            "propertyPath": { "enum": ["geometry", "transform", "material"] }
           }
         },
         "preconditions": {

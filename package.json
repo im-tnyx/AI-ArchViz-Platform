@@ -20,7 +20,8 @@
     "test:3dsmax:revision": "pnpm run build && node apps/worker/dist/revision-integration.js",
     "test:3dsmax:opening-revision": "pnpm run build && node apps/worker/dist/opening-revision-integration.js",
     "test:3dsmax:materials": "pnpm run build && node apps/worker/dist/material-integration.js",
-    "test:3dsmax:material-revision": "pnpm run build && node apps/worker/dist/material-revision-integration.js"
+    "test:3dsmax:material-revision": "pnpm run build && node apps/worker/dist/material-revision-integration.js",
+    "test:3dsmax:lock-revision": "pnpm run build && node apps/worker/dist/lock-revision-integration.js"
   },
   "devDependencies": {
     "@ai-archviz/scene-spec": "workspace:*",

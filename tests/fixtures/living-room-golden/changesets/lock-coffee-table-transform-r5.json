@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_lock_coffee_table_transform_r5",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0004",
+  "targetRevisionId": "rev_golden_0005",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Persist approved coffee-table placement protection.",
+  "riskLevel": "medium",
+  "operations": [
+    {
+      "operationId": "op_lock_coffee_table_transform_r5",
+      "type": "LockProperty",
+      "targetId": "asset_living_coffee_table_main",
+      "reason": "Protect approved coffee-table placement.",
+      "riskLevel": "medium",
+      "parameters": {
+        "propertyPath": "transform"
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["asset_living_coffee_table_main"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T01:00:00Z"
+  }
+}

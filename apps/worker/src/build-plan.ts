@@ -27,6 +27,7 @@ export interface BuildPlanNode {
   sill?: number;
   materialId?: string;
   materialBaseColorRgb?: Vector3;
+  locks?: Partial<Record<"geometry" | "transform" | "material", true>>;
 }
 
 export interface BuildPlanMaterial {
@@ -108,6 +109,7 @@ interface WallInput {
   height: number;
   thickness: number;
   transform: SemanticTransform;
+  locks: Record<string, unknown>;
 }
 
 interface OpeningInput {
@@ -119,6 +121,7 @@ interface OpeningInput {
   sill: number;
   height: number;
   transform: SemanticTransform;
+  locks: Record<string, unknown>;
 }
 
 function vector(value: unknown): Vector3 {
@@ -252,6 +255,18 @@ function nativeMaterialColor(value: Vector3): Vector3 {
   return value.map((channel) => Math.round(channel * 255) / 255) as Vector3;
 }
 
+function activeLocks(value: {
+  locks?: unknown;
+}): Partial<Record<"geometry" | "transform" | "material", true>> | undefined {
+  const source = value.locks as Record<string, unknown> | undefined;
+  const locks = Object.fromEntries(
+    ["geometry", "transform", "material"]
+      .filter((property) => source?.[property] === true)
+      .map((property) => [property, true]),
+  ) as Partial<Record<"geometry" | "transform" | "material", true>>;
+  return Object.keys(locks).length > 0 ? locks : undefined;
+}
+
 function resolveMaterialAssignments(scene: SceneSpecSubset): {
   materials: BuildPlanMaterial[];
   assignments: BuildPlanMaterialAssignment[];
@@ -328,6 +343,7 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
       : node;
   };
   for (const wall of walls) {
+    const locks = activeLocks(wall);
     nodes.push(
       appendMaterial({
         logicalId: wall.id,
@@ -338,11 +354,13 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
         start: vector(wall.start),
         end: vector(wall.end),
         embeddedMetadata: metadata(scene, wall.id),
+        ...(locks ? { locks } : {}),
       }),
     );
   }
   for (const surface of surfaces) {
     const logicalId = String(surface.id);
+    const locks = activeLocks(surface);
     nodes.push(
       appendMaterial({
         logicalId,
@@ -351,11 +369,13 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
         transform: transform(surface.transform),
         dimensions: boundaryDimensions((surface.boundary as Vector3[]).map(vector)),
         embeddedMetadata: metadata(scene, logicalId),
+        ...(locks ? { locks } : {}),
       }),
     );
   }
   for (const opening of openings) {
     const wall = wallById.get(opening.hostGeometryId) as WallInput;
+    const locks = activeLocks(opening);
     openingWorldBounds(wall, opening);
     nodes.push(
       appendMaterial({
@@ -368,12 +388,14 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
         offset: opening.offset,
         sill: opening.sill,
         embeddedMetadata: metadata(scene, opening.id),
+        ...(locks ? { locks } : {}),
       }),
     );
   }
   for (const asset of scene.assets) {
     if (asset.type !== "proxy_asset") throw new Error("Unsupported asset entity in Spike 1B");
     const logicalId = String(asset.id);
+    const locks = activeLocks(asset);
     nodes.push(
       appendMaterial({
         logicalId,
@@ -383,6 +405,7 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
         dimensions: vector(asset.dimensions),
         ...(asset.hostGeometryId ? { hostGeometryId: String(asset.hostGeometryId) } : {}),
         embeddedMetadata: metadata(scene, logicalId),
+        ...(locks ? { locks } : {}),
       }),
     );
   }

@@ -9,6 +9,7 @@ export type ManifestDifferenceCode =
   | "CAMERA_MISMATCH"
   | "MATERIAL_ID_MISMATCH"
   | "MATERIAL_COLOR_MISMATCH"
+  | "LOCK_MISMATCH"
   | "UNIT_MISMATCH"
   | "LOGICAL_ID_MISSING";
 
@@ -37,6 +38,15 @@ interface SemanticManifest {
 }
 
 const materialColorTolerance = 0.01;
+
+function normalizeLocks(value: unknown): Record<string, true> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    ["geometry", "transform", "material"]
+      .filter((property) => (value as Record<string, unknown>)[property] === true)
+      .map((property) => [property, true]),
+  ) as Record<string, true>;
+}
 
 function difference(
   differences: ManifestDifference[],
@@ -239,6 +249,14 @@ function compareNode(
       materialColorTolerance,
     );
   }
+  // Manifest lock omission is canonical false. Only active lock categories are emitted.
+  compareExact(
+    differences,
+    "LOCK_MISMATCH",
+    `${path}/locks`,
+    normalizeLocks(expected.locks),
+    normalizeLocks(actual.locks),
+  );
   compareExact(
     differences,
     "HOST_MISMATCH",

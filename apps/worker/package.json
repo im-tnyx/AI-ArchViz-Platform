@@ -13,7 +13,8 @@
     "test:3dsmax:revision": "node dist/revision-integration.js",
     "test:3dsmax:opening-revision": "node dist/opening-revision-integration.js",
     "test:3dsmax:materials": "node dist/material-integration.js",
-    "test:3dsmax:material-revision": "node dist/material-revision-integration.js"
+    "test:3dsmax:material-revision": "node dist/material-revision-integration.js",
+    "test:3dsmax:lock-revision": "node dist/lock-revision-integration.js"
   },
   "dependencies": {
     "@ai-archviz/scene-spec": "workspace:*",

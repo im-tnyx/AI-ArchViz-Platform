@@ -13,6 +13,11 @@ from pymxs import runtime as rt
 
 VERIFY_VERSION = "0.1.0"
 TOLERANCE = 0.01
+LOCK_USER_PROPERTIES = {
+    "geometry": "AIArchViz.LockGeometry",
+    "transform": "AIArchViz.LockTransform",
+    "material": "AIArchViz.LockMaterial",
+}
 
 
 def _required_path(key: str) -> Path:
@@ -141,6 +146,32 @@ def _validate_metadata(node: Any, entry: dict[str, Any], errors: list[str]) -> N
         actual = _user_prop(node, key)
         if actual != str(expected):
             errors.append(f"{entry['logicalId']}: metadata {key} mismatch")
+
+
+def _validate_locks(node: Any, entry: dict[str, Any], errors: list[str]) -> None:
+    expected_value = entry.get("locks", {})
+    if not isinstance(expected_value, dict):
+        errors.append(f"{entry['logicalId']}: lock metadata is invalid")
+        return
+    expected = {
+        property_path: True
+        for property_path in LOCK_USER_PROPERTIES
+        if expected_value.get(property_path) is True
+    }
+    actual = {
+        property_path: True
+        for property_path, key in LOCK_USER_PROPERTIES.items()
+        if (_user_prop(node, key) or "").lower() == "true"
+    }
+    if expected != actual:
+        errors.append(
+            f"{entry['logicalId']}: LOCK_MISMATCH expected {expected}, actual {actual}"
+        )
+        return
+    if actual:
+        entry["locks"] = actual
+    else:
+        entry.pop("locks", None)
 
 
 def _validate_proxy(node: Any, entry: dict[str, Any], errors: list[str]) -> None:
@@ -318,6 +349,7 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
     cameras: list[dict[str, Any]] = []
     for node, entry in entries:
         _validate_metadata(node, entry, errors)
+        _validate_locks(node, entry, errors)
         entity_type = entry.get("type") or _user_prop(node, "AIArchViz.EntityType")
         if entity_type == "camera":
             _validate_camera(node, entry, errors)

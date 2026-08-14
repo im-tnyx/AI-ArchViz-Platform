@@ -65,7 +65,20 @@ interface AssignMaterialOperation {
   parameters: { materialId: string };
 }
 
-type SupportedOperation = MoveObjectOperation | UpdateOpeningOperation | AssignMaterialOperation;
+interface LockPropertyOperation {
+  operationId: string;
+  type: "LockProperty";
+  targetId: string;
+  parameters: { propertyPath: LockPropertyPath };
+}
+
+type LockPropertyPath = "geometry" | "transform" | "material";
+
+type SupportedOperation =
+  | MoveObjectOperation
+  | UpdateOpeningOperation
+  | AssignMaterialOperation
+  | LockPropertyOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
   schemaVersion: "0.1.0";
@@ -94,7 +107,7 @@ interface SceneDocument extends Record<string, unknown> {
     dimensions: Vector3;
     allowNonUniformScale: boolean;
     transform: SemanticTransform;
-    locks: { transform: boolean; material: boolean };
+    locks: { geometry: boolean; transform: boolean; material: boolean };
   }>;
   geometry: Array<{
     id: string;
@@ -102,7 +115,7 @@ interface SceneDocument extends Record<string, unknown> {
     start?: Vector3;
     end?: Vector3;
     height?: number;
-    locks: { geometry: boolean; material: boolean };
+    locks: { geometry: boolean; transform: boolean; material: boolean };
   }>;
   openings: Array<{
     id: string;
@@ -113,7 +126,7 @@ interface SceneDocument extends Record<string, unknown> {
     sill: number;
     height: number;
     transform: SemanticTransform;
-    locks: { geometry: boolean };
+    locks: { geometry: boolean; transform: boolean; material: boolean };
   }>;
   cameras: Array<{ id: string }>;
   materials: Array<{ id: string; baseColorRgb: Vector3 }>;
@@ -157,6 +170,13 @@ interface MaterialMutation {
   material: { id: string; baseColorRgb: Vector3 };
 }
 
+interface LockMutation {
+  operationId: string;
+  type: "LockProperty";
+  targetId: string;
+  propertyPath: LockPropertyPath;
+}
+
 export interface RevisionMutationPlan {
   revisionPlanVersion: "0.1.0";
   changeSetId: string;
@@ -164,7 +184,7 @@ export interface RevisionMutationPlan {
   sceneId: string;
   baseRevisionId: string;
   targetRevisionId: string;
-  operation: MoveMutation | OpeningMutation | MaterialMutation;
+  operation: MoveMutation | OpeningMutation | MaterialMutation | LockMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -259,14 +279,14 @@ export function planSceneRevision(
       (operation) =>
         operation &&
         typeof operation === "object" &&
-        !["MoveObject", "UpdateOpening", "AssignMaterial"].includes(
+        !["MoveObject", "UpdateOpening", "AssignMaterial", "LockProperty"].includes(
           String((operation as { type?: unknown }).type),
         ),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, and AssignMaterial only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, and LockProperty only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -303,7 +323,7 @@ export function planSceneRevision(
   const targetSceneSpec = structuredClone(baseValue) as SceneDocument;
   targetSceneSpec.scene.revisionId = changeSet.targetRevisionId;
   targetSceneSpec.scene.headRevisionId = changeSet.targetRevisionId;
-  let mutation: MoveMutation | OpeningMutation | MaterialMutation;
+  let mutation: MoveMutation | OpeningMutation | MaterialMutation | LockMutation;
   if (operation?.type === "MoveObject") {
     const matches = base.assets.filter((asset) => asset.id === operation.targetId);
     if (matches.length === 0) {
@@ -515,6 +535,55 @@ export function planSceneRevision(
         error instanceof Error ? error.message : String(error),
       );
     }
+  } else if (operation?.type === "LockProperty") {
+    const allMatches = managedLogicalIds(base).filter((id) => id === operation.targetId);
+    if (allMatches.length === 0) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Target ${operation.targetId} was not found`,
+      );
+    }
+    if (allMatches.length > 1) {
+      throw new RevisionValidationError(
+        "DUPLICATE_LOGICAL_ID",
+        `Target ${operation.targetId} is not unique`,
+      );
+    }
+    const targets = lockableTargets(base).filter((target) => target.id === operation.targetId);
+    const target = targets[0];
+    if (targets.length !== 1 || !target || !(operation.parameters.propertyPath in target.locks)) {
+      throw new RevisionValidationError(
+        "PROPERTY_LOCK_UNSUPPORTED",
+        `Target ${operation.targetId} does not expose ${operation.parameters.propertyPath} lock`,
+      );
+    }
+    if (target.locks[operation.parameters.propertyPath]) {
+      throw new RevisionValidationError(
+        "PROPERTY_ALREADY_LOCKED",
+        `Target ${operation.targetId} ${operation.parameters.propertyPath} is already locked`,
+      );
+    }
+    const targetLock = lockableTargets(targetSceneSpec).find(
+      (entry) => entry.id === operation.targetId,
+    );
+    if (!targetLock) {
+      throw new RevisionValidationError("TARGET_NOT_FOUND", "Lock target disappeared");
+    }
+    targetLock.locks[operation.parameters.propertyPath] = true;
+    mutation = {
+      operationId: operation.operationId,
+      type: "LockProperty",
+      targetId: operation.targetId,
+      propertyPath: operation.parameters.propertyPath,
+    };
+    try {
+      compileGoldenBuildPlan(targetSceneSpec);
+    } catch (error) {
+      throw new RevisionValidationError(
+        "SCHEMA_INVALID",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   } else {
     throw new RevisionValidationError("OPERATION_UNSUPPORTED", "Operation is unsupported");
   }
@@ -553,11 +622,23 @@ interface MaterialTarget {
   locks: { material: boolean };
 }
 
+interface LockableTarget {
+  id: string;
+  locks: Record<LockPropertyPath, boolean>;
+}
+
 function materialTargets(scene: SceneDocument): MaterialTarget[] {
   return [...scene.geometry, ...scene.assets].map((entry) => ({
     id: entry.id,
     type: entry.type,
     locks: { material: entry.locks.material },
+  }));
+}
+
+function lockableTargets(scene: SceneDocument): LockableTarget[] {
+  return [...scene.geometry, ...scene.openings, ...scene.assets].map((entry) => ({
+    id: entry.id,
+    locks: entry.locks,
   }));
 }
 
@@ -690,6 +771,19 @@ function collectFieldChanges(
 ): void {
   if (path === "embeddedMetadata.AIArchViz.RevisionId") return;
   if (isDeepStrictEqual(before, after)) return;
+  if (path === "locks") {
+    const beforeLocks = normalizedLockState(before);
+    const afterLocks = normalizedLockState(after);
+    for (const propertyPath of ["geometry", "transform", "material"] as const) {
+      collectFieldChanges(
+        beforeLocks[propertyPath],
+        afterLocks[propertyPath],
+        `${path}.${propertyPath}`,
+        changes,
+      );
+    }
+    return;
+  }
   if (
     before &&
     after &&
@@ -713,6 +807,18 @@ function collectFieldChanges(
     return;
   }
   changes[path] = { before, after };
+}
+
+function normalizedLockState(value: unknown): Record<LockPropertyPath, boolean> {
+  const locks =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  return {
+    geometry: locks.geometry === true,
+    transform: locks.transform === true,
+    material: locks.material === true,
+  };
 }
 
 export function assertGoldenRevisionDiff(diff: SemanticRevisionDiff): void {
@@ -749,6 +855,24 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
       diff.changed.length !== 1 ||
       change?.logicalId !== operation.targetId ||
       changedFields.join() !== "materialBaseColorRgb,materialId" ||
+      diff.added.length !== 0 ||
+      diff.removed.length !== 0 ||
+      diff.unchanged.length !== 13
+    ) {
+      throw new RevisionValidationError(
+        "UNEXPECTED_SEMANTIC_DIFF",
+        `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+      );
+    }
+    return;
+  }
+  if (operation?.type === "LockProperty") {
+    if (
+      diff.revision.before !== changeSet.baseRevisionId ||
+      diff.revision.after !== changeSet.targetRevisionId ||
+      diff.changed.length !== 1 ||
+      change?.logicalId !== operation.targetId ||
+      changedFields.join() !== `locks.${operation.parameters.propertyPath}` ||
       diff.added.length !== 0 ||
       diff.removed.length !== 0 ||
       diff.unchanged.length !== 13
