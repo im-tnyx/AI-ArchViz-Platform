@@ -57,13 +57,13 @@ describe("RFC 8785 semantic JSON hashing", () => {
     const sceneSpec = readJson("scene-spec.json");
     const expectedManifest = readJson("expected-scene-manifest.json");
     expect(semanticJsonHash(sceneSpec)).toBe(
-      "sha256:105d9770d8fd3edaeffe07b1f21d1c0a59aebbfa701d3bf561bf6dd5f70cd7d7",
+      "sha256:f8b06cacd2acc5a5a979dedcc3eee8f1a9ba7deef72205041821cc406634977a",
     );
     expect(semanticJsonHash(expectedManifest)).toBe(
-      "sha256:1016ccf027d85367fb9ce6f6cdf470c625dba658a59313770064b472a89f3cde",
+      "sha256:08ebbd75fff42908b6e54c9fe1d4096b91fb223e2ec4ee5d072f5efc8ba6a628",
     );
     expect(calculateRequestHash(jobValidation.value)).toBe(
-      "sha256:671c64497af894348533c6012d04bc0b647dcffc52e14cc6ec012a7d09dd06cb",
+      "sha256:6bc30b61c8297ddf6ea0366b6a9cf270663166f8ca50277486ca051421be88e5",
     );
     expect(verifyJobHashes(jobValidation.value, sceneSpec, expectedManifest)).toEqual({
       ok: true,

@@ -4,7 +4,7 @@
   "mutation": {
     "operation": "replace",
     "path": "/sceneSpecVersion",
-    "value": "0.2.0"
+    "value": "0.3.0"
   },
   "expectedErrorCode": "UNSUPPORTED_SCENE_SPEC_VERSION"
 }

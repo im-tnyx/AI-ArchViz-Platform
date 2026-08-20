@@ -112,10 +112,16 @@ interface SceneDocument extends Record<string, unknown> {
     id: string;
     type: string;
     spaceId: string;
-    dimensions: Vector3;
-    allowNonUniformScale: boolean;
+    assetDefinitionId: string;
     transform: SemanticTransform;
     locks: { geometry: boolean; transform: boolean; material: boolean };
+  }>;
+  assetDefinitions: Array<{
+    id: string;
+    category: string;
+    dimensions: Vector3;
+    pivotPolicy: string;
+    allowNonUniformScale: boolean;
   }>;
   geometry: Array<{
     id: string;
@@ -267,6 +273,84 @@ export class RevisionValidationError extends Error {
     super(message);
     this.name = "RevisionValidationError";
   }
+}
+
+export interface AssetReplacementCandidateValidation {
+  logicalId: string;
+  currentAssetDefinitionId: string;
+  candidateAssetDefinitionId: string;
+  placementPolicy: "preserve_anchor";
+}
+
+/**
+ * Pure preflight for the future ReplaceAsset operation. It deliberately does
+ * not change the SceneSpec or produce a DCC mutation plan.
+ */
+export function validateAssetReplacementCandidate(
+  sceneValue: Record<string, unknown>,
+  logicalId: string,
+  candidateAssetDefinitionId: string,
+): AssetReplacementCandidateValidation {
+  const sceneValidation = validateSceneSpec(sceneValue);
+  if (!sceneValidation.ok) {
+    throw new RevisionValidationError("SCHEMA_INVALID", "SceneSpec is invalid");
+  }
+  const scene = sceneValidation.value as SceneDocument;
+  const assets = scene.assets.filter((asset) => asset.id === logicalId);
+  if (assets.length === 0) {
+    throw new RevisionValidationError("TARGET_NOT_FOUND", `Asset ${logicalId} was not found`);
+  }
+  if (assets.length > 1) {
+    throw new RevisionValidationError("DUPLICATE_LOGICAL_ID", `Asset ${logicalId} is not unique`);
+  }
+  const target = assets[0] as SceneDocument["assets"][number];
+  if (target.type !== "proxy_asset") {
+    throw new RevisionValidationError(
+      "TARGET_NOT_MANAGED",
+      `Asset ${logicalId} is not a proxy asset`,
+    );
+  }
+  const currentDefinition = scene.assetDefinitions.find(
+    (definition) => definition.id === target.assetDefinitionId,
+  );
+  if (!currentDefinition) {
+    throw new RevisionValidationError(
+      "ASSET_DEFINITION_NOT_FOUND",
+      `Asset ${logicalId} references missing definition ${target.assetDefinitionId}`,
+    );
+  }
+  const candidateDefinition = scene.assetDefinitions.find(
+    (definition) => definition.id === candidateAssetDefinitionId,
+  );
+  if (!candidateDefinition) {
+    throw new RevisionValidationError(
+      "ASSET_DEFINITION_NOT_FOUND",
+      `Candidate definition ${candidateAssetDefinitionId} was not found`,
+    );
+  }
+  if (candidateDefinition.category !== currentDefinition.category) {
+    throw new RevisionValidationError(
+      "ASSET_CATEGORY_INCOMPATIBLE",
+      `Candidate category ${candidateDefinition.category} does not match ${currentDefinition.category}`,
+    );
+  }
+  if (candidateDefinition.pivotPolicy !== currentDefinition.pivotPolicy) {
+    throw new RevisionValidationError(
+      "ASSET_PIVOT_INCOMPATIBLE",
+      `Candidate pivot ${candidateDefinition.pivotPolicy} does not match ${currentDefinition.pivotPolicy}`,
+    );
+  }
+  validatePlacement(
+    scene,
+    { ...target, assetDefinitionId: candidateAssetDefinitionId },
+    target.transform,
+  );
+  return {
+    logicalId,
+    currentAssetDefinitionId: currentDefinition.id,
+    candidateAssetDefinitionId,
+    placementPolicy: "preserve_anchor",
+  };
 }
 
 export function planSceneRevision(
@@ -680,8 +764,15 @@ function validatePlacement(
 ): void {
   const space = scene.spaces.find((entry) => entry.id === target.spaceId);
   if (!space) throw new RevisionValidationError("SPACE_NOT_FOUND", "Target space was not found");
+  const definition = scene.assetDefinitions.find((entry) => entry.id === target.assetDefinitionId);
+  if (!definition) {
+    throw new RevisionValidationError(
+      "ASSET_DEFINITION_NOT_FOUND",
+      `Target ${target.id} references missing definition ${target.assetDefinitionId}`,
+    );
+  }
   if (
-    !target.allowNonUniformScale &&
+    !definition.allowNonUniformScale &&
     (transform.scale[0] !== transform.scale[1] || transform.scale[1] !== transform.scale[2])
   ) {
     throw new RevisionValidationError(
@@ -689,9 +780,9 @@ function validatePlacement(
       `Target ${target.id} does not allow non-uniform scale`,
     );
   }
-  const width = target.dimensions[0] * transform.scale[0];
-  const depth = target.dimensions[1] * transform.scale[1];
-  const height = target.dimensions[2] * transform.scale[2];
+  const width = definition.dimensions[0] * transform.scale[0];
+  const depth = definition.dimensions[1] * transform.scale[1];
+  const height = definition.dimensions[2] * transform.scale[2];
   const angle = (transform.rotationEuler[2] * Math.PI) / 180;
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);

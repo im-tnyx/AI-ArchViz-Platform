@@ -14,6 +14,7 @@
       "logicalId": "asset_living_coffee_table_main",
       "nodeName": "AVZ_asset_living_coffee_table_main",
       "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_coffee_table_proxy_standard_v1",
       "transform": {
         "position": [3250, 2200, 0],
         "rotationEuler": [0, 0, 0],
@@ -27,13 +28,15 @@
         "AIArchViz.LogicalObjectId": "asset_living_coffee_table_main",
         "AIArchViz.ProjectId": "project_golden_living_001",
         "AIArchViz.SceneId": "scene_golden_living_001",
-        "AIArchViz.RevisionId": "rev_golden_0005"
+        "AIArchViz.RevisionId": "rev_golden_0005",
+        "AIArchViz.AssetDefinitionId": "assetdef_coffee_table_proxy_standard_v1"
       }
     },
     {
       "logicalId": "asset_living_sofa_main",
       "nodeName": "AVZ_asset_living_sofa_main",
       "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_sofa_proxy_standard_v1",
       "materialId": "material_sofa_proxy",
       "materialBaseColorRgb": [0.7215686274509804, 0.6196078431372549, 0.5019607843137255],
       "transform": {
@@ -46,13 +49,15 @@
         "AIArchViz.LogicalObjectId": "asset_living_sofa_main",
         "AIArchViz.ProjectId": "project_golden_living_001",
         "AIArchViz.SceneId": "scene_golden_living_001",
-        "AIArchViz.RevisionId": "rev_golden_0005"
+        "AIArchViz.RevisionId": "rev_golden_0005",
+        "AIArchViz.AssetDefinitionId": "assetdef_sofa_proxy_standard_v1"
       }
     },
     {
       "logicalId": "asset_living_tv_unit_main",
       "nodeName": "AVZ_asset_living_tv_unit_main",
       "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_tv_unit_proxy_standard_v1",
       "transform": {
         "position": [3000, 200, 0],
         "rotationEuler": [0, 0, 0],
@@ -64,7 +69,8 @@
         "AIArchViz.LogicalObjectId": "asset_living_tv_unit_main",
         "AIArchViz.ProjectId": "project_golden_living_001",
         "AIArchViz.SceneId": "scene_golden_living_001",
-        "AIArchViz.RevisionId": "rev_golden_0005"
+        "AIArchViz.RevisionId": "rev_golden_0005",
+        "AIArchViz.AssetDefinitionId": "assetdef_tv_unit_proxy_standard_v1"
       }
     },
     {

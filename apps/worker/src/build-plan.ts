@@ -5,6 +5,7 @@ export interface ManagedMetadata {
   "AIArchViz.ProjectId": string;
   "AIArchViz.SceneId": string;
   "AIArchViz.RevisionId": string;
+  "AIArchViz.AssetDefinitionId"?: string;
 }
 
 export interface SemanticTransform {
@@ -27,6 +28,7 @@ export interface BuildPlanNode {
   sill?: number;
   materialId?: string;
   materialBaseColorRgb?: Vector3;
+  assetDefinitionId?: string;
   locks?: Partial<Record<"geometry" | "transform" | "material", true>>;
 }
 
@@ -95,6 +97,7 @@ interface SceneSpecSubset {
   geometry: Array<Record<string, unknown>>;
   openings: Array<Record<string, unknown>>;
   assets: Array<Record<string, unknown>>;
+  assetDefinitions: Array<Record<string, unknown>>;
   materials: Array<{ id: string; baseColorRgb: Vector3 }>;
   materialAssignments: Array<{ id: string; targetId: string; materialId: string }>;
   cameras: Array<Record<string, unknown>>;
@@ -137,13 +140,42 @@ function transform(value: unknown): SemanticTransform {
   };
 }
 
-function metadata(scene: SceneSpecSubset, logicalId: string): ManagedMetadata {
+function metadata(
+  scene: SceneSpecSubset,
+  logicalId: string,
+  assetDefinitionId?: string,
+): ManagedMetadata {
   return {
     "AIArchViz.LogicalObjectId": logicalId,
     "AIArchViz.ProjectId": scene.project.id,
     "AIArchViz.SceneId": scene.scene.id,
     "AIArchViz.RevisionId": scene.scene.revisionId,
+    ...(assetDefinitionId ? { "AIArchViz.AssetDefinitionId": assetDefinitionId } : {}),
   };
+}
+
+interface AssetDefinitionInput {
+  id: string;
+  category: string;
+  dimensions: Vector3;
+  pivotPolicy: string;
+  allowNonUniformScale: boolean;
+}
+
+function resolveAssetDefinitions(scene: SceneSpecSubset): Map<string, AssetDefinitionInput> {
+  const definitions = new Map<string, AssetDefinitionInput>();
+  for (const definition of scene.assetDefinitions) {
+    const id = String(definition.id);
+    if (definitions.has(id)) throw new Error(`Duplicate asset definition id ${id}`);
+    definitions.set(id, {
+      id,
+      category: String(definition.category),
+      dimensions: vector(definition.dimensions),
+      pivotPolicy: String(definition.pivotPolicy),
+      allowNonUniformScale: Boolean(definition.allowNonUniformScale),
+    });
+  }
+  return definitions;
 }
 
 function distance(start: Vector3, end: Vector3): number {
@@ -311,6 +343,7 @@ function resolveMaterialAssignments(scene: SceneSpecSubset): {
 export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBuildPlan {
   const scene = value as unknown as SceneSpecSubset;
   const materialResolution = resolveMaterialAssignments(scene);
+  const assetDefinitions = resolveAssetDefinitions(scene);
   const walls = scene.geometry.filter((entry) => entry.type === "wall") as unknown as WallInput[];
   const surfaces = scene.geometry.filter(
     (entry) => entry.type === "floor" || entry.type === "ceiling",
@@ -395,6 +428,11 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
   for (const asset of scene.assets) {
     if (asset.type !== "proxy_asset") throw new Error("Unsupported asset entity in Spike 1B");
     const logicalId = String(asset.id);
+    const assetDefinitionId = String(asset.assetDefinitionId);
+    const definition = assetDefinitions.get(assetDefinitionId);
+    if (!definition) {
+      throw new Error(`Asset ${logicalId} references missing definition ${assetDefinitionId}`);
+    }
     const locks = activeLocks(asset);
     nodes.push(
       appendMaterial({
@@ -402,9 +440,10 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
         nodeName: `AVZ_${logicalId}`,
         type: "proxy_asset",
         transform: transform(asset.transform),
-        dimensions: vector(asset.dimensions),
+        dimensions: structuredClone(definition.dimensions),
+        assetDefinitionId,
         ...(asset.hostGeometryId ? { hostGeometryId: String(asset.hostGeometryId) } : {}),
-        embeddedMetadata: metadata(scene, logicalId),
+        embeddedMetadata: metadata(scene, logicalId, assetDefinitionId),
         ...(locks ? { locks } : {}),
       }),
     );

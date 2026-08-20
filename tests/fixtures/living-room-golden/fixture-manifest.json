@@ -1,7 +1,7 @@
 {
   "fixtureId": "living_room_golden",
   "fixtureVersion": "0.1.0",
-  "sceneSpecSchemaVersion": "0.1.0",
+  "sceneSpecSchemaVersion": "0.2.0",
   "validationProfile": "deterministic_spike_1",
   "expectedManifestVersion": "0.1.0",
   "comparisonMode": "normalized_semantic",

@@ -93,7 +93,11 @@
         "AIArchViz.LogicalObjectId": { "$ref": "#/$defs/id" },
         "AIArchViz.ProjectId": { "$ref": "#/$defs/id" },
         "AIArchViz.SceneId": { "$ref": "#/$defs/id" },
-        "AIArchViz.RevisionId": { "$ref": "#/$defs/id" }
+        "AIArchViz.RevisionId": { "$ref": "#/$defs/id" },
+        "AIArchViz.AssetDefinitionId": {
+          "description": "Immutable asset-definition identity persisted only on proxy_asset nodes.",
+          "$ref": "#/$defs/id"
+        }
       }
     },
     "node": {
@@ -119,6 +123,10 @@
           "description": "Optional normalized native-material base color recovered during fresh reopen. Present only with materialId.",
           "$ref": "#/$defs/colorRgb"
         },
+        "assetDefinitionId": {
+          "description": "Immutable asset-definition identity recovered from persisted DCC metadata. Present only for proxy_asset nodes.",
+          "$ref": "#/$defs/id"
+        },
         "locks": {
           "description": "Active canonical lock categories recovered from persisted DCC metadata. Omission means no active locks; when present, every value is true.",
           "type": "object",
@@ -131,7 +139,22 @@
           }
         },
         "embeddedMetadata": { "$ref": "#/$defs/metadata" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "proxy_asset" } } },
+          "then": {
+            "properties": { "assetDefinitionId": { "$ref": "#/$defs/id" } },
+            "required": ["assetDefinitionId"]
+          },
+          "else": {
+            "not": {
+              "properties": { "assetDefinitionId": { "$ref": "#/$defs/id" } },
+              "required": ["assetDefinitionId"]
+            }
+          }
+        }
+      ]
     },
     "camera": {
       "type": "object",

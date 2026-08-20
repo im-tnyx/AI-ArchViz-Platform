@@ -8,6 +8,7 @@ export type ManifestDifferenceCode =
   | "HOST_MISMATCH"
   | "CAMERA_MISMATCH"
   | "MATERIAL_ID_MISMATCH"
+  | "ASSET_DEFINITION_ID_MISMATCH"
   | "MATERIAL_COLOR_MISMATCH"
   | "LOCK_MISMATCH"
   | "UNIT_MISMATCH"
@@ -239,6 +240,15 @@ function compareNode(
     expected.materialId,
     actual.materialId,
   );
+  if ("assetDefinitionId" in expected || "assetDefinitionId" in actual) {
+    compareExact(
+      differences,
+      "ASSET_DEFINITION_ID_MISMATCH",
+      `${path}/assetDefinitionId`,
+      expected.assetDefinitionId,
+      actual.assetDefinitionId,
+    );
+  }
   if ("materialBaseColorRgb" in expected || "materialBaseColorRgb" in actual) {
     compareVector(
       differences,

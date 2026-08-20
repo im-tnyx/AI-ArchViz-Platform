@@ -305,11 +305,17 @@ Guidelines:
 - `MINOR`: backward-compatible feature addition
 - `MAJOR`: breaking structural change
 
-Every document must include:
+**Spike 6A version decision:** canonical Golden fixtures use `0.2.0` because
+`assetDefinitions` is a required root collection and intrinsic proxy properties
+move from instances to immutable definitions. `0.1.0` remains readable for
+historical compatibility; all active deterministic fixtures use `0.2.0`.
+
+Every canonical document must declare its applicable schema version. The active
+deterministic fixture set uses:
 
 ```json
 {
-  "sceneSpecVersion": "0.1.0"
+  "sceneSpecVersion": "0.2.0"
 }
 ```
 
@@ -817,29 +823,47 @@ Example:
 }
 ```
 
-### 13.1 Asset metadata reference
+### 13.1 Canonical proxy asset identity (SceneSpec 0.2)
 
-The heavy asset library should remain separate from project scene files.
-
-A library entry may define:
+`assetDefinitions` owns immutable intrinsic proxy data. An `asset` is a stable
+logical scene object that references its definition with `assetDefinitionId`.
+The two IDs must never be conflated, and a definition that changes category,
+dimensions, pivot, or source semantics receives a new identity/version.
 
 ```json
 {
-  "libraryAssetId": "SOFA_000124",
-  "category": "sofa",
-  "file": "asset://furniture/sofas/SOFA_000124.max",
-  "preview": "asset://furniture/sofas/SOFA_000124.jpg",
-  "dimensions": {
-    "width": 3200,
-    "depth": 1050,
-    "height": 780
-  },
-  "styles": ["modern", "luxury", "organic"],
-  "materials": ["fabric", "boucle"],
-  "pivotPolicy": "back_center_floor",
-  "contentHash": "sha256:..."
+  "assetDefinitions": [
+    {
+      "id": "assetdef_sofa_proxy_standard_v1",
+      "version": "1",
+      "category": "sofa",
+      "sourceType": "procedural_proxy",
+      "dimensions": [2400, 950, 780],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_living_sofa_main",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_sofa_proxy_standard_v1",
+      "spaceId": "space_living_main"
+    }
+  ]
 }
 ```
+
+Definitions are pure procedural data in this spike: no file paths, URLs,
+renderer dependencies, scripts, or executable content are permitted. Category,
+dimensions, pivotPolicy, and allowNonUniformScale are definition-owned fields;
+instances own only placement/context and locks.
+
+Future `ReplaceAsset` semantics are frozen but not implemented: it preserves
+the logical object ID and canonical transform under `preserve_anchor`, requires
+exact category and pivotPolicy equality, revalidates scale and spatial fit, and
+keeps material assignment separate. No `ReplaceAsset` SceneChangeSet operation
+or material-default policy is part of the machine contract yet.
 
 ---
 

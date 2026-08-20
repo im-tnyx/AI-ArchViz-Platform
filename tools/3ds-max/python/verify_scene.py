@@ -178,6 +178,14 @@ def _validate_proxy(node: Any, entry: dict[str, Any], errors: list[str]) -> None
     if str(rt.classOf(node)).lower() != "box":
         errors.append(f"{entry['logicalId']}: proxy is not a Box")
         return
+    expected_definition_id = entry.get("assetDefinitionId")
+    actual_definition_id = _user_prop(node, "AIArchViz.AssetDefinitionId")
+    if not expected_definition_id or actual_definition_id != str(expected_definition_id):
+        errors.append(
+            f"{entry['logicalId']}: ASSET_DEFINITION_ID_MISMATCH expected {expected_definition_id}, actual {actual_definition_id}"
+        )
+    else:
+        entry["assetDefinitionId"] = actual_definition_id
     _check_vector(
         errors,
         f"{entry['logicalId']}.dimensions",

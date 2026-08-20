@@ -1,5 +1,5 @@
 {
-  "sceneSpecVersion": "0.1.0",
+  "sceneSpecVersion": "0.2.0",
   "project": {
     "id": "project_golden_living_001",
     "name": "Living Room Golden Project 001"
@@ -210,15 +210,49 @@
       "locks": { "geometry": false, "transform": false, "material": false }
     }
   ],
-  "assets": [
+  "assetDefinitions": [
+    {
+      "id": "assetdef_sofa_proxy_standard_v1",
+      "version": "1",
+      "category": "sofa",
+      "sourceType": "procedural_proxy",
+      "dimensions": [2400, 950, 780],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    },
+    {
+      "id": "assetdef_coffee_table_proxy_standard_v1",
+      "version": "1",
+      "category": "coffee_table",
+      "sourceType": "procedural_proxy",
+      "dimensions": [1200, 650, 380],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    },
+    {
+      "id": "assetdef_tv_unit_proxy_standard_v1",
+      "version": "1",
+      "category": "tv_unit",
+      "sourceType": "procedural_proxy",
+      "dimensions": [2400, 400, 500],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    },
+    {
+      "id": "assetdef_sofa_proxy_alternate_v1",
+      "version": "1",
+      "category": "sofa",
+      "sourceType": "procedural_proxy",
+      "dimensions": [2200, 900, 760],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    }
+  ],  "assets": [
     {
       "id": "asset_living_sofa_main",
       "type": "proxy_asset",
-      "category": "sofa",
+      "assetDefinitionId": "assetdef_sofa_proxy_standard_v1",
       "spaceId": "space_living_main",
-      "dimensions": [2400, 950, 780],
-      "pivotPolicy": "floor_center",
-      "allowNonUniformScale": false,
       "transform": {
         "position": [3000, 3350, 0],
         "rotationEuler": [0, 0, 180],
@@ -229,11 +263,8 @@
     {
       "id": "asset_living_coffee_table_main",
       "type": "proxy_asset",
-      "category": "coffee_table",
+      "assetDefinitionId": "assetdef_coffee_table_proxy_standard_v1",
       "spaceId": "space_living_main",
-      "dimensions": [1200, 650, 380],
-      "pivotPolicy": "floor_center",
-      "allowNonUniformScale": false,
       "transform": {
         "position": [3000, 2200, 0],
         "rotationEuler": [0, 0, 0],
@@ -244,12 +275,9 @@
     {
       "id": "asset_living_tv_unit_main",
       "type": "proxy_asset",
-      "category": "tv_unit",
+      "assetDefinitionId": "assetdef_tv_unit_proxy_standard_v1",
       "spaceId": "space_living_main",
       "hostGeometryId": "wall_south",
-      "dimensions": [2400, 400, 500],
-      "pivotPolicy": "floor_center",
-      "allowNonUniformScale": false,
       "transform": {
         "position": [3000, 200, 0],
         "rotationEuler": [0, 0, 0],
