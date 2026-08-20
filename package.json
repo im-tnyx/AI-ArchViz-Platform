@@ -14,6 +14,7 @@
     "lint": "biome check .",
     "test": "pnpm run build && vitest run",
     "test:asset-trust": "pnpm run build && vitest run tests/unit/asset-trust.test.ts",
+    "test:3dsmax:asset-inspection": "pnpm run build && node apps/worker/dist/asset-inspection-integration.js",
     "worker": "pnpm run build && node apps/worker/dist/cli.js",
     "test:3dsmax:health": "pnpm run build && node apps/worker/dist/cli.js probe-3ds-max",
     "test:3dsmax:golden": "pnpm run build && node apps/worker/dist/cli.js build-scene tests/fixtures/living-room-golden/job-envelope.json",

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/asset-inspection-job-v0.1.schema.json",
+  "title": "AI ArchViz isolated external asset inspection job v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["inspectionJobVersion", "artifactId", "artifactSha256", "format"],
+  "properties": {
+    "inspectionJobVersion": { "const": "0.1.0" },
+    "artifactId": { "$ref": "#/$defs/id" },
+    "artifactSha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "format": { "const": "3ds_max" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    }
+  }
+}

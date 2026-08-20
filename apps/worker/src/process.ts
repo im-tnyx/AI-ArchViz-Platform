@@ -12,6 +12,8 @@ export interface ControlledProcessOptions {
 }
 
 export interface ControlledProcessResult {
+  /** OS PID of the worker-owned process, captured at launch when available. */
+  processId: number | null;
   startedAt: string;
   completedAt: string;
   durationMs: number;
@@ -53,6 +55,7 @@ export function runControlledProcess(
     } catch (error) {
       const completedAt = new Date();
       resolveResult({
+        processId: null,
         startedAt: startedAtDate.toISOString(),
         completedAt: completedAt.toISOString(),
         durationMs: completedAt.getTime() - startedAtDate.getTime(),
@@ -96,6 +99,7 @@ export function runControlledProcess(
       stderr = append(stderr, stderrDecoder.end());
       const completedAt = new Date();
       resolveResult({
+        processId: child.pid ?? null,
         startedAt: startedAtDate.toISOString(),
         completedAt: completedAt.toISOString(),
         durationMs: completedAt.getTime() - startedAtDate.getTime(),
@@ -117,6 +121,7 @@ export function runControlledProcess(
           settled = true;
           if (timeout) clearTimeout(timeout);
           resolveResult({
+            processId: child.pid ?? null,
             startedAt: startedAtDate.toISOString(),
             completedAt: completedAt.toISOString(),
             durationMs: completedAt.getTime() - startedAtDate.getTime(),

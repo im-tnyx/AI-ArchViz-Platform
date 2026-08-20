@@ -43,6 +43,15 @@ export interface ResolvedVerifiedAssetArtifact extends EligibleAssetArtifact {
   internalPath: string;
 }
 
+/**
+ * Quarantined bytes which may be opened only by the isolated inspection
+ * process. This is intentionally not production eligibility.
+ */
+export interface ResolvedInspectionAssetArtifact extends EligibleAssetArtifact {
+  /** Internal worker-only filesystem location. Never serialize into a job or manifest. */
+  internalPath: string;
+}
+
 interface NormalizedArtifact extends EligibleAssetArtifact {
   trustState: AssetTrustState;
 }
@@ -234,29 +243,65 @@ function canonicalTrustedRoot(trustedAssetRoot: string): string {
   }
 }
 
-/**
- * Resolves a registry locator only after eligibility has passed. The returned
- * path is an internal worker value; it must not be copied to SceneSpec,
- * manifests, jobs, logs, or DCC-facing plans.
- */
-export async function resolveVerifiedAssetArtifact({
+function isPassingInspectionEvidenceSafeForPromotion(evidence: AssetInspectionEvidence): boolean {
+  if (
+    evidence.result !== "pass" ||
+    !Array.isArray(evidence.findings) ||
+    evidence.findings.length !== 0
+  ) {
+    return false;
+  }
+  if (!isRecord(evidence.observations)) return false;
+  const observations = evidence.observations;
+  if (!isRecord(observations.dependencies) || !isRecord(observations.security)) return false;
+  const dependencies = observations.dependencies;
+  const security = observations.security;
+  return (
+    dependencies.missingExternalFiles === 0 &&
+    dependencies.missingDLLs === 0 &&
+    dependencies.xrefs === 0 &&
+    dependencies.externalReferenceCount === 0 &&
+    security.safeSceneScriptExecutionEnabled === true &&
+    security.settingsLocked === true &&
+    security.lockCause === "cmdline" &&
+    security.scriptAssetsProtected === true
+  );
+}
+
+function eligibleArtifact(record: NormalizedRegistryRecord): EligibleAssetArtifact {
+  return {
+    artifactId: record.artifact.artifactId,
+    format: record.artifact.format,
+    sha256: record.artifact.sha256,
+    byteLength: record.artifact.byteLength,
+  };
+}
+
+async function resolveExactTrustedArtifact({
   artifactId,
   trustedAssetRoot,
   registry,
+  requiredTrustState,
 }: {
   artifactId: string;
   trustedAssetRoot: string;
   registry: AssetArtifactRegistry;
+  requiredTrustState: AssetTrustState;
 }): Promise<ResolvedVerifiedAssetArtifact> {
   const records = normalizedRegistry(registry);
   const record = records.get(artifactId);
   if (!record) {
     return fail("ASSET_ARTIFACT_NOT_FOUND", "External asset artifact is not registered");
   }
-  const eligibility = validateAssetArtifactEligibility(
-    { id: "asset_definition_reference", sourceType: "external_max", artifactId },
-    registry,
-  );
+  if (record.artifact.trustState !== requiredTrustState) {
+    return fail(
+      "ASSET_ARTIFACT_NOT_VERIFIED",
+      requiredTrustState === "VERIFIED"
+        ? "External asset artifact is not verified"
+        : "External asset artifact is not quarantined for inspection",
+    );
+  }
+  const eligibility = eligibleArtifact(record);
   const trustedRoot = canonicalTrustedRoot(trustedAssetRoot);
   const candidate = resolve(trustedRoot, ...record.storageKey.split("/"));
   if (!isWithinRoot(trustedRoot, candidate)) {
@@ -294,4 +339,91 @@ export async function resolveVerifiedAssetArtifact({
     return fail("ASSET_ARTIFACT_HASH_MISMATCH", "Asset artifact SHA-256 does not match registry");
   }
   return { ...eligibility, internalPath: canonicalCandidate };
+}
+
+/**
+ * Resolves only exact, worker-registered QUARANTINED bytes for a dedicated
+ * inspection process. It does not make an artifact production-consumable.
+ */
+export async function resolveArtifactForInspection({
+  artifactId,
+  trustedAssetRoot,
+  registry,
+}: {
+  artifactId: string;
+  trustedAssetRoot: string;
+  registry: AssetArtifactRegistry;
+}): Promise<ResolvedInspectionAssetArtifact> {
+  return resolveExactTrustedArtifact({
+    artifactId,
+    trustedAssetRoot,
+    registry,
+    requiredTrustState: "QUARANTINED",
+  });
+}
+
+/**
+ * Pure internal transition. Only a quarantined artifact and matching passing
+ * evidence can become VERIFIED; callers must persist the returned artifact
+ * and evidence together in their worker-owned registry.
+ */
+export function promoteArtifactAfterInspection({
+  artifact,
+  evidence,
+}: {
+  artifact: AssetArtifact;
+  evidence: AssetInspectionEvidence;
+}): AssetArtifact {
+  const artifactValidation = validateAssetArtifact(artifact);
+  if (!artifactValidation.ok) {
+    return fail("ASSET_ARTIFACT_REGISTRY_INVALID", "Artifact is invalid for inspection promotion");
+  }
+  const normalizedArtifact = asNormalizedArtifact(artifactValidation.value);
+  if (normalizedArtifact.trustState !== "QUARANTINED") {
+    return fail("ASSET_ARTIFACT_NOT_VERIFIED", "Only quarantined artifacts may be promoted");
+  }
+  const evidenceValidation = validateAssetInspection(evidence);
+  if (!evidenceValidation.ok) {
+    return fail("ASSET_ARTIFACT_INSPECTION_INVALID", "Inspection evidence is invalid");
+  }
+  const normalizedEvidence = evidenceValidation.value as AssetInspectionEvidence & {
+    artifactId: string;
+    artifactSha256: string;
+    result: "pass" | "fail";
+  };
+  if (
+    normalizedEvidence.artifactId !== normalizedArtifact.artifactId ||
+    normalizedEvidence.artifactSha256 !== normalizedArtifact.sha256 ||
+    !isPassingInspectionEvidenceSafeForPromotion(normalizedEvidence)
+  ) {
+    return fail("ASSET_ARTIFACT_INSPECTION_INVALID", "Inspection evidence cannot promote artifact");
+  }
+  return { ...artifactValidation.value, trustState: "VERIFIED" };
+}
+
+/**
+ * Resolves a registry locator only after eligibility has passed. The returned
+ * path is an internal worker value; it must not be copied to SceneSpec,
+ * manifests, jobs, logs, or DCC-facing plans.
+ */
+export async function resolveVerifiedAssetArtifact({
+  artifactId,
+  trustedAssetRoot,
+  registry,
+}: {
+  artifactId: string;
+  trustedAssetRoot: string;
+  registry: AssetArtifactRegistry;
+}): Promise<ResolvedVerifiedAssetArtifact> {
+  const eligibility = validateAssetArtifactEligibility(
+    { id: "asset_definition_reference", sourceType: "external_max", artifactId },
+    registry,
+  );
+  const resolved = await resolveExactTrustedArtifact({
+    artifactId,
+    trustedAssetRoot,
+    registry,
+    requiredTrustState: "VERIFIED",
+  });
+  return { ...eligibility, internalPath: resolved.internalPath };
 }

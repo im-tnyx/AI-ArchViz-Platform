@@ -47,6 +47,7 @@ export type SceneManifest = Record<string, unknown>;
 export type ExecutionReport = Record<string, unknown>;
 export type AssetArtifact = Record<string, unknown>;
 export type AssetInspectionEvidence = Record<string, unknown>;
+export type AssetInspectionJob = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -62,6 +63,7 @@ export const sceneManifestSchema = readSchema("scene-manifest-v0.1.schema.json")
 export const executionReportSchema = readSchema("execution-report-v0.1.schema.json");
 export const assetArtifactSchema = readSchema("asset-artifact-v0.1.schema.json");
 export const assetInspectionSchema = readSchema("asset-inspection-v0.1.schema.json");
+export const assetInspectionJobSchema = readSchema("asset-inspection-job-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -82,6 +84,9 @@ const assetArtifactValidator = ajv.compile(assetArtifactSchema) as ValidateFunct
 const assetInspectionValidator = ajv.compile(
   assetInspectionSchema,
 ) as ValidateFunction<AssetInspectionEvidence>;
+const assetInspectionJobValidator = ajv.compile(
+  assetInspectionJobSchema,
+) as ValidateFunction<AssetInspectionJob>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -123,6 +128,10 @@ export function validateAssetArtifact(value: unknown): ValidationResult<AssetArt
 
 export function validateAssetInspection(value: unknown): ValidationResult<AssetInspectionEvidence> {
   return runValidation(assetInspectionValidator, value);
+}
+
+export function validateAssetInspectionJob(value: unknown): ValidationResult<AssetInspectionJob> {
+  return runValidation(assetInspectionJobValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

@@ -1,4 +1,4 @@
-# External Asset Ingestion Trust Boundary (Spike 7A)
+# External Asset Ingestion Trust Boundary (Spikes 7A–7B)
 
 Spike 7A defines eligibility and byte verification for a future external
 `3ds_max` asset loader. It does not open, import, merge, execute, render, or
@@ -34,18 +34,49 @@ and reparse/symlink escapes. It exposes an internal path only to worker code
 after all checks pass; that path must not enter SceneSpec, a semantic manifest,
 logs, jobs, or DCC plans.
 
-## Future inspection boundary
+## Isolated inspection boundary (Spike 7B)
 
-Inspection must run in an isolated workspace and separate process. It may only
-inspect bytes already quarantined by the asset pipeline; it must never replace
-the production scene process. Unknown plugins and external dependencies are
-reject-by-default. No unsafe bypass is defined. Renderer-specific handling is
-out of scope and the contract remains renderer-neutral.
+`resolveArtifactForInspection` is deliberately narrower than production
+resolution: it permits only a `QUARANTINED` registry record after the same
+canonical-root, normalized storage-key, regular-file, extension, byte-length,
+and exact SHA-256 checks. `resolveVerifiedAssetArtifact` remains
+`VERIFIED`-only.
+
+The inspection job contract carries only its version, artifact ID, exact
+artifact SHA-256, and `3ds_max` format. It accepts no path, storage key,
+script, command, plug-in path, or caller-selected output location. The worker
+uses a fresh `3dsmaxbatch.exe` process, its own temporary workspace, and only
+the checked-in `tools/3ds-max/python/inspect_asset.py` runner. The inspected
+file becomes that process's complete temporary scene; the runner never merges,
+imports, saves, renames, repairs, or otherwise mutates it.
+
+The Python runner also fails closed when its own DCC process is elevated. The
+inspection path is intentionally a non-administrator operation.
+
+The batch invocation requests Dialog Monitor and Safe Scene Script Execution.
+The inspector reads `SceneScriptSecurityManager`; an observation is accepted
+only when Safe Scene execution, command-line lock, and script-asset protection
+are all actually observed. It never changes security preferences. If the API
+cannot establish that posture, the inspection fails.
+
+Evidence remains bound to the exact artifact bytes and records only normalized
+facts: DCC identity, units, millimeter bounds, pivot compatibility, node and
+material counts/classes, and dependency counts. It never persists raw author
+machine paths. Any missing external file, missing plug-in/DLL, XRef, unexpected
+scene content, unsupported scene class, or security uncertainty fails the
+inspection. Pure worker-owned promotion permits only:
+
+```text
+QUARANTINED + matching passing evidence → VERIFIED
+```
+
+The controlled integration fixture is generated dynamically by trusted 3ds Max
+code and removed after the test; no `.max` binary is tracked.
 
 ## Current build boundary
 
 The existing Golden scene remains procedural-proxy-only. `ReplaceAsset` accepts
 only procedural proxy definitions, so no external artifact can enter the DCC
-through current revisions. A future loading spike needs an explicit scope,
-inspection implementation, fresh-process DCC verification, and a new Golden
-revision.
+through current revisions. Spike 7B does not prove production merge, production
+external `ReplaceAsset`, material normalization, texture packaging, or
+Corona/V-Ray compatibility. Those remain a separately authorized future scope.

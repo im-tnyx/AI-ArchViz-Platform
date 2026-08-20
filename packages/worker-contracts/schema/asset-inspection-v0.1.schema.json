@@ -37,9 +37,91 @@
       }
     },
     "result": { "enum": ["pass", "fail"] },
+    "failureCode": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
     "findings": {
       "type": "array",
       "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene", "geometry", "units", "materials", "dependencies", "security"],
+      "properties": {
+        "scene": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["nodeCount", "geometryNodeCount", "cameraCount", "lightCount"],
+          "properties": {
+            "nodeCount": { "type": "integer", "minimum": 0 },
+            "geometryNodeCount": { "type": "integer", "minimum": 0 },
+            "cameraCount": { "type": "integer", "minimum": 0 },
+            "lightCount": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "geometry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["worldBoundingBoxMm", "dimensionsMm", "pivotPositionMm", "floorCenterAnchorCompatible"],
+          "properties": {
+            "worldBoundingBoxMm": { "$ref": "#/$defs/vector6" },
+            "dimensionsMm": { "$ref": "#/$defs/vector3NonNegative" },
+            "pivotPositionMm": { "$ref": "#/$defs/vector3" },
+            "floorCenterAnchorCompatible": { "type": "boolean" }
+          }
+        },
+        "units": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["systemType", "systemScale", "displayType", "normalization", "useFileUnits"],
+          "properties": {
+            "systemType": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "systemScale": { "type": "number", "exclusiveMinimum": 0 },
+            "displayType": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "normalization": { "const": "millimeters" },
+            "useFileUnits": { "const": true }
+          }
+        },
+        "materials": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["materialCount", "classNames"],
+          "properties": {
+            "materialCount": { "type": "integer", "minimum": 0 },
+            "classNames": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+            }
+          }
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["missingExternalFiles", "missingDLLs", "xrefs", "externalReferenceCount"],
+          "properties": {
+            "missingExternalFiles": { "type": "integer", "minimum": 0 },
+            "missingDLLs": { "type": "integer", "minimum": 0 },
+            "xrefs": { "type": "integer", "minimum": 0 },
+            "externalReferenceCount": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["safeSceneScriptExecutionEnabled", "settingsLocked", "lockCause", "scriptAssetsProtected"],
+          "properties": {
+            "safeSceneScriptExecutionEnabled": { "type": "boolean" },
+            "settingsLocked": { "type": "boolean" },
+            "lockCause": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "scriptAssetsProtected": { "type": "boolean" }
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -48,6 +130,24 @@
       "pattern": "^[a-z][a-z0-9_]*$",
       "minLength": 3,
       "maxLength": 128
+    },
+    "vector3": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "vector3NonNegative": {
+      "type": "array",
+      "items": { "type": "number", "minimum": 0 },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "vector6": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 6,
+      "maxItems": 6
     }
   }
 }
