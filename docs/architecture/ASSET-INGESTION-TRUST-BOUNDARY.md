@@ -1,4 +1,4 @@
-# External Asset Ingestion Trust Boundary (Spikes 7A–7B)
+# External Asset Ingestion Trust Boundary (Spikes 7A–7C)
 
 Spike 7A defines eligibility and byte verification for a future external
 `3ds_max` asset loader. It does not open, import, merge, execute, render, or
@@ -73,10 +73,53 @@ QUARANTINED + matching passing evidence → VERIFIED
 The controlled integration fixture is generated dynamically by trusted 3ds Max
 code and removed after the test; no `.max` binary is tracked.
 
+## Controlled verified ingestion boundary (Spike 7C)
+
+Spike 7C is the first narrowly controlled production-scene use of an external
+artifact. A `ReplaceAsset` ChangeSet continues to carry only
+`newAssetDefinitionId` and `placementPolicy`; it cannot supply an artifact
+path, storage key, hash, trust override, merge option, or script. A
+worker-owned trusted definition catalog resolves that immutable definition to
+its worker-owned artifact registry record.
+
+The pure preflight validates the base SceneSpec and ChangeSet, catalog lookup,
+category/pivot/scale/space compatibility, geometry lock, verified artifact
+state, matching passing inspection evidence, and source byte identity. Only
+then does the worker copy exact verified bytes to its isolated candidate
+workspace at a worker-selected `inputs/replacement.max`, re-hash the copy, and
+allow the mutation process to see that staged path. The original trusted
+library path is never sent to the DCC and never appears in SceneSpec,
+ChangeSet, semantic manifest, or execution evidence.
+
+The 3ds Max Batch mutation uses `mergeMAXFile` through direct `pymxs` bindings,
+with non-interactive duplicate and reparent policies, `pymxs.byref` result
+lists, and abort-on-missing external/DLL/XRef handling. Safe Scene Script
+Execution must be observed enabled, command-line locked, and script-asset
+protected before both merge and fresh candidate reopen. The merge accepts only
+the inspected first-ingestion shape: exactly one geometry node and no
+dependency/XRef admission.
+
+Incoming node names and `AIArchViz.*` data have no authority. After physical
+dimension verification, the worker canonicalizes the replacement to the prior
+logical ID, anchor, material, lock metadata, scene identity and external
+definition ID, then removes the old procedural object. The revision is
+promoted only after a distinct fresh Batch verifier rebuilds and matches the
+full semantic manifest. The base checkpoint and verified source are hashed
+before and after execution, while replay of the same idempotency key and
+request hash launches no additional DCC process.
+
+The target SceneSpec appends exactly one catalog-controlled immutable external
+definition; existing definition records are byte-for-byte unchanged. This
+runtime-bound controlled fixture does not create a portable committed
+`rev_golden_0009` binary or store any machine-specific `.max` hash in the
+Golden fixtures.
+
 ## Current build boundary
 
-The existing Golden scene remains procedural-proxy-only. `ReplaceAsset` accepts
-only procedural proxy definitions, so no external artifact can enter the DCC
-through current revisions. Spike 7B does not prove production merge, production
-external `ReplaceAsset`, material normalization, texture packaging, or
-Corona/V-Ray compatibility. Those remain a separately authorized future scope.
+The clean Golden scene builder remains procedural-proxy-only. It must reject an
+`external_max` definition when no verified artifact/catalog execution context
+exists; it never synthesizes an external asset as a Box. The controlled 7C
+runner is a separate worker path and does not rewrite rev1–rev8 fixtures.
+Material normalization, texture packaging, multi-node commercial asset
+normalization, Corona/V-Ray compatibility, and all renderer work remain out of
+scope.

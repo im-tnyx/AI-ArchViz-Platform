@@ -45,6 +45,26 @@ def _user_prop(node: Any, key: str) -> str | None:
     return str(value)
 
 
+def _require_safe_scene_when_requested() -> None:
+    """Fail closed for flows that require an observed Safe Scene lock.
+
+    Normal deterministic fixture verification remains unchanged; controlled
+    external ingestion sets the environment flag and therefore requires the
+    same command-line lock posture proven by its isolated inspector.
+    """
+    if os.environ.get("AI_ARCHVIZ_REQUIRE_SAFE_SCENE") != "1":
+        return
+    if os.environ.get("AI_ARCHVIZ_TEST_FORCE_EXTERNAL_SAFE_SCENE_FAILURE") == "1":
+        raise RuntimeError("SAFE_SCENE_REQUIRED: trusted test forced failure")
+    manager = rt.SceneScriptSecurityManager
+    enabled = bool(manager.IsSafeSceneScriptExecutionEnabled(rt.Name("Current")))
+    locked = bool(manager.AreSettingsLocked())
+    cause = str(manager.GetCauseOfLock()).replace("#", "").lower()
+    protected = bool(manager.IsSafeScriptAssetExecutionEnabled())
+    if not (enabled and locked and cause == "cmdline" and protected):
+        raise RuntimeError("SAFE_SCENE_REQUIRED: command-line lock posture was not observed")
+
+
 def _close(left: float, right: float, tolerance: float = TOLERANCE) -> bool:
     return abs(float(left) - float(right)) <= tolerance
 
@@ -327,6 +347,7 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
     result_path = _required_path("AI_ARCHVIZ_VERIFY_RESULT_PATH")
     if not candidate_path.exists() or candidate_path.stat().st_size <= 0:
         raise RuntimeError("Candidate scene is missing or empty")
+    _require_safe_scene_when_requested()
     # Adopt the unit scale stored in the candidate for this process only. Autodesk
     # documents that useFileUnits=True does not persist the setting to 3dsmax.ini.
     if not rt.loadMaxFile(str(candidate_path), useFileUnits=True, quiet=True):
