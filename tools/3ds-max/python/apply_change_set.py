@@ -52,6 +52,33 @@ def _point(value: list[float]) -> Any:
     return rt.Point3(float(value[0]), float(value[1]), float(value[2]))
 
 
+def _proxy_anchor_signature(node: Any) -> tuple[float, ...]:
+    rotation = rt.quatToEuler(node.rotation)
+    return (
+        float(node.pos.x),
+        float(node.pos.y),
+        float(node.pos.z),
+        float(rotation.x),
+        float(rotation.y),
+        float(rotation.z),
+        float(node.scale.x),
+        float(node.scale.y),
+        float(node.scale.z),
+    )
+
+
+def _proxy_material_signature(node: Any) -> tuple[str | None, str | None]:
+    material = node.material
+    return (
+        _user_prop(node, "AIArchViz.MaterialId"),
+        str(material.name) if material is not None else None,
+    )
+
+
+def _proxy_lock_signature(node: Any) -> tuple[str | None, ...]:
+    return tuple(_user_prop(node, key) for key in LOCK_USER_PROPERTIES.values())
+
+
 def _create_wall_segment(
     segment: dict[str, Any], host: Any, material: Any, material_id: str
 ) -> Any:
@@ -178,10 +205,11 @@ def apply_revision() -> dict[str, Any]:
         "AssignMaterial",
         "LockProperty",
         "UnlockProperty",
+        "ReplaceAsset",
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
-            "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, and UnlockProperty only",
+            "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, and ReplaceAsset only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
@@ -228,6 +256,7 @@ def apply_revision() -> dict[str, Any]:
     assigned_wall_segment_count = 0
     locked_property_path: str | None = None
     unlocked_property_path: str | None = None
+    replaced_asset_definition_id: str | None = None
     if operation["type"] == "MoveObject":
         transform = operation["transform"]
         target.pos = _point(transform["position"])
@@ -364,6 +393,56 @@ def apply_revision() -> dict[str, Any]:
                     "AssignMaterial changed an unrelated wall material",
                 )
             assigned_wall_segment_count = len(segments)
+    elif operation["type"] == "ReplaceAsset":
+        old_asset_definition_id = operation.get("oldAssetDefinitionId")
+        new_asset_definition = operation.get("newAssetDefinition")
+        if not isinstance(old_asset_definition_id, str) or not isinstance(
+            new_asset_definition, dict
+        ):
+            raise MutationError("REVISION_PLAN_INVALID", "ReplaceAsset plan is incomplete")
+        if operation.get("placementPolicy") != "preserve_anchor":
+            raise MutationError(
+                "REVISION_PLAN_INVALID", "ReplaceAsset placement policy is invalid"
+            )
+        new_asset_definition_id = new_asset_definition.get("id")
+        dimensions = new_asset_definition.get("dimensions")
+        if (
+            not isinstance(new_asset_definition_id, str)
+            or not isinstance(dimensions, list)
+            or len(dimensions) != 3
+            or not all(isinstance(dimension, (int, float)) and dimension > 0 for dimension in dimensions)
+        ):
+            raise MutationError("REVISION_PLAN_INVALID", "ReplaceAsset definition is invalid")
+        if _user_prop(target, "AIArchViz.AssetDefinitionId") != old_asset_definition_id:
+            raise MutationError(
+                "ASSET_DEFINITION_STATE_MISMATCH",
+                f"Target {target_id} definition does not match verified base state",
+            )
+        if str(rt.classOf(target)).lower() != "box":
+            raise MutationError("TARGET_TYPE_MISMATCH", f"Target {target_id} is not a Box proxy")
+        anchor_before = _proxy_anchor_signature(target)
+        material_before = _proxy_material_signature(target)
+        locks_before = _proxy_lock_signature(target)
+        target.width = float(dimensions[0])
+        target.length = float(dimensions[1])
+        target.height = float(dimensions[2])
+        if _proxy_anchor_signature(target) != anchor_before:
+            raise MutationError(
+                "PRESERVE_ANCHOR_VIOLATION",
+                f"ReplaceAsset changed target {target_id} transform",
+            )
+        if _proxy_material_signature(target) != material_before:
+            raise MutationError(
+                "MATERIAL_PRESERVATION_VIOLATION",
+                f"ReplaceAsset changed target {target_id} material",
+            )
+        if _proxy_lock_signature(target) != locks_before:
+            raise MutationError(
+                "LOCK_PRESERVATION_VIOLATION",
+                f"ReplaceAsset changed target {target_id} locks",
+            )
+        rt.setUserProp(target, "AIArchViz.AssetDefinitionId", new_asset_definition_id)
+        replaced_asset_definition_id = new_asset_definition_id
     else:
         property_path = operation.get("propertyPath")
         if property_path not in LOCK_USER_PROPERTIES:
@@ -402,6 +481,10 @@ def apply_revision() -> dict[str, Any]:
             elif operation["type"] == "AssignMaterial":
                 entry["materialId"] = operation["material"]["id"]
                 entry["materialBaseColorRgb"] = operation["material"]["baseColorRgb"]
+            elif operation["type"] == "ReplaceAsset":
+                entry["assetDefinitionId"] = operation["newAssetDefinition"]["id"]
+                entry["dimensions"] = operation["newAssetDefinition"]["dimensions"]
+                metadata["AIArchViz.AssetDefinitionId"] = operation["newAssetDefinition"]["id"]
             elif operation["type"] in {"LockProperty", "UnlockProperty"}:
                 current_locks = entry.get("locks", {})
                 if not isinstance(current_locks, dict):
@@ -446,6 +529,7 @@ def apply_revision() -> dict[str, Any]:
         "assignedWallSegmentCount": assigned_wall_segment_count,
         "lockedPropertyPath": locked_property_path,
         "unlockedPropertyPath": unlocked_property_path,
+        "replacedAssetDefinitionId": replaced_asset_definition_id,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,

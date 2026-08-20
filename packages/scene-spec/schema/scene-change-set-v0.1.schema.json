@@ -60,7 +60,8 @@
           { "$ref": "#/$defs/updateOpening" },
           { "$ref": "#/$defs/assignMaterial" },
           { "$ref": "#/$defs/lockProperty" },
-          { "$ref": "#/$defs/unlockProperty" }
+          { "$ref": "#/$defs/unlockProperty" },
+          { "$ref": "#/$defs/replaceAsset" }
         ]
       }
     },
@@ -317,6 +318,46 @@
           "required": ["propertyPath"],
           "properties": {
             "propertyPath": { "$ref": "#/$defs/propertyLockPath" }
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "replaceAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "ReplaceAsset" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "medium" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["newAssetDefinitionId", "placementPolicy"],
+          "properties": {
+            "newAssetDefinitionId": { "$ref": "#/$defs/id" },
+            "placementPolicy": { "const": "preserve_anchor" }
           }
         },
         "preconditions": {

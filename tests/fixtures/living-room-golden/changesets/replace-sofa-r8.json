@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_replace_sofa_r8",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0007",
+  "targetRevisionId": "rev_golden_0008",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Replace the sofa procedural proxy while preserving its canonical instance anchor.",
+  "riskLevel": "medium",
+  "operations": [
+    {
+      "operationId": "op_replace_sofa_r8",
+      "type": "ReplaceAsset",
+      "targetId": "asset_living_sofa_main",
+      "reason": "Golden deterministic asset replacement.",
+      "riskLevel": "medium",
+      "parameters": {
+        "newAssetDefinitionId": "assetdef_sofa_proxy_alternate_v1",
+        "placementPolicy": "preserve_anchor"
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["asset_living_sofa_main"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T04:00:00Z"
+  }
+}

@@ -79,6 +79,16 @@ interface UnlockPropertyOperation {
   parameters: { propertyPath: LockPropertyPath };
 }
 
+interface ReplaceAssetOperation {
+  operationId: string;
+  type: "ReplaceAsset";
+  targetId: string;
+  parameters: {
+    newAssetDefinitionId: string;
+    placementPolicy: "preserve_anchor";
+  };
+}
+
 type LockPropertyPath = "geometry" | "transform" | "material";
 type PropertyLockOperation = LockPropertyOperation | UnlockPropertyOperation;
 
@@ -86,7 +96,8 @@ type SupportedOperation =
   | MoveObjectOperation
   | UpdateOpeningOperation
   | AssignMaterialOperation
-  | PropertyLockOperation;
+  | PropertyLockOperation
+  | ReplaceAssetOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
   schemaVersion: "0.1.0";
@@ -191,6 +202,21 @@ interface LockMutation {
   propertyPath: LockPropertyPath;
 }
 
+interface ReplaceAssetMutation {
+  operationId: string;
+  type: "ReplaceAsset";
+  targetId: string;
+  oldAssetDefinitionId: string;
+  newAssetDefinition: {
+    id: string;
+    category: string;
+    dimensions: Vector3;
+    pivotPolicy: string;
+    allowNonUniformScale: boolean;
+  };
+  placementPolicy: "preserve_anchor";
+}
+
 export interface RevisionMutationPlan {
   revisionPlanVersion: "0.1.0";
   changeSetId: string;
@@ -198,7 +224,12 @@ export interface RevisionMutationPlan {
   sceneId: string;
   baseRevisionId: string;
   targetRevisionId: string;
-  operation: MoveMutation | OpeningMutation | MaterialMutation | LockMutation;
+  operation:
+    | MoveMutation
+    | OpeningMutation
+    | MaterialMutation
+    | LockMutation
+    | ReplaceAssetMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -310,6 +341,9 @@ export function validateAssetReplacementCandidate(
       `Asset ${logicalId} is not a proxy asset`,
     );
   }
+  if (target.locks.geometry) {
+    throw new RevisionValidationError("GEOMETRY_LOCKED", `Asset ${logicalId} geometry is locked`);
+  }
   const currentDefinition = scene.assetDefinitions.find(
     (definition) => definition.id === target.assetDefinitionId,
   );
@@ -326,6 +360,12 @@ export function validateAssetReplacementCandidate(
     throw new RevisionValidationError(
       "ASSET_DEFINITION_NOT_FOUND",
       `Candidate definition ${candidateAssetDefinitionId} was not found`,
+    );
+  }
+  if (candidateDefinition.id === currentDefinition.id) {
+    throw new RevisionValidationError(
+      "ASSET_DEFINITION_UNCHANGED",
+      `Asset ${logicalId} already uses definition ${candidateAssetDefinitionId}`,
     );
   }
   if (candidateDefinition.category !== currentDefinition.category) {
@@ -377,12 +417,13 @@ export function planSceneRevision(
           "AssignMaterial",
           "LockProperty",
           "UnlockProperty",
+          "ReplaceAsset",
         ].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, and UnlockProperty only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, and ReplaceAsset only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -419,7 +460,12 @@ export function planSceneRevision(
   const targetSceneSpec = structuredClone(baseValue) as SceneDocument;
   targetSceneSpec.scene.revisionId = changeSet.targetRevisionId;
   targetSceneSpec.scene.headRevisionId = changeSet.targetRevisionId;
-  let mutation: MoveMutation | OpeningMutation | MaterialMutation | LockMutation;
+  let mutation:
+    | MoveMutation
+    | OpeningMutation
+    | MaterialMutation
+    | LockMutation
+    | ReplaceAssetMutation;
   if (operation?.type === "MoveObject") {
     const matches = base.assets.filter((asset) => asset.id === operation.targetId);
     if (matches.length === 0) {
@@ -622,6 +668,46 @@ export function planSceneRevision(
         id: material.id,
         baseColorRgb: normalizedMaterialColor(material.baseColorRgb),
       },
+    };
+    try {
+      compileGoldenBuildPlan(targetSceneSpec);
+    } catch (error) {
+      throw new RevisionValidationError(
+        "SCHEMA_INVALID",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  } else if (operation?.type === "ReplaceAsset") {
+    const candidate = validateAssetReplacementCandidate(
+      base,
+      operation.targetId,
+      operation.parameters.newAssetDefinitionId,
+    );
+    const targetAsset = targetSceneSpec.assets.find((asset) => asset.id === operation.targetId);
+    if (!targetAsset) throw new RevisionValidationError("TARGET_NOT_FOUND", "Asset disappeared");
+    targetAsset.assetDefinitionId = candidate.candidateAssetDefinitionId;
+    const newAssetDefinition = base.assetDefinitions.find(
+      (definition) => definition.id === candidate.candidateAssetDefinitionId,
+    );
+    if (!newAssetDefinition) {
+      throw new RevisionValidationError(
+        "ASSET_DEFINITION_NOT_FOUND",
+        `Candidate definition ${candidate.candidateAssetDefinitionId} disappeared`,
+      );
+    }
+    mutation = {
+      operationId: operation.operationId,
+      type: "ReplaceAsset",
+      targetId: operation.targetId,
+      oldAssetDefinitionId: candidate.currentAssetDefinitionId,
+      newAssetDefinition: {
+        id: newAssetDefinition.id,
+        category: newAssetDefinition.category,
+        dimensions: structuredClone(newAssetDefinition.dimensions),
+        pivotPolicy: newAssetDefinition.pivotPolicy,
+        allowNonUniformScale: newAssetDefinition.allowNonUniformScale,
+      },
+      placementPolicy: operation.parameters.placementPolicy,
     };
     try {
       compileGoldenBuildPlan(targetSceneSpec);
@@ -883,7 +969,11 @@ function collectFieldChanges(
   path: string,
   changes: Record<string, { before: unknown; after: unknown }>,
 ): void {
-  if (path === "embeddedMetadata.AIArchViz.RevisionId") return;
+  if (
+    path === "embeddedMetadata.AIArchViz.RevisionId" ||
+    path === "embeddedMetadata.AIArchViz.AssetDefinitionId"
+  )
+    return;
   if (isDeepStrictEqual(before, after)) return;
   if (path === "locks") {
     const beforeLocks = normalizedLockState(before);
@@ -984,6 +1074,30 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
       diff.changed.length !== 1 ||
       change?.logicalId !== operation.targetId ||
       changedFields.join() !== "materialBaseColorRgb,materialId" ||
+      diff.added.length !== 0 ||
+      diff.removed.length !== 0 ||
+      diff.unchanged.length !== 13
+    ) {
+      throw new RevisionValidationError(
+        "UNEXPECTED_SEMANTIC_DIFF",
+        `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+      );
+    }
+    return;
+  }
+  if (operation?.type === "ReplaceAsset") {
+    if (
+      diff.revision.before !== changeSet.baseRevisionId ||
+      diff.revision.after !== changeSet.targetRevisionId ||
+      diff.changed.length !== 1 ||
+      change?.logicalId !== operation.targetId ||
+      changedFields.join() !== "assetDefinitionId,dimensions" ||
+      change?.changes.assetDefinitionId?.after !== operation.parameters.newAssetDefinitionId ||
+      !Array.isArray(change?.changes.dimensions?.after) ||
+      change.changes.dimensions.after.length !== 3 ||
+      !change.changes.dimensions.after.every(
+        (dimension) => typeof dimension === "number" && Number.isFinite(dimension) && dimension > 0,
+      ) ||
       diff.added.length !== 0 ||
       diff.removed.length !== 0 ||
       diff.unchanged.length !== 13

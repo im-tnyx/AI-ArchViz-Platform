@@ -57,7 +57,7 @@ describe("SceneChangeSet MoveObject contract", () => {
     };
     const operation = changeSet.operations[0];
     if (!operation) throw new Error("Golden operation missing");
-    operation.type = "ReplaceAsset";
+    operation.type = "DeleteObject";
     expect(errorCode(() => planSceneRevision(fixture("scene-spec.json"), changeSet))).toBe(
       "OPERATION_UNSUPPORTED",
     );
