@@ -44,7 +44,23 @@ describe("trusted local paths and config", () => {
       processTimeoutMs: 5_000,
       threeDsMaxInstallationPath: null,
       allowCompatibilityVersionForSpike: false,
+      trustedAssetRoot: null,
     });
+  });
+
+  it("accepts only an absolute trusted external asset root", () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-archviz-asset-config-"));
+    temporaryDirectories.push(root);
+    const configPath = join(root, "local-worker.json");
+    writeFileSync(
+      configPath,
+      JSON.stringify({ trustedAssetRoot: resolve(root, "assets") }),
+      "utf8",
+    );
+    expect(loadWorkerConfig(root, configPath).trustedAssetRoot).toBe(resolve(root, "assets"));
+
+    writeFileSync(configPath, JSON.stringify({ trustedAssetRoot: "assets" }), "utf8");
+    expect(() => loadWorkerConfig(root, configPath)).toThrow(/trustedAssetRoot/u);
   });
 
   it("enables compatibility mode only through explicit trusted config", () => {

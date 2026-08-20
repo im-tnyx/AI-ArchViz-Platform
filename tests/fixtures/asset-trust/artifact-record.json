@@ -1,0 +1,12 @@
+{
+  "artifactContractVersion": "0.1.0",
+  "artifactId": "artifact_sofa_external_contract_fixture_v1",
+  "format": "3ds_max",
+  "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "byteLength": 123,
+  "trustState": "VERIFIED",
+  "source": {
+    "kind": "curated_library",
+    "referenceId": "source_fixture_catalog_v1"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/asset-artifact-v0.1.schema.json",
+  "title": "AI ArchViz trusted external asset artifact v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifactContractVersion",
+    "artifactId",
+    "format",
+    "sha256",
+    "byteLength",
+    "trustState",
+    "source"
+  ],
+  "properties": {
+    "artifactContractVersion": { "const": "0.1.0" },
+    "artifactId": { "$ref": "#/$defs/id" },
+    "format": { "const": "3ds_max" },
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "byteLength": { "type": "integer", "exclusiveMinimum": 0 },
+    "trustState": {
+      "enum": ["QUARANTINED", "INSPECTED", "VERIFIED", "REJECTED"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "referenceId"],
+      "properties": {
+        "kind": { "enum": ["curated_library", "user_upload", "internal"] },
+        "referenceId": { "$ref": "#/$defs/id" }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    }
+  }
+}

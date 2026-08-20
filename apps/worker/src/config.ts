@@ -9,6 +9,7 @@ export interface WorkerConfig {
   processTimeoutMs: number;
   threeDsMaxInstallationPath: string | null;
   allowCompatibilityVersionForSpike: boolean;
+  trustedAssetRoot: string | null;
 }
 
 interface ConfigFile {
@@ -16,6 +17,7 @@ interface ConfigFile {
   processTimeoutMs?: unknown;
   threeDsMaxInstallationPath?: unknown;
   allowCompatibilityVersionForSpike?: unknown;
+  trustedAssetRoot?: unknown;
 }
 
 const allowedKeys = new Set([
@@ -23,6 +25,7 @@ const allowedKeys = new Set([
   "processTimeoutMs",
   "threeDsMaxInstallationPath",
   "allowCompatibilityVersionForSpike",
+  "trustedAssetRoot",
 ]);
 
 export function loadWorkerConfig(
@@ -84,11 +87,20 @@ export function loadWorkerConfig(
     throw new WorkerError("CONFIG_INVALID", "allowCompatibilityVersionForSpike must be a boolean");
   }
 
+  const trustedAssetRoot = raw.trustedAssetRoot ?? null;
+  if (
+    trustedAssetRoot !== null &&
+    (typeof trustedAssetRoot !== "string" || !isAbsolute(trustedAssetRoot))
+  ) {
+    throw new WorkerError("CONFIG_INVALID", "trustedAssetRoot must be null or an absolute path");
+  }
+
   return {
     repositoryRoot: resolve(repositoryRoot),
     workspaceRoot: resolveWithinRoot(repositoryRoot, workspaceRelative),
     processTimeoutMs: Number(timeout),
     threeDsMaxInstallationPath: installation,
     allowCompatibilityVersionForSpike,
+    trustedAssetRoot: trustedAssetRoot === null ? null : resolve(trustedAssetRoot),
   };
 }

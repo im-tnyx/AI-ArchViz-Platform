@@ -1,0 +1,10 @@
+{
+  "id": "assetdef_sofa_external_contract_fixture_v1",
+  "version": "1",
+  "category": "sofa",
+  "sourceType": "external_max",
+  "artifactId": "artifact_sofa_external_contract_fixture_v1",
+  "dimensions": [2400, 950, 780],
+  "pivotPolicy": "floor_center",
+  "allowNonUniformScale": false
+}

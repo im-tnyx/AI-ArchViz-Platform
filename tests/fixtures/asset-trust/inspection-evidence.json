@@ -1,0 +1,16 @@
+{
+  "inspectionVersion": "0.1.0",
+  "artifactId": "artifact_sofa_external_contract_fixture_v1",
+  "artifactSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "inspector": {
+    "type": "trusted_3ds_max_asset_inspector",
+    "version": "0.1.0"
+  },
+  "dcc": {
+    "product": "3ds_max",
+    "testedMajorVersion": 2025,
+    "compatibilityMode": true
+  },
+  "result": "pass",
+  "findings": []
+}

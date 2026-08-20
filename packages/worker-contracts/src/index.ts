@@ -45,6 +45,8 @@ export interface JobEnvelope extends Record<string, unknown> {
 
 export type SceneManifest = Record<string, unknown>;
 export type ExecutionReport = Record<string, unknown>;
+export type AssetArtifact = Record<string, unknown>;
+export type AssetInspectionEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -58,6 +60,8 @@ function readSchema(name: string): Record<string, unknown> {
 export const jobEnvelopeSchema = readSchema("job-envelope-v0.1.schema.json");
 export const sceneManifestSchema = readSchema("scene-manifest-v0.1.schema.json");
 export const executionReportSchema = readSchema("execution-report-v0.1.schema.json");
+export const assetArtifactSchema = readSchema("asset-artifact-v0.1.schema.json");
+export const assetInspectionSchema = readSchema("asset-inspection-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -74,6 +78,10 @@ const sceneManifestValidator = ajv.compile(sceneManifestSchema) as ValidateFunct
 const executionReportValidator = ajv.compile(
   executionReportSchema,
 ) as ValidateFunction<ExecutionReport>;
+const assetArtifactValidator = ajv.compile(assetArtifactSchema) as ValidateFunction<AssetArtifact>;
+const assetInspectionValidator = ajv.compile(
+  assetInspectionSchema,
+) as ValidateFunction<AssetInspectionEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -107,6 +115,14 @@ export function validateSceneManifest(value: unknown): ValidationResult<SceneMan
 
 export function validateExecutionReport(value: unknown): ValidationResult<ExecutionReport> {
   return runValidation(executionReportValidator, value);
+}
+
+export function validateAssetArtifact(value: unknown): ValidationResult<AssetArtifact> {
+  return runValidation(assetArtifactValidator, value);
+}
+
+export function validateAssetInspection(value: unknown): ValidationResult<AssetInspectionEvidence> {
+  return runValidation(assetInspectionValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/asset-inspection-v0.1.schema.json",
+  "title": "AI ArchViz trusted external asset inspection evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "inspectionVersion",
+    "artifactId",
+    "artifactSha256",
+    "inspector",
+    "dcc",
+    "result",
+    "findings"
+  ],
+  "properties": {
+    "inspectionVersion": { "const": "0.1.0" },
+    "artifactId": { "$ref": "#/$defs/id" },
+    "artifactSha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "inspector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "version"],
+      "properties": {
+        "type": { "const": "trusted_3ds_max_asset_inspector" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "dcc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "testedMajorVersion", "compatibilityMode"],
+      "properties": {
+        "product": { "const": "3ds_max" },
+        "testedMajorVersion": { "type": "integer", "minimum": 1, "maximum": 9999 },
+        "compatibilityMode": { "type": "boolean" }
+      }
+    },
+    "result": { "enum": ["pass", "fail"] },
+    "findings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    }
+  }
+}

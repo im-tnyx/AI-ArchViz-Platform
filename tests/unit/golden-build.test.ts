@@ -220,6 +220,7 @@ describe("pre-DCC failure gates", () => {
         processTimeoutMs: 5_000,
         threeDsMaxInstallationPath: null,
         allowCompatibilityVersionForSpike: false,
+        trustedAssetRoot: null,
       },
       jobPath,
     );
@@ -244,6 +245,7 @@ describe("pre-DCC failure gates", () => {
         processTimeoutMs: 5_000,
         threeDsMaxInstallationPath: null,
         allowCompatibilityVersionForSpike: false,
+        trustedAssetRoot: null,
       },
       jobPath,
     );

@@ -416,11 +416,28 @@
         "id": { "$ref": "#/$defs/id" },
         "version": { "type": "string", "minLength": 1, "maxLength": 64 },
         "category": { "enum": ["sofa", "coffee_table", "tv_unit", "generic_proxy"] },
-        "sourceType": { "const": "procedural_proxy" },
+        "sourceType": { "enum": ["procedural_proxy", "external_max"] },
+        "artifactId": { "$ref": "#/$defs/id" },
         "dimensions": { "$ref": "#/$defs/positiveVector3" },
         "pivotPolicy": { "enum": ["floor_center", "back_center_floor"] },
         "allowNonUniformScale": { "type": "boolean" }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "sourceType": { "const": "external_max" } } },
+          "then": {
+            "properties": { "artifactId": {} },
+            "required": ["artifactId"]
+          }
+        },
+        {
+          "if": { "properties": { "sourceType": { "const": "procedural_proxy" } } },
+          "then": {
+            "properties": { "artifactId": {} },
+            "not": { "required": ["artifactId"] }
+          }
+        }
+      ]
     },
     "material": {
       "type": "object",

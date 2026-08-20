@@ -1,3 +1,4 @@
+export * from "./asset-trust.js";
 export * from "./build-plan.js";
 export * from "./config.js";
 export * from "./discovery.js";

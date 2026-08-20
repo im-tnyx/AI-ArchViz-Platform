@@ -130,6 +130,7 @@ interface SceneDocument extends Record<string, unknown> {
   assetDefinitions: Array<{
     id: string;
     category: string;
+    sourceType: "procedural_proxy" | "external_max";
     dimensions: Vector3;
     pivotPolicy: string;
     allowNonUniformScale: boolean;
@@ -366,6 +367,15 @@ export function validateAssetReplacementCandidate(
     throw new RevisionValidationError(
       "ASSET_DEFINITION_UNCHANGED",
       `Asset ${logicalId} already uses definition ${candidateAssetDefinitionId}`,
+    );
+  }
+  if (
+    currentDefinition.sourceType !== "procedural_proxy" ||
+    candidateDefinition.sourceType !== "procedural_proxy"
+  ) {
+    throw new RevisionValidationError(
+      "ASSET_EXTERNAL_SOURCE_UNSUPPORTED",
+      "ReplaceAsset supports procedural_proxy definitions only in Spike 7A",
     );
   }
   if (candidateDefinition.category !== currentDefinition.category) {

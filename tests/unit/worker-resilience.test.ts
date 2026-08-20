@@ -47,6 +47,7 @@ function workerConfig(root: string, workspace: string) {
     processTimeoutMs: 5_000,
     threeDsMaxInstallationPath: null,
     allowCompatibilityVersionForSpike: false,
+    trustedAssetRoot: null,
   };
 }
 

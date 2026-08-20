@@ -157,6 +157,7 @@ function metadata(
 interface AssetDefinitionInput {
   id: string;
   category: string;
+  sourceType: "procedural_proxy" | "external_max";
   dimensions: Vector3;
   pivotPolicy: string;
   allowNonUniformScale: boolean;
@@ -170,6 +171,7 @@ function resolveAssetDefinitions(scene: SceneSpecSubset): Map<string, AssetDefin
     definitions.set(id, {
       id,
       category: String(definition.category),
+      sourceType: String(definition.sourceType) as AssetDefinitionInput["sourceType"],
       dimensions: vector(definition.dimensions),
       pivotPolicy: String(definition.pivotPolicy),
       allowNonUniformScale: Boolean(definition.allowNonUniformScale),
@@ -432,6 +434,11 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
     const definition = assetDefinitions.get(assetDefinitionId);
     if (!definition) {
       throw new Error(`Asset ${logicalId} references missing definition ${assetDefinitionId}`);
+    }
+    if (definition.sourceType !== "procedural_proxy") {
+      throw new Error(
+        `External asset definition ${assetDefinitionId} is not buildable in Spike 7A`,
+      );
     }
     const locks = activeLocks(asset);
     nodes.push(
