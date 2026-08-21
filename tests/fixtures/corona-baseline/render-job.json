@@ -1,0 +1,10 @@
+{
+  "renderJobVersion": "0.1.0",
+  "engine": "corona",
+  "cameraId": "camera_corona_baseline",
+  "mode": "preview",
+  "resolution": {
+    "width": 320,
+    "height": 240
+  }
+}

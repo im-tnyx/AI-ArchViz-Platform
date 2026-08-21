@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/render-evidence-v0.1.schema.json",
+  "title": "AI ArchViz normalized Corona baseline render evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["renderEvidenceVersion", "renderer", "dcc", "camera", "material", "light", "resolution", "termination", "output", "status"],
+  "properties": {
+    "renderEvidenceVersion": { "const": "0.1.0" },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "className", "version"],
+      "properties": {
+        "engine": { "const": "corona" },
+        "className": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "version": { "type": ["string", "null"], "maxLength": 256 }
+      }
+    },
+    "dcc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "version", "compatibilityMode"],
+      "properties": {
+        "product": { "const": "3ds_max" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "compatibilityMode": { "type": "boolean" }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalId", "className"],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "className": { "type": "string", "minLength": 1, "maxLength": 256 }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["className", "baseColorRgb", "targetLogicalId"],
+      "properties": {
+        "className": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "baseColorRgb": { "$ref": "#/$defs/rgb" },
+        "targetLogicalId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "light": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalId", "className", "strategy"],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "className": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "strategy": { "enum": ["corona_light", "stock_omni"] }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "const": 320 },
+        "height": { "const": 240 }
+      }
+    },
+    "termination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "pass_limit" },
+        "value": { "const": 4 }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "byteLength", "sha256"],
+      "properties": {
+        "format": { "const": "png" },
+        "byteLength": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "rgb": {
+      "type": "array",
+      "items": { "type": "number", "minimum": 0, "maximum": 1 },
+      "minItems": 3,
+      "maxItems": 3
+    }
+  }
+}

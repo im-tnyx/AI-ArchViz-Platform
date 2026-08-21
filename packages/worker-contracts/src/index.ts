@@ -48,6 +48,8 @@ export type ExecutionReport = Record<string, unknown>;
 export type AssetArtifact = Record<string, unknown>;
 export type AssetInspectionEvidence = Record<string, unknown>;
 export type AssetInspectionJob = Record<string, unknown>;
+export type RenderEvidence = Record<string, unknown>;
+export type RenderJob = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -64,6 +66,8 @@ export const executionReportSchema = readSchema("execution-report-v0.1.schema.js
 export const assetArtifactSchema = readSchema("asset-artifact-v0.1.schema.json");
 export const assetInspectionSchema = readSchema("asset-inspection-v0.1.schema.json");
 export const assetInspectionJobSchema = readSchema("asset-inspection-job-v0.1.schema.json");
+export const renderEvidenceSchema = readSchema("render-evidence-v0.1.schema.json");
+export const renderJobSchema = readSchema("render-job-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -87,6 +91,10 @@ const assetInspectionValidator = ajv.compile(
 const assetInspectionJobValidator = ajv.compile(
   assetInspectionJobSchema,
 ) as ValidateFunction<AssetInspectionJob>;
+const renderEvidenceValidator = ajv.compile(
+  renderEvidenceSchema,
+) as ValidateFunction<RenderEvidence>;
+const renderJobValidator = ajv.compile(renderJobSchema) as ValidateFunction<RenderJob>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -132,6 +140,14 @@ export function validateAssetInspection(value: unknown): ValidationResult<AssetI
 
 export function validateAssetInspectionJob(value: unknown): ValidationResult<AssetInspectionJob> {
   return runValidation(assetInspectionJobValidator, value);
+}
+
+export function validateRenderEvidence(value: unknown): ValidationResult<RenderEvidence> {
+  return runValidation(renderEvidenceValidator, value);
+}
+
+export function validateRenderJob(value: unknown): ValidationResult<RenderJob> {
+  return runValidation(renderJobValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {
