@@ -227,7 +227,10 @@ def _set_non_metal_mode(material: Any) -> None:
     raise CoronaBaselineError("CORONA_MATERIAL_PROPERTY_UNSUPPORTED", "No non-metal Corona property is available")
 
 
-def _create_corona_material() -> tuple[Any, str]:
+def create_corona_physical_material(
+    base_color_rgb: list[float] | tuple[float, float, float] = BASE_COLOR_RGB,
+    material_name: str = "AVZ_CORONA_BASELINE_MATERIAL",
+) -> tuple[Any, str]:
     material_class = _unique_class(
         rt.Material.classes,
         lambda name: "corona" in name and "physical" in name and "mtl" in name,
@@ -242,7 +245,7 @@ def _create_corona_material() -> tuple[Any, str]:
         material,
         ("basecolor", "basecol"),
         ("base", "color"),
-        rt.Color(*(component * 255.0 for component in BASE_COLOR_RGB)),
+        rt.Color(*(component * 255.0 for component in base_color_rgb)),
         "CORONA_MATERIAL_PROPERTY_UNSUPPORTED",
     )
     _set_discovered_property(
@@ -253,42 +256,61 @@ def _create_corona_material() -> tuple[Any, str]:
         "CORONA_MATERIAL_PROPERTY_UNSUPPORTED",
     )
     _set_non_metal_mode(material)
-    material.name = "AVZ_CORONA_BASELINE_MATERIAL"
+    material.name = material_name
     return material, _class_name(rt.classOf(material))
 
 
-def _try_create_corona_light() -> tuple[Any, str, str] | None:
+def create_corona_area_light(
+    position: list[float] | tuple[float, float, float] = (-1200.0, -1800.0, 2800.0),
+    rotation_euler: list[float] | tuple[float, float, float] = (0.0, 0.0, 0.0),
+    intensity: float = 120.0,
+    width_mm: float = 800.0,
+    light_name: str = "AVZ_CORONA_BASELINE_LIGHT",
+) -> tuple[Any, str]:
     candidates = [
         entry
         for entry in rt.light.classes
         if _normalized_name(entry) == "coronalight"
     ]
     if len(candidates) != 1:
-        return None
+        raise CoronaBaselineError("CORONA_LIGHT_CLASS_NOT_FOUND", "CoronaLight is unavailable")
     try:
         light = candidates[0]()
-        light.name = "AVZ_CORONA_BASELINE_LIGHT"
-        light.pos = rt.Point3(-1200.0, -1800.0, 2800.0)
+        light.name = light_name
+        light.rotation = rt.EulerAngles(
+            float(rotation_euler[0]),
+            float(rotation_euler[1]),
+            float(rotation_euler[2]),
+        )
+        light.pos = rt.Point3(float(position[0]), float(position[1]), float(position[2]))
         _set_discovered_property(
             light,
             ("intensity", "multiplier", "intensitymultiplier"),
             ("intensity",),
-            120.0,
+            float(intensity),
             "CORONA_LIGHT_PROPERTY_UNSUPPORTED",
         )
         _set_discovered_property(
             light,
             ("width", "size", "radius"),
             ("width",),
-            800.0,
+            float(width_mm),
             "CORONA_LIGHT_PROPERTY_UNSUPPORTED",
         )
-        return light, _class_name(rt.classOf(light)), "corona_light"
-    except CoronaBaselineError:
+        return light, _class_name(rt.classOf(light))
+    except Exception:
         try:
             rt.delete(light)
         except Exception:
             pass
+        raise
+
+
+def _try_create_corona_light() -> tuple[Any, str, str] | None:
+    try:
+        light, class_name = create_corona_area_light()
+        return light, class_name, "corona_light"
+    except CoronaBaselineError:
         return None
 
 
@@ -396,7 +418,7 @@ def render_baseline() -> dict[str, Any]:
     renderer, observed_renderer_class, plugin_version = _configure_renderer(renderer_class)
     if _normalized_name(discovered_class_name) != _normalized_name(observed_renderer_class):
         raise CoronaBaselineError("CORONA_RENDERER_ASSIGNMENT_FAILED", "Renderer class identity changed on assignment")
-    material, material_class = _create_corona_material()
+    material, material_class = create_corona_physical_material()
     subject = _create_fixture(material)
     _light, light_class, light_strategy = _create_light()
     camera, camera_class = _create_camera()

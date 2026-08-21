@@ -50,6 +50,8 @@ export type AssetInspectionEvidence = Record<string, unknown>;
 export type AssetInspectionJob = Record<string, unknown>;
 export type RenderEvidence = Record<string, unknown>;
 export type RenderJob = Record<string, unknown>;
+export type CoronaExecutionPlan = Record<string, unknown>;
+export type RendererRealizationEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -68,6 +70,11 @@ export const assetInspectionSchema = readSchema("asset-inspection-v0.1.schema.js
 export const assetInspectionJobSchema = readSchema("asset-inspection-job-v0.1.schema.json");
 export const renderEvidenceSchema = readSchema("render-evidence-v0.1.schema.json");
 export const renderJobSchema = readSchema("render-job-v0.1.schema.json");
+export const renderJobV02Schema = readSchema("render-job-v0.2.schema.json");
+export const coronaExecutionPlanSchema = readSchema("corona-execution-plan-v0.1.schema.json");
+export const rendererRealizationEvidenceSchema = readSchema(
+  "renderer-realization-evidence-v0.1.schema.json",
+);
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -95,6 +102,13 @@ const renderEvidenceValidator = ajv.compile(
   renderEvidenceSchema,
 ) as ValidateFunction<RenderEvidence>;
 const renderJobValidator = ajv.compile(renderJobSchema) as ValidateFunction<RenderJob>;
+const renderJobV02Validator = ajv.compile(renderJobV02Schema) as ValidateFunction<RenderJob>;
+const coronaExecutionPlanValidator = ajv.compile(
+  coronaExecutionPlanSchema,
+) as ValidateFunction<CoronaExecutionPlan>;
+const rendererRealizationEvidenceValidator = ajv.compile(
+  rendererRealizationEvidenceSchema,
+) as ValidateFunction<RendererRealizationEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -148,6 +162,20 @@ export function validateRenderEvidence(value: unknown): ValidationResult<RenderE
 
 export function validateRenderJob(value: unknown): ValidationResult<RenderJob> {
   return runValidation(renderJobValidator, value);
+}
+
+export function validateRenderJobV02(value: unknown): ValidationResult<RenderJob> {
+  return runValidation(renderJobV02Validator, value);
+}
+
+export function validateCoronaExecutionPlan(value: unknown): ValidationResult<CoronaExecutionPlan> {
+  return runValidation(coronaExecutionPlanValidator, value);
+}
+
+export function validateRendererRealizationEvidence(
+  value: unknown,
+): ValidationResult<RendererRealizationEvidence> {
+  return runValidation(rendererRealizationEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

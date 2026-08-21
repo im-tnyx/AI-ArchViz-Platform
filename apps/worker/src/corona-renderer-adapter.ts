@@ -1,0 +1,356 @@
+import { type SceneSpec, validateSceneSpec } from "@ai-archviz/scene-spec";
+import { validateRenderJobV02 } from "@ai-archviz/worker-contracts";
+import {
+  type BuildPlanNode,
+  compileGoldenBuildPlan,
+  type OpeningMarker,
+  type WallSegment,
+} from "./build-plan.js";
+import type { RendererAdapter } from "./renderer-adapter.js";
+
+export type Vector3 = [number, number, number];
+
+export const coronaAdapterResolution = { width: 320, height: 240 } as const;
+export const coronaAdapterPassLimit = 4;
+export const coronaAdapterMaterialDefaults = {
+  roughness: 0.45,
+  nonMetalMode: true,
+} as const;
+export const coronaAdapterAreaLightDefaults = {
+  widthMm: 800,
+  intensityScale: 120,
+} as const;
+
+export type CoronaAdapterErrorCode =
+  | "SCENE_SPEC_INVALID"
+  | "RENDER_JOB_INVALID"
+  | "RENDERER_NOT_REQUIRED"
+  | "WRONG_RENDERER_ADAPTER"
+  | "RENDER_MODE_UNSUPPORTED"
+  | "CAMERA_NOT_FOUND"
+  | "CAMERA_ID_AMBIGUOUS"
+  | "MATERIAL_ID_DUPLICATE"
+  | "MATERIAL_ASSIGNMENT_MATERIAL_MISSING"
+  | "MATERIAL_ASSIGNMENT_TARGET_MISSING"
+  | "MATERIAL_ASSIGNMENT_TARGET_AMBIGUOUS"
+  | "MATERIAL_ASSIGNMENT_DUPLICATE_TARGET"
+  | "RENDERER_LIGHT_TYPE_UNSUPPORTED"
+  | "LIGHT_ID_DUPLICATE";
+
+export class CoronaAdapterCompileError extends Error {
+  constructor(
+    readonly code: CoronaAdapterErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "CoronaAdapterCompileError";
+  }
+}
+
+export interface CoronaExecutionMaterial {
+  materialId: string;
+  baseColorRgb: Vector3;
+}
+
+export interface CoronaExecutionMaterialAssignment {
+  assignmentId: string;
+  targetId: string;
+  materialId: string;
+}
+
+export interface CoronaExecutionLight {
+  logicalId: string;
+  type: "area";
+  position: Vector3;
+  rotationEuler: Vector3;
+  canonicalIntensity: number;
+  mappedIntensity: number;
+  widthMm: number;
+}
+
+export interface CoronaExecutionCamera {
+  logicalId: string;
+  position: Vector3;
+  target: Vector3;
+  focalLengthMm: number;
+  sensorWidthMm: number;
+  fovRadians: number;
+}
+
+export interface CoronaExecutionGeometry {
+  nodes: BuildPlanNode[];
+  wallSegments: WallSegment[];
+  openingMarkers: OpeningMarker[];
+}
+
+export interface CoronaExecutionPlan {
+  planVersion: "0.1.0";
+  engine: "corona";
+  projectId: string;
+  sceneId: string;
+  revisionId: string;
+  coordinateSystem: {
+    linearUnit: "mm";
+    angularUnit: "degree";
+    upAxis: "Z";
+    handedness: "right";
+  };
+  geometry: CoronaExecutionGeometry;
+  materials: CoronaExecutionMaterial[];
+  materialAssignments: CoronaExecutionMaterialAssignment[];
+  lights: CoronaExecutionLight[];
+  camera: CoronaExecutionCamera;
+  render: {
+    mode: "preview";
+    resolution: typeof coronaAdapterResolution;
+    termination: { type: "pass_limit"; value: typeof coronaAdapterPassLimit };
+  };
+  adapterDefaults: {
+    material: typeof coronaAdapterMaterialDefaults;
+    areaLight: typeof coronaAdapterAreaLightDefaults;
+  };
+}
+
+interface TransformInput {
+  position: Vector3;
+  rotationEuler: Vector3;
+}
+
+interface MaterialInput {
+  id: string;
+  baseColorRgb: Vector3;
+}
+
+interface MaterialAssignmentInput {
+  id: string;
+  targetId: string;
+  materialId: string;
+}
+
+interface CameraInput {
+  id: string;
+  transform: TransformInput;
+  target: Vector3;
+  focalLengthMm: number;
+  sensorWidthMm: number;
+}
+
+interface LightInput {
+  id: string;
+  type: string;
+  transform: TransformInput;
+  intensity: number;
+}
+
+interface SceneSpecSubset {
+  project: { id: string };
+  scene: { id: string; revisionId: string };
+  render: { engine: string; mode: string };
+  geometry: Array<{ id: string }>;
+  openings: Array<{ id: string }>;
+  assets: Array<{ id: string }>;
+  materials?: MaterialInput[];
+  materialAssignments?: MaterialAssignmentInput[];
+  lights?: LightInput[];
+  cameras: CameraInput[];
+}
+
+function copyVector(value: Vector3): Vector3 {
+  return [value[0], value[1], value[2]];
+}
+
+function sortedById<T extends { id: string }>(values: readonly T[]): T[] {
+  return [...values].sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function fail(code: CoronaAdapterErrorCode, message: string): never {
+  throw new CoronaAdapterCompileError(code, message);
+}
+
+function assertUniqueIds(values: readonly { id: string }[], code: CoronaAdapterErrorCode): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value.id)) fail(code, `Duplicate canonical id: ${value.id}`);
+    seen.add(value.id);
+  }
+}
+
+export function deriveCameraFovRadians(focalLengthMm: number, sensorWidthMm: number): number {
+  return 2 * Math.atan(sensorWidthMm / (2 * focalLengthMm));
+}
+
+function validateSemanticIntent(scene: SceneSpecSubset, renderJob: Record<string, unknown>): void {
+  if (scene.render.engine === "none") {
+    fail(
+      "RENDERER_NOT_REQUIRED",
+      "SceneSpec render.engine=none must not invoke a renderer adapter",
+    );
+  }
+  if (scene.render.engine !== "corona") {
+    fail("WRONG_RENDERER_ADAPTER", "Corona adapter accepts only SceneSpec render.engine=corona");
+  }
+  if (scene.render.mode !== "preview") {
+    fail("RENDER_MODE_UNSUPPORTED", "Corona adapter supports SceneSpec preview mode only");
+  }
+  if (renderJob.engine !== "corona") {
+    fail("WRONG_RENDERER_ADAPTER", "Corona adapter accepts only Corona render jobs");
+  }
+  if (renderJob.mode !== "preview") {
+    fail("RENDER_MODE_UNSUPPORTED", "Corona adapter supports preview render jobs only");
+  }
+}
+
+function resolveCamera(
+  scene: SceneSpecSubset,
+  renderJob: Record<string, unknown>,
+): CoronaExecutionCamera {
+  const cameraId = String(renderJob.cameraId);
+  const matches = scene.cameras.filter((camera) => camera.id === cameraId);
+  if (matches.length === 0) fail("CAMERA_NOT_FOUND", `Render camera is missing: ${cameraId}`);
+  if (matches.length !== 1) fail("CAMERA_ID_AMBIGUOUS", `Render camera is ambiguous: ${cameraId}`);
+  const camera = matches[0] as CameraInput;
+  return {
+    logicalId: camera.id,
+    position: copyVector(camera.transform.position),
+    target: copyVector(camera.target),
+    focalLengthMm: camera.focalLengthMm,
+    sensorWidthMm: camera.sensorWidthMm,
+    fovRadians: deriveCameraFovRadians(camera.focalLengthMm, camera.sensorWidthMm),
+  };
+}
+
+function resolveMaterials(scene: SceneSpecSubset): {
+  materials: CoronaExecutionMaterial[];
+  assignments: CoronaExecutionMaterialAssignment[];
+} {
+  const inputs = scene.materials ?? [];
+  assertUniqueIds(inputs, "MATERIAL_ID_DUPLICATE");
+  const byId = new Map(inputs.map((material) => [material.id, material]));
+  const targetCounts = new Map<string, number>();
+  for (const target of [...scene.geometry, ...scene.openings, ...scene.assets]) {
+    targetCounts.set(target.id, (targetCounts.get(target.id) ?? 0) + 1);
+  }
+
+  const assignments = scene.materialAssignments ?? [];
+  const assignedTargets = new Set<string>();
+  for (const assignment of assignments) {
+    if (!byId.has(assignment.materialId)) {
+      fail(
+        "MATERIAL_ASSIGNMENT_MATERIAL_MISSING",
+        `Assignment ${assignment.id} references missing material ${assignment.materialId}`,
+      );
+    }
+    const targetCount = targetCounts.get(assignment.targetId) ?? 0;
+    if (targetCount === 0) {
+      fail(
+        "MATERIAL_ASSIGNMENT_TARGET_MISSING",
+        `Assignment ${assignment.id} references missing target ${assignment.targetId}`,
+      );
+    }
+    if (targetCount !== 1) {
+      fail(
+        "MATERIAL_ASSIGNMENT_TARGET_AMBIGUOUS",
+        `Assignment ${assignment.id} references ambiguous target ${assignment.targetId}`,
+      );
+    }
+    if (assignedTargets.has(assignment.targetId)) {
+      fail(
+        "MATERIAL_ASSIGNMENT_DUPLICATE_TARGET",
+        `Multiple assignments target ${assignment.targetId}`,
+      );
+    }
+    assignedTargets.add(assignment.targetId);
+  }
+
+  const usedMaterialIds = new Set(assignments.map((assignment) => assignment.materialId));
+  return {
+    materials: sortedById(inputs)
+      .filter((material) => usedMaterialIds.has(material.id))
+      .map((material) => ({
+        materialId: material.id,
+        baseColorRgb: copyVector(material.baseColorRgb),
+      })),
+    assignments: [...assignments]
+      .sort((left, right) => left.targetId.localeCompare(right.targetId))
+      .map((assignment) => ({
+        assignmentId: assignment.id,
+        targetId: assignment.targetId,
+        materialId: assignment.materialId,
+      })),
+  };
+}
+
+function resolveLights(scene: SceneSpecSubset): CoronaExecutionLight[] {
+  const inputs = scene.lights ?? [];
+  assertUniqueIds(inputs, "LIGHT_ID_DUPLICATE");
+  return sortedById(inputs).map((light) => {
+    if (light.type !== "area") {
+      fail(
+        "RENDERER_LIGHT_TYPE_UNSUPPORTED",
+        `Corona adapter supports SceneSpec area lights only: ${light.id}`,
+      );
+    }
+    return {
+      logicalId: light.id,
+      type: "area",
+      position: copyVector(light.transform.position),
+      rotationEuler: copyVector(light.transform.rotationEuler),
+      canonicalIntensity: light.intensity,
+      mappedIntensity: light.intensity * coronaAdapterAreaLightDefaults.intensityScale,
+      widthMm: coronaAdapterAreaLightDefaults.widthMm,
+    };
+  });
+}
+
+/** Pure SceneSpec-to-Corona plan compiler; DCC/plugin work begins only after this succeeds. */
+export class CoronaRendererAdapter implements RendererAdapter<CoronaExecutionPlan> {
+  readonly engine = "corona" as const;
+
+  compile(sceneSpec: SceneSpec, renderJob: unknown): CoronaExecutionPlan {
+    const sceneValidation = validateSceneSpec(sceneSpec);
+    if (!sceneValidation.ok) {
+      fail("SCENE_SPEC_INVALID", JSON.stringify(sceneValidation.errors));
+    }
+    const jobValidation = validateRenderJobV02(renderJob);
+    if (!jobValidation.ok) {
+      fail("RENDER_JOB_INVALID", JSON.stringify(jobValidation.errors));
+    }
+    const scene = sceneValidation.value as unknown as SceneSpecSubset;
+    const job = jobValidation.value as Record<string, unknown>;
+    validateSemanticIntent(scene, job);
+    const camera = resolveCamera(scene, job);
+    const materialResolution = resolveMaterials(scene);
+    const lights = resolveLights(scene);
+    const buildPlan = compileGoldenBuildPlan(sceneSpec);
+
+    return {
+      planVersion: "0.1.0",
+      engine: "corona",
+      projectId: scene.project.id,
+      sceneId: scene.scene.id,
+      revisionId: scene.scene.revisionId,
+      coordinateSystem: structuredClone(buildPlan.coordinateSystem),
+      geometry: {
+        nodes: buildPlan.nodes.map(
+          ({ materialId: _materialId, materialBaseColorRgb: _materialBaseColorRgb, ...node }) =>
+            structuredClone(node),
+        ),
+        wallSegments: structuredClone(buildPlan.wallSegments),
+        openingMarkers: structuredClone(buildPlan.openingMarkers),
+      },
+      materials: materialResolution.materials,
+      materialAssignments: materialResolution.assignments,
+      lights,
+      camera,
+      render: {
+        mode: "preview",
+        resolution: coronaAdapterResolution,
+        termination: { type: "pass_limit", value: coronaAdapterPassLimit },
+      },
+      adapterDefaults: {
+        material: coronaAdapterMaterialDefaults,
+        areaLight: coronaAdapterAreaLightDefaults,
+      },
+    };
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "sceneSpecVersion": "0.2.0",
+  "project": { "id": "project_corona_adapter", "name": "Corona Adapter Fixture" },
+  "scene": {
+    "id": "scene_corona_adapter",
+    "revisionId": "rev_corona_adapter_0001",
+    "headRevisionId": "rev_corona_adapter_0001"
+  },
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right",
+    "axisConvention": "X_east_Y_north_Z_up",
+    "worldOrigin": [0, 0, 0]
+  },
+  "sources": [
+    {
+      "id": "source_corona_adapter_fixture",
+      "type": "synthetic_fixture",
+      "uri": "fixture://corona-adapter/0.1.0",
+      "authority": "A5",
+      "confidence": 1,
+      "verified": true
+    }
+  ],
+  "levels": [
+    { "id": "level_ground", "name": "Ground", "elevation": 0, "defaultCeilingHeight": 3000 }
+  ],
+  "spaces": [
+    {
+      "id": "space_adapter_room",
+      "levelId": "level_ground",
+      "type": "living_room",
+      "boundary": [[0, 0, 0], [6000, 0, 0], [6000, 4000, 0], [0, 4000, 0]],
+      "boundaryWinding": "counter_clockwise",
+      "floorElevation": 0,
+      "ceilingHeight": 3000,
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] }
+    }
+  ],
+  "geometry": [
+    {
+      "id": "wall_adapter_south",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_adapter_room",
+      "start": [0, 0, 0],
+      "end": [6000, 0, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "wall_adapter_north",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_adapter_room",
+      "start": [6000, 4000, 0],
+      "end": [0, 4000, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "surface_adapter_floor",
+      "type": "floor",
+      "levelId": "level_ground",
+      "spaceId": "space_adapter_room",
+      "boundary": [[0, 0, 0], [6000, 0, 0], [6000, 4000, 0], [0, 4000, 0]],
+      "elevation": 0,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening_adapter_window",
+      "type": "window",
+      "hostGeometryId": "wall_adapter_north",
+      "offset": 1800,
+      "width": 1200,
+      "sill": 900,
+      "height": 1200,
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "assetDefinitions": [
+    {
+      "id": "assetdef_adapter_subject",
+      "version": "1",
+      "category": "sofa",
+      "sourceType": "procedural_proxy",
+      "dimensions": [1800, 800, 760],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_adapter_subject",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_adapter_subject",
+      "spaceId": "space_adapter_room",
+      "transform": { "position": [3000, 2500, 0], "rotationEuler": [0, 0, 180], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "materials": [
+    { "id": "material_adapter_wall", "name": "Adapter Wall", "baseColorRgb": [0.78, 0.74, 0.68] },
+    { "id": "material_adapter_floor", "name": "Adapter Floor", "baseColorRgb": [0.66, 0.64, 0.6] },
+    { "id": "material_adapter_subject", "name": "Adapter Subject", "baseColorRgb": [0.72, 0.62, 0.5] }
+  ],
+  "materialAssignments": [
+    { "id": "assign_adapter_wall_south", "targetId": "wall_adapter_south", "materialId": "material_adapter_wall" },
+    { "id": "assign_adapter_wall_north", "targetId": "wall_adapter_north", "materialId": "material_adapter_wall" },
+    { "id": "assign_adapter_floor", "targetId": "surface_adapter_floor", "materialId": "material_adapter_floor" },
+    { "id": "assign_adapter_subject", "targetId": "asset_adapter_subject", "materialId": "material_adapter_subject" }
+  ],
+  "lights": [
+    {
+      "id": "light_adapter_area",
+      "type": "area",
+      "transform": { "position": [3000, 1600, 2800], "rotationEuler": [-35, 0, 0], "scale": [1, 1, 1] },
+      "intensity": 1.25
+    }
+  ],
+  "cameras": [
+    {
+      "id": "camera_adapter_main",
+      "type": "camera",
+      "spaceId": "space_adapter_room",
+      "transform": { "position": [3000, -5000, 2300], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "target": [3000, 1900, 1200],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 35,
+      "sensorWidthMm": 36
+    }
+  ],
+  "render": { "engine": "corona", "mode": "preview" },
+  "revisions": [
+    { "revisionId": "rev_corona_adapter_0001", "parentRevisionId": null, "status": "committed", "createdAt": "2026-08-21T00:00:00Z" }
+  ],
+  "extensions": {}
+}

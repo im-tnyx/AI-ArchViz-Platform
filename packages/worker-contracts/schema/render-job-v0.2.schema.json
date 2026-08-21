@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/render-job-v0.2.schema.json",
+  "title": "AI ArchViz Corona adapter render job v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["renderJobVersion", "engine", "cameraId", "mode", "resolution"],
+  "properties": {
+    "renderJobVersion": { "const": "0.2.0" },
+    "engine": { "const": "corona" },
+    "cameraId": { "$ref": "#/$defs/id" },
+    "mode": { "const": "preview" },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "const": 320 },
+        "height": { "const": 240 }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    }
+  }
+}

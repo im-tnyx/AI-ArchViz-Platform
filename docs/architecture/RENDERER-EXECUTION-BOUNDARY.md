@@ -104,6 +104,44 @@ The production DCC target remains 3ds Max 2026. A successful 3ds Max 2025.x
 run is reported only as compatibility evidence. Corona version policy remains
 runtime-discovered; the repository does not pin a public release.
 
-The next authorized task after a verified 8A pass is **Technical Spike 8B —
-Corona Renderer Adapter + SceneSpec Material/Light Mapping**. It is not
-implemented by this spike. V-Ray remains later work.
+## Spike 8B: SceneSpec-to-Corona adapter boundary
+
+Technical Spike 8B adds a pure TypeScript `RendererAdapter` that compiles a
+validated canonical SceneSpec and strict `render-job-v0.2` into the versioned
+`corona-execution-plan-v0.1`. Compilation performs no DCC discovery, process
+launch, filesystem access, or renderer mutation. The 8A `render-job-v0.1`
+baseline remains unchanged and remains a diagnostic capability proof.
+
+- SceneSpec owns canonical material IDs, canonical base-color RGB, assignment
+  IDs/targets, area-light transforms and intensity, and camera position,
+  target, focal length, and sensor width. The adapter derives native camera
+  FOV with `2 * atan(sensorWidth / (2 * focalLength))`.
+- Adapter-owned rendering defaults are explicit in the execution plan only:
+  Corona Physical Material roughness `0.45`, non-metal mode, an 800 mm area
+  light width, and a `120` multiplier for the canonical unitless preview
+  intensity. They do not expand or reinterpret SceneSpec.
+- The adapter supports one selected camera, Corona `preview` only, exactly
+  `320 × 240`, and an adapter-owned Corona pass limit of `4`. `engine: none`,
+  non-Corona engines, `final` mode, missing/duplicate cameras, missing or
+  duplicate material assignments, and non-area lights fail before any DCC
+  invocation.
+- A material is created once per canonical material ID. Its assignments are
+  realized with the same native material instance; material deduplication is
+  recorded in semantic realization evidence. No V-Ray, generic fallback,
+  stock-light fallback, external asset, texture, HDRI, IES, Cosmos, or network
+  path is permitted in this adapter.
+- The DCC runner consumes only the worker-owned, schema-validated execution
+  plan. It accepts no renderer classes/properties, scripts, plug-in paths,
+  output paths, or executable fields from SceneSpec or the render job. The
+  worker owns the temporary plan/result/output paths and normalizes portable
+  evidence without local paths.
+
+`renderer-realization-evidence-v0.1` records actual Corona renderer/material/
+light/camera identity, assignments, mapped values, render policy, and portable
+PNG integrity data. It is evidence of the current runtime realization, not a
+cross-machine pixel-equality oracle. A missing Corona renderer/material/light,
+unsupported required property, unsafe-scene posture, process timeout, invalid
+evidence, or invalid PNG is a closed failure and cannot produce PASS evidence.
+
+The next desired task after a verified 8B pass is **Technical Spike 8C**.
+V-Ray remains later work.
