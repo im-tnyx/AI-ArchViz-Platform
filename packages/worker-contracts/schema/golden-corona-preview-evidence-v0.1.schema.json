@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/golden-corona-preview-evidence-v0.1.schema.json",
+  "title": "Golden Corona diagnostic preview evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "source", "intentSource", "profileId", "renderer", "dcc", "canonical", "temporaryExecution", "render", "output", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "source": { "$ref": "#/$defs/source" },
+    "intentSource": { "const": "trusted_diagnostic_profile" },
+    "profileId": { "const": "golden_living_corona_preview_v1" },
+    "renderer": { "$ref": "#/$defs/renderer" },
+    "dcc": { "$ref": "#/$defs/dcc" },
+    "canonical": { "$ref": "#/$defs/canonical" },
+    "temporaryExecution": { "$ref": "#/$defs/temporary" },
+    "render": { "$ref": "#/$defs/render" },
+    "output": { "$ref": "#/$defs/output" },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "rgb": { "type": "array", "prefixItems": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }], "items": false, "minItems": 3, "maxItems": 3 },
+    "vector3": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 3, "maxItems": 3 },
+    "source": { "type": "object", "additionalProperties": false, "required": ["projectId", "sceneId", "revisionId", "sceneSpecHash", "artifactHash", "stagedArtifactHash"], "properties": { "projectId": { "const": "project_golden_living_001" }, "sceneId": { "const": "scene_golden_living_001" }, "revisionId": { "const": "rev_golden_0008" }, "sceneSpecHash": { "$ref": "#/$defs/hash" }, "artifactHash": { "$ref": "#/$defs/hash" }, "stagedArtifactHash": { "$ref": "#/$defs/hash" } } },
+    "renderer": { "type": "object", "additionalProperties": false, "required": ["engine", "className", "version"], "properties": { "engine": { "const": "corona" }, "className": { "type": "string", "minLength": 1 }, "version": { "type": ["string", "null"] } } },
+    "dcc": { "type": "object", "additionalProperties": false, "required": ["product", "version", "compatibilityMode"], "properties": { "product": { "const": "3ds_max" }, "version": { "type": "string", "minLength": 1 }, "compatibilityMode": { "type": "boolean" } } },
+    "material": { "type": "object", "additionalProperties": false, "required": ["materialId", "className", "canonicalBaseColorRgb", "materialInstanceName"], "properties": { "materialId": { "$ref": "#/$defs/id" }, "className": { "type": "string", "minLength": 1 }, "canonicalBaseColorRgb": { "$ref": "#/$defs/rgb" }, "materialInstanceName": { "type": "string", "pattern": "^AVZ_PREVIEW_CORONA_[A-Za-z0-9_]+$" } } },
+    "assignment": { "type": "object", "additionalProperties": false, "required": ["targetId", "materialId", "materialInstanceName", "className", "sharedMaterialInstance"], "properties": { "targetId": { "$ref": "#/$defs/id" }, "materialId": { "$ref": "#/$defs/id" }, "materialInstanceName": { "type": "string", "pattern": "^AVZ_PREVIEW_CORONA_[A-Za-z0-9_]+$" }, "className": { "type": "string", "minLength": 1 }, "sharedMaterialInstance": { "const": true } } },
+    "camera": { "type": "object", "additionalProperties": false, "required": ["logicalId", "className", "position", "target", "focalLengthMm", "sensorWidthMm", "fovRadians", "lookAtTarget"], "properties": { "logicalId": { "const": "camera_living_a" }, "className": { "type": "string", "minLength": 1 }, "position": { "$ref": "#/$defs/vector3" }, "target": { "$ref": "#/$defs/vector3" }, "focalLengthMm": { "const": 24 }, "sensorWidthMm": { "const": 36 }, "fovRadians": { "type": "number", "exclusiveMinimum": 0, "maximum": 3.141592653589793 }, "lookAtTarget": { "const": true } } },
+    "canonical": { "type": "object", "additionalProperties": false, "required": ["managedNodeCount", "camera", "materials", "materialAssignments"], "properties": { "managedNodeCount": { "const": 14 }, "camera": { "$ref": "#/$defs/camera" }, "materials": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/material" } }, "materialAssignments": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/assignment" } } } },
+    "temporary": { "type": "object", "additionalProperties": false, "required": ["light", "adapterDefaults", "stagedArtifactUnchanged"], "properties": { "light": { "type": "object", "additionalProperties": false, "required": ["id", "name", "className", "nonCanonical", "position", "rotationEuler", "canonicalIntensity", "mappedIntensity", "widthMm"], "properties": { "id": { "const": "preview_key_area" }, "name": { "const": "AVZ_PREVIEW_CORONA_KEY" }, "className": { "type": "string", "minLength": 1 }, "nonCanonical": { "const": true }, "position": { "$ref": "#/$defs/vector3" }, "rotationEuler": { "$ref": "#/$defs/vector3" }, "canonicalIntensity": { "const": 1.25 }, "mappedIntensity": { "const": 150 }, "widthMm": { "const": 800 } } }, "adapterDefaults": { "type": "object", "additionalProperties": false, "required": ["roughness", "nonMetalMode", "areaLightWidthMm", "areaLightIntensityScale"], "properties": { "roughness": { "const": 0.45 }, "nonMetalMode": { "const": true }, "areaLightWidthMm": { "const": 800 }, "areaLightIntensityScale": { "const": 120 } } }, "stagedArtifactUnchanged": { "const": true } } },
+    "render": { "type": "object", "additionalProperties": false, "required": ["mode", "resolution", "termination"], "properties": { "mode": { "const": "preview" }, "resolution": { "type": "object", "additionalProperties": false, "required": ["width", "height"], "properties": { "width": { "const": 320 }, "height": { "const": 240 } } }, "termination": { "type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": { "type": { "const": "pass_limit" }, "value": { "const": 4 } } } } },
+    "output": { "type": "object", "additionalProperties": false, "required": ["format", "byteLength", "sha256"], "properties": { "format": { "const": "png" }, "byteLength": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } } }
+  }
+}

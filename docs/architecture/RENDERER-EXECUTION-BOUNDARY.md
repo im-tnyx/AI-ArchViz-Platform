@@ -145,3 +145,46 @@ evidence, or invalid PNG is a closed failure and cannot produce PASS evidence.
 
 The next desired task after a verified 8B pass is **Technical Spike 8C**.
 V-Ray remains later work.
+
+## Spike 8C: trusted diagnostic preview of a verified scene
+
+Spike 8C is a read-only diagnostic execution, not a SceneSpec revision. The
+canonical Golden `rev_golden_0008` SceneSpec intentionally remains
+`render.engine: none` and `render.mode: build_only`. Normal
+`CoronaRendererAdapter.compile()` continues to reject that state. A separately
+named diagnostic compiler accepts only the repository-owned Golden rev8
+identity, binds its RFC 8785 SceneSpec hash and raw verified `.max` hash, and
+adds a worker-owned immutable preview profile.
+
+```text
+verified rev8 .max + verified rev8 manifest + canonical SceneSpec
+  -> worker-owned staged copy, exact raw-hash check
+  -> fresh Safe-Scene 3ds Max Batch process
+  -> full manifest re-verification before renderer changes
+  -> temporary Corona materials + one temporary CoronaLight
+  -> canonical camera_living_a preview PNG + portable evidence
+  -> process exit without save
+```
+
+- The profile is explicitly `trusted_diagnostic_profile`, with ID
+  `golden_living_corona_preview_v1`. It contains one execution-only area light
+  named `AVZ_PREVIEW_CORONA_KEY`; it has no `AIArchViz.LogicalObjectId` and is
+  never canonical SceneSpec lighting state.
+- The existing 8B material, deduplication, FOV, area-light, 320 × 240, and
+  four-pass policies are reused. The rev8 material assignments and
+  `camera_living_a` resolve through `AIArchViz.LogicalObjectId`, not display
+  names. Unassigned canonical objects retain their existing neutral DCC state.
+- The runner opens only the staged input `.max`, normalizes and compares the
+  full 14-managed-node manifest before temporary changes, then never calls a
+  save operation. It proves both staged and canonical raw artifact hashes are
+  unchanged after rendering.
+- Preview evidence separates canonical source identity/materials/assignments/
+  camera from temporary Corona realization, renderer policy, profile light,
+  and output integrity. It contains no absolute paths. PNG pixels remain
+  non-canonical evidence rather than a cross-machine byte oracle.
+
+Rendering an existing verified scene does not create `rev_golden_0009`, change
+head revision, or write renderer intent into SceneSpec. Canonical lighting and
+render-intent changes require a separate future revision contract. The next
+desired task after a verified 8C pass is **Technical Spike 8D — Canonical
+Lighting + Render Intent Revision Contract**.

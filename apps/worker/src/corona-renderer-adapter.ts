@@ -111,6 +111,42 @@ export interface CoronaExecutionPlan {
   };
 }
 
+const goldenLivingCoronaPreviewLight = Object.freeze({
+  id: "preview_key_area",
+  type: "area" as const,
+  position: Object.freeze([3000, 1600, 2800]) as unknown as Vector3,
+  rotationEuler: Object.freeze([-35, 0, 0]) as unknown as Vector3,
+  intensity: 1.25,
+});
+
+export const goldenLivingCoronaPreviewProfile = Object.freeze({
+  profileVersion: "0.1.0",
+  profileId: "golden_living_corona_preview_v1",
+  engine: "corona",
+  mode: "preview",
+  lightRig: Object.freeze([goldenLivingCoronaPreviewLight]),
+} as const);
+
+export interface GoldenCoronaPreviewPlan {
+  planVersion: "0.1.0";
+  engine: "corona";
+  intentSource: "trusted_diagnostic_profile";
+  profileId: typeof goldenLivingCoronaPreviewProfile.profileId;
+  source: {
+    projectId: "project_golden_living_001";
+    sceneId: "scene_golden_living_001";
+    revisionId: "rev_golden_0008";
+    sceneSpecHash: string;
+    artifactHash: string;
+  };
+  materials: CoronaExecutionMaterial[];
+  materialAssignments: CoronaExecutionMaterialAssignment[];
+  camera: CoronaExecutionCamera;
+  temporaryLight: CoronaExecutionLight & { executionOnlyName: "AVZ_PREVIEW_CORONA_KEY" };
+  render: CoronaExecutionPlan["render"];
+  adapterDefaults: CoronaExecutionPlan["adapterDefaults"];
+}
+
 interface TransformInput {
   position: Vector3;
   rotationEuler: Vector3;
@@ -342,6 +378,81 @@ export class CoronaRendererAdapter implements RendererAdapter<CoronaExecutionPla
       materialAssignments: materialResolution.assignments,
       lights,
       camera,
+      render: {
+        mode: "preview",
+        resolution: coronaAdapterResolution,
+        termination: { type: "pass_limit", value: coronaAdapterPassLimit },
+      },
+      adapterDefaults: {
+        material: coronaAdapterMaterialDefaults,
+        areaLight: coronaAdapterAreaLightDefaults,
+      },
+    };
+  }
+
+  /**
+   * Compiles only the repository-owned Golden rev8 diagnostic preview. This is
+   * deliberately separate from `compile`: rev8 retains `render.engine=none`
+   * and no user/job input can substitute the temporary preview profile.
+   */
+  compileDiagnosticPreview(
+    sceneSpec: SceneSpec,
+    source: { artifactHash: string; sceneSpecHash: string },
+  ): GoldenCoronaPreviewPlan {
+    const sceneValidation = validateSceneSpec(sceneSpec);
+    if (!sceneValidation.ok) {
+      fail("SCENE_SPEC_INVALID", JSON.stringify(sceneValidation.errors));
+    }
+    const scene = sceneValidation.value as unknown as SceneSpecSubset;
+    if (
+      scene.project.id !== "project_golden_living_001" ||
+      scene.scene.id !== "scene_golden_living_001" ||
+      scene.scene.revisionId !== "rev_golden_0008" ||
+      scene.render.engine !== "none" ||
+      scene.render.mode !== "build_only"
+    ) {
+      fail(
+        "RENDERER_NOT_REQUIRED",
+        "Diagnostic preview accepts only the canonical Golden rev8 build-only SceneSpec",
+      );
+    }
+    if (!/^sha256:[0-9a-f]{64}$/u.test(source.artifactHash)) {
+      fail("SCENE_SPEC_INVALID", "Diagnostic preview requires a raw SHA-256 source artifact hash");
+    }
+    if (!/^sha256:[0-9a-f]{64}$/u.test(source.sceneSpecHash)) {
+      fail("SCENE_SPEC_INVALID", "Diagnostic preview requires an RFC8785 SceneSpec hash");
+    }
+    const camera = resolveCamera(scene, { cameraId: "camera_living_a" });
+    const materialResolution = resolveMaterials(scene);
+    const profileLight = goldenLivingCoronaPreviewProfile.lightRig[0];
+    if (!profileLight) {
+      fail("SCENE_SPEC_INVALID", "Trusted diagnostic preview profile is incomplete");
+    }
+    return {
+      planVersion: "0.1.0",
+      engine: "corona",
+      intentSource: "trusted_diagnostic_profile",
+      profileId: goldenLivingCoronaPreviewProfile.profileId,
+      source: {
+        projectId: "project_golden_living_001",
+        sceneId: "scene_golden_living_001",
+        revisionId: "rev_golden_0008",
+        sceneSpecHash: source.sceneSpecHash,
+        artifactHash: source.artifactHash,
+      },
+      materials: materialResolution.materials,
+      materialAssignments: materialResolution.assignments,
+      camera,
+      temporaryLight: {
+        logicalId: profileLight.id,
+        type: "area",
+        position: copyVector(profileLight.position),
+        rotationEuler: copyVector(profileLight.rotationEuler),
+        canonicalIntensity: profileLight.intensity,
+        mappedIntensity: profileLight.intensity * coronaAdapterAreaLightDefaults.intensityScale,
+        widthMm: coronaAdapterAreaLightDefaults.widthMm,
+        executionOnlyName: "AVZ_PREVIEW_CORONA_KEY",
+      },
       render: {
         mode: "preview",
         resolution: coronaAdapterResolution,

@@ -52,6 +52,8 @@ export type RenderEvidence = Record<string, unknown>;
 export type RenderJob = Record<string, unknown>;
 export type CoronaExecutionPlan = Record<string, unknown>;
 export type RendererRealizationEvidence = Record<string, unknown>;
+export type GoldenCoronaPreviewPlan = Record<string, unknown>;
+export type GoldenCoronaPreviewEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -74,6 +76,12 @@ export const renderJobV02Schema = readSchema("render-job-v0.2.schema.json");
 export const coronaExecutionPlanSchema = readSchema("corona-execution-plan-v0.1.schema.json");
 export const rendererRealizationEvidenceSchema = readSchema(
   "renderer-realization-evidence-v0.1.schema.json",
+);
+export const goldenCoronaPreviewPlanSchema = readSchema(
+  "golden-corona-preview-plan-v0.1.schema.json",
+);
+export const goldenCoronaPreviewEvidenceSchema = readSchema(
+  "golden-corona-preview-evidence-v0.1.schema.json",
 );
 
 const ajv = new Ajv2020({
@@ -109,6 +117,12 @@ const coronaExecutionPlanValidator = ajv.compile(
 const rendererRealizationEvidenceValidator = ajv.compile(
   rendererRealizationEvidenceSchema,
 ) as ValidateFunction<RendererRealizationEvidence>;
+const goldenCoronaPreviewPlanValidator = ajv.compile(
+  goldenCoronaPreviewPlanSchema,
+) as ValidateFunction<GoldenCoronaPreviewPlan>;
+const goldenCoronaPreviewEvidenceValidator = ajv.compile(
+  goldenCoronaPreviewEvidenceSchema,
+) as ValidateFunction<GoldenCoronaPreviewEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -176,6 +190,18 @@ export function validateRendererRealizationEvidence(
   value: unknown,
 ): ValidationResult<RendererRealizationEvidence> {
   return runValidation(rendererRealizationEvidenceValidator, value);
+}
+
+export function validateGoldenCoronaPreviewPlan(
+  value: unknown,
+): ValidationResult<GoldenCoronaPreviewPlan> {
+  return runValidation(goldenCoronaPreviewPlanValidator, value);
+}
+
+export function validateGoldenCoronaPreviewEvidence(
+  value: unknown,
+): ValidationResult<GoldenCoronaPreviewEvidence> {
+  return runValidation(goldenCoronaPreviewEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {
