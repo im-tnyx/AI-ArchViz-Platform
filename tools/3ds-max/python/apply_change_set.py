@@ -8,7 +8,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# 3ds Max's Python ExecuteFile does not always prepend the script directory;
+# trusted helper modules must resolve from this repository-owned directory.
+sys.path.insert(0, os.path.dirname(__file__))
+
 from pymxs import runtime as rt
+
+import render_corona_baseline as corona
+import verify_scene
 
 
 REVISION_RUNNER_VERSION = "0.1.0"
@@ -16,6 +23,16 @@ LOCK_USER_PROPERTIES = {
     "geometry": "AIArchViz.LockGeometry",
     "transform": "AIArchViz.LockTransform",
     "material": "AIArchViz.LockMaterial",
+}
+LIGHT_USER_PROPERTIES = {
+    "logical": "AIArchViz.LogicalObjectId",
+    "project": "AIArchViz.ProjectId",
+    "scene": "AIArchViz.SceneId",
+    "revision": "AIArchViz.RevisionId",
+    "type": "AIArchViz.LightType",
+    "canonicalIntensity": "AIArchViz.CanonicalIntensity",
+    "mappedIntensity": "AIArchViz.MappedIntensity",
+    "widthMm": "AIArchViz.WidthMm",
 }
 
 
@@ -206,15 +223,24 @@ def apply_revision() -> dict[str, Any]:
         "LockProperty",
         "UnlockProperty",
         "ReplaceAsset",
+        "SetRenderIntent",
+        "AddLight",
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
-            "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, and ReplaceAsset only",
+            "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, and AddLight only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
     if not rt.loadMaxFile(str(base_path), useFileUnits=True, quiet=True):
         raise MutationError("BASE_ARTIFACT_OPEN_FAILED", "Could not open verified base checkpoint")
+    if os.environ.get("AI_ARCHVIZ_REQUIRE_SAFE_SCENE") == "1":
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "safe_scene":
+            raise MutationError("SAFE_SCENE_REQUIRED", "Trusted test forced Safe Scene failure")
+        try:
+            verify_scene._require_safe_scene_when_requested()
+        except Exception as error:
+            raise MutationError("SAFE_SCENE_REQUIRED", str(error)) from error
     if "millimeter" not in str(rt.units.SystemType).lower() or float(rt.units.SystemScale) != 1.0:
         raise MutationError("UNIT_MISMATCH", "Base checkpoint is not in canonical millimeters")
 
@@ -242,12 +268,17 @@ def apply_revision() -> dict[str, Any]:
         raise MutationError("DUPLICATE_LOGICAL_ID", f"Duplicate managed logical IDs: {duplicates}")
 
     target_id = str(operation["targetId"])
-    targets = logical_nodes.get(target_id, [])
-    if not targets:
-        raise MutationError("TARGET_NOT_FOUND", f"Target {target_id} was not found")
-    if len(targets) > 1:
-        raise MutationError("DUPLICATE_LOGICAL_ID", f"Target {target_id} is not unique")
-    target = targets[0]
+    target = None
+    if operation["type"] not in {"SetRenderIntent", "AddLight"}:
+        targets = logical_nodes.get(target_id, [])
+        if not targets:
+            raise MutationError("TARGET_NOT_FOUND", f"Target {target_id} was not found")
+        if len(targets) > 1:
+            raise MutationError("DUPLICATE_LOGICAL_ID", f"Target {target_id} is not unique")
+        target = targets[0]
+    if target_id != str(plan["sceneId"]):
+        if operation["type"] in {"SetRenderIntent", "AddLight"}:
+            raise MutationError("TARGET_NOT_FOUND", f"Scene target {target_id} was not found")
     rebuilt_host_id: str | None = None
     deleted_segment_count = 0
     created_segment_count = 0
@@ -257,7 +288,76 @@ def apply_revision() -> dict[str, Any]:
     locked_property_path: str | None = None
     unlocked_property_path: str | None = None
     replaced_asset_definition_id: str | None = None
-    if operation["type"] == "MoveObject":
+    render_intent_configured = False
+    added_light_id: str | None = None
+    if operation["type"] == "SetRenderIntent":
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "corona_missing":
+            raise MutationError("CORONA_NOT_FOUND", "Trusted test forced Corona absence")
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "mutation_timeout":
+            import time
+            time.sleep(300)
+        if operation.get("engine") != "corona" or operation.get("mode") != "preview":
+            raise MutationError("REVISION_PLAN_INVALID", "SetRenderIntent only supports Corona preview")
+        try:
+            renderer_class, discovered_class = corona._discover_corona_renderer()
+            _renderer, observed_class, _version = corona._configure_renderer(renderer_class)
+        except Exception as error:
+            code = getattr(error, "code", "CORONA_NOT_FOUND")
+            raise MutationError(str(code), str(error)) from error
+        if corona._normalized_name(discovered_class) != corona._normalized_name(observed_class):
+            raise MutationError("CORONA_RENDERER_ASSIGNMENT_FAILED", "Production renderer is not Corona")
+        render_intent_configured = True
+    elif operation["type"] == "AddLight":
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "light_missing":
+            raise MutationError("CORONA_LIGHT_CLASS_NOT_FOUND", "Trusted test forced CoronaLight absence")
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "property_missing":
+            raise MutationError("CORONA_LIGHT_PROPERTY_UNSUPPORTED", "Trusted test forced CoronaLight property failure")
+        if operation.get("renderEngine") != "corona" or operation.get("renderMode") != "preview":
+            raise MutationError("RENDERER_NOT_CONFIGURED", "AddLight requires Corona preview render intent")
+        existing_lights = [
+            node for node in list(rt.objects)
+            if _user_prop(node, LIGHT_USER_PROPERTIES["logical"]) == str(operation["light"]["id"])
+        ]
+        if existing_lights:
+            raise MutationError("LIGHT_ID_ALREADY_EXISTS", "Canonical light logical ID already exists")
+        production = getattr(rt.renderers, "production", None)
+        if production is None or "corona" not in corona._normalized_name(rt.classOf(production)):
+            raise MutationError("RENDERER_NOT_CONFIGURED", "Production renderer is not Corona")
+        light_spec = operation.get("light")
+        if not isinstance(light_spec, dict) or light_spec.get("type") != "area":
+            raise MutationError("REVISION_PLAN_INVALID", "AddLight supports area lights only")
+        transform = light_spec.get("transform")
+        if (
+            not isinstance(transform, dict)
+            or transform.get("scale") != [1, 1, 1]
+            or not isinstance(light_spec.get("intensity"), (int, float))
+            or float(light_spec["intensity"]) < 0
+        ):
+            raise MutationError("LIGHT_INVALID", "Canonical area light transform or intensity is invalid")
+        light_id = str(light_spec["id"])
+        try:
+            light, class_name = corona.create_corona_area_light(
+                position=transform["position"],
+                rotation_euler=transform["rotationEuler"],
+                intensity=float(light_spec["intensity"]) * corona.INTENSITY_SCALE,
+                width_mm=corona.AREA_LIGHT_WIDTH_MM,
+                light_name=f"AVZ_{light_id}",
+            )
+        except Exception as error:
+            code = getattr(error, "code", "CORONA_LIGHT_CLASS_NOT_FOUND")
+            raise MutationError(str(code), str(error)) from error
+        if corona._normalized_name(class_name) != "coronalight":
+            raise MutationError("CORONA_LIGHT_CLASS_NOT_FOUND", "Created light is not CoronaLight")
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["logical"], light_id)
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["project"], str(plan["projectId"]))
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["scene"], str(plan["sceneId"]))
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["revision"], str(plan["targetRevisionId"]))
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["type"], "area")
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["canonicalIntensity"], str(float(light_spec["intensity"])))
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["mappedIntensity"], str(float(light_spec["intensity"]) * corona.INTENSITY_SCALE))
+        rt.setUserProp(light, LIGHT_USER_PROPERTIES["widthMm"], str(float(corona.AREA_LIGHT_WIDTH_MM)))
+        added_light_id = light_id
+    elif operation["type"] == "MoveObject":
         transform = operation["transform"]
         target.pos = _point(transform["position"])
         rotation = transform["rotationEuler"]
@@ -530,6 +630,8 @@ def apply_revision() -> dict[str, Any]:
         "lockedPropertyPath": locked_property_path,
         "unlockedPropertyPath": unlocked_property_path,
         "replacedAssetDefinitionId": replaced_asset_definition_id,
+        "renderIntentConfigured": render_intent_configured,
+        "addedLightId": added_light_id,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,

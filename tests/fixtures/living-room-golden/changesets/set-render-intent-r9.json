@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_set_render_intent_r9",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0008",
+  "targetRevisionId": "rev_golden_0009",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Configure the canonical Golden scene for a Corona preview revision.",
+  "riskLevel": "medium",
+  "operations": [
+    {
+      "operationId": "op_set_render_intent_r9",
+      "type": "SetRenderIntent",
+      "targetId": "scene_golden_living_001",
+      "reason": "Golden deterministic Corona preview render intent revision.",
+      "riskLevel": "medium",
+      "parameters": {
+        "engine": "corona",
+        "mode": "preview"
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["scene_golden_living_001"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T05:00:00Z"
+  }
+}

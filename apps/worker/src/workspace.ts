@@ -35,6 +35,9 @@ export interface JobWorkspace {
   failureReportPath: string;
   buildResultPath: string;
   verificationResultPath: string;
+  expectedRenderStatePath: string;
+  renderStatePath: string;
+  renderStateResultPath: string;
   revisionPlanPath: string;
   mutationResultPath: string;
 }
@@ -77,6 +80,9 @@ export function createJobWorkspace(workspaceRoot: string, jobId: string): JobWor
     failureReportPath: join(logs, "execution-report.json"),
     buildResultPath: join(logs, "build-result.json"),
     verificationResultPath: join(logs, "verification-result.json"),
+    expectedRenderStatePath: join(input, "expected-render-state.json"),
+    renderStatePath: join(verification, "canonical-render-state.json"),
+    renderStateResultPath: join(logs, "render-state-result.json"),
     revisionPlanPath: join(logs, "revision-plan.json"),
     mutationResultPath: join(logs, "mutation-result.json"),
   };

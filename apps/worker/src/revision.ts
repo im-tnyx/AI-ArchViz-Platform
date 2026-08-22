@@ -10,6 +10,7 @@ import {
 import {
   type JobEnvelope,
   semanticJsonHash,
+  validateCanonicalRenderStateEvidence,
   validateExecutionReport,
   validateJobEnvelope,
   validateSceneManifest,
@@ -91,6 +92,27 @@ interface ReplaceAssetOperation {
   };
 }
 
+interface SetRenderIntentOperation {
+  operationId: string;
+  type: "SetRenderIntent";
+  targetId: string;
+  parameters: { engine: "corona"; mode: "preview" };
+}
+
+interface AddLightOperation {
+  operationId: string;
+  type: "AddLight";
+  targetId: string;
+  parameters: {
+    light: {
+      id: string;
+      type: "area";
+      transform: SemanticTransform;
+      intensity: number;
+    };
+  };
+}
+
 type LockPropertyPath = "geometry" | "transform" | "material";
 type PropertyLockOperation = LockPropertyOperation | UnlockPropertyOperation;
 
@@ -99,7 +121,9 @@ type SupportedOperation =
   | UpdateOpeningOperation
   | AssignMaterialOperation
   | PropertyLockOperation
-  | ReplaceAssetOperation;
+  | ReplaceAssetOperation
+  | SetRenderIntentOperation
+  | AddLightOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
   schemaVersion: "0.1.0";
@@ -160,6 +184,13 @@ interface SceneDocument extends Record<string, unknown> {
   materials: Array<{ id: string; baseColorRgb: Vector3 }>;
   materialAssignments: Array<{ id: string; targetId: string; materialId: string }>;
   revisions: Array<Record<string, unknown>>;
+  render: { engine: "none" | "corona" | "vray"; mode: "build_only" | "preview" | "final" };
+  lights?: Array<{
+    id: string;
+    type: "point" | "directional" | "area";
+    transform: SemanticTransform;
+    intensity: number;
+  }>;
 }
 
 interface WallSegmentPlan {
@@ -220,6 +251,28 @@ interface ReplaceAssetMutation {
   placementPolicy: "preserve_anchor";
 }
 
+interface SetRenderIntentMutation {
+  operationId: string;
+  type: "SetRenderIntent";
+  targetId: string;
+  engine: "corona";
+  mode: "preview";
+}
+
+interface AddLightMutation {
+  operationId: string;
+  type: "AddLight";
+  targetId: string;
+  renderEngine: "corona";
+  renderMode: "preview";
+  light: {
+    id: string;
+    type: "area";
+    transform: SemanticTransform;
+    intensity: number;
+  };
+}
+
 export interface RevisionMutationPlan {
   revisionPlanVersion: "0.1.0";
   changeSetId: string;
@@ -232,7 +285,9 @@ export interface RevisionMutationPlan {
     | OpeningMutation
     | MaterialMutation
     | LockMutation
-    | ReplaceAssetMutation;
+    | ReplaceAssetMutation
+    | SetRenderIntentMutation
+    | AddLightMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -254,6 +309,8 @@ interface ReportError {
   message: string;
   retryable: boolean;
 }
+
+export type CanonicalRenderStateEvidence = Record<string, unknown>;
 
 interface RevisionExecutionReport {
   reportVersion: "0.1.0";
@@ -284,6 +341,8 @@ export interface RevisionResult {
   workspace: string | null;
   mutationProcess: ControlledProcessResult | null;
   verificationProcess: ControlledProcessResult | null;
+  renderStateVerificationProcess: ControlledProcessResult | null;
+  renderStateEvidence: CanonicalRenderStateEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   report: RevisionExecutionReport | null;
@@ -430,12 +489,14 @@ export function planSceneRevision(
           "LockProperty",
           "UnlockProperty",
           "ReplaceAsset",
+          "SetRenderIntent",
+          "AddLight",
         ].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, and ReplaceAsset only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, and AddLight only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -477,8 +538,81 @@ export function planSceneRevision(
     | OpeningMutation
     | MaterialMutation
     | LockMutation
-    | ReplaceAssetMutation;
-  if (operation?.type === "MoveObject") {
+    | ReplaceAssetMutation
+    | SetRenderIntentMutation
+    | AddLightMutation;
+  if (operation?.type === "SetRenderIntent") {
+    if (operation.targetId !== base.scene.id) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Scene target ${operation.targetId} was not found`,
+      );
+    }
+    if (
+      base.render.engine === operation.parameters.engine &&
+      base.render.mode === operation.parameters.mode
+    ) {
+      throw new RevisionValidationError(
+        "RENDER_INTENT_UNCHANGED",
+        "Requested render intent is already canonical",
+      );
+    }
+    targetSceneSpec.render = { engine: "corona", mode: "preview" };
+    mutation = {
+      operationId: operation.operationId,
+      type: "SetRenderIntent",
+      targetId: operation.targetId,
+      engine: "corona",
+      mode: "preview",
+    };
+  } else if (operation?.type === "AddLight") {
+    if (operation.targetId !== base.scene.id) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Scene target ${operation.targetId} was not found`,
+      );
+    }
+    if (base.render.engine !== "corona" || base.render.mode !== "preview") {
+      throw new RevisionValidationError(
+        "RENDERER_NOT_CONFIGURED",
+        "AddLight requires canonical Corona preview render intent",
+      );
+    }
+    const light = operation.parameters.light;
+    const lights = base.lights ?? [];
+    if (lights.some((entry) => entry.id === light.id)) {
+      throw new RevisionValidationError(
+        "LIGHT_ID_ALREADY_EXISTS",
+        `Light ${light.id} already exists`,
+      );
+    }
+    if (
+      light.type !== "area" ||
+      !Number.isFinite(light.intensity) ||
+      light.intensity < 0 ||
+      !validFiniteVector(light.transform.position) ||
+      !validFiniteVector(light.transform.rotationEuler) ||
+      !validFiniteVector(light.transform.scale) ||
+      !light.transform.scale.every((value, index) => value === [1, 1, 1][index])
+    ) {
+      throw new RevisionValidationError(
+        "LIGHT_INVALID",
+        `Light ${light.id} does not satisfy the canonical area-light policy`,
+      );
+    }
+    targetSceneSpec.lights = [
+      ...lights.map((entry) => structuredClone(entry)),
+      structuredClone(light),
+    ].sort((left, right) => left.id.localeCompare(right.id));
+    mutation = {
+      operationId: operation.operationId,
+      type: "AddLight",
+      targetId: operation.targetId,
+      renderEngine: "corona",
+      renderMode: "preview",
+      light: structuredClone(light),
+    };
+  } else if (operation?.type === "MoveObject") {
     const matches = base.assets.filter((asset) => asset.id === operation.targetId);
     if (matches.length === 0) {
       throw new RevisionValidationError(
@@ -855,6 +989,10 @@ function normalizedMaterialColor(color: Vector3): Vector3 {
   return color.map((channel) => Math.round(channel * 255) / 255) as Vector3;
 }
 
+function validFiniteVector(value: Vector3): boolean {
+  return value.length === 3 && value.every((entry) => Number.isFinite(entry));
+}
+
 function validatePlacement(
   scene: SceneDocument,
   target: SceneDocument["assets"][number],
@@ -1077,6 +1215,22 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
     }
     return;
   }
+  if (operation?.type === "SetRenderIntent" || operation?.type === "AddLight") {
+    if (
+      diff.revision.before !== changeSet.baseRevisionId ||
+      diff.revision.after !== changeSet.targetRevisionId ||
+      diff.changed.length !== 0 ||
+      diff.added.length !== 0 ||
+      diff.removed.length !== 0 ||
+      diff.unchanged.length !== 14
+    ) {
+      throw new RevisionValidationError(
+        "UNEXPECTED_SEMANTIC_DIFF",
+        `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+      );
+    }
+    return;
+  }
   const [change] = diff.changed;
   const changedFields = Object.keys(change?.changes ?? {}).sort();
   if (operation?.type === "AssignMaterial") {
@@ -1176,6 +1330,30 @@ function rawFileHash(path: string): string {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 }
 
+function canonicalRenderStateExpectation(
+  scene: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const value = scene as unknown as SceneDocument;
+  if (value.render.engine !== "corona" || value.render.mode !== "preview") return null;
+  return {
+    renderStateVersion: "0.1.0",
+    sceneId: value.scene.id,
+    revisionId: value.scene.revisionId,
+    render: { engine: "corona", mode: "preview", actualRendererClass: "Corona" },
+    lights: (value.lights ?? []).map((light) => ({
+      logicalId: light.id,
+      type: "area",
+      actualClass: "CoronaLight",
+      position: [...light.transform.position],
+      rotationEuler: [...light.transform.rotationEuler],
+      canonicalIntensity: light.intensity,
+      mappedIntensity: light.intensity * 120,
+      widthMm: 800,
+    })),
+    status: "PASS",
+  };
+}
+
 function findVerifiedBaseArtifact(
   config: WorkerConfig,
   identity: { projectId: string; sceneId: string; revisionId: string },
@@ -1265,6 +1443,8 @@ function noExecution(
     workspace: null,
     mutationProcess: null,
     verificationProcess: null,
+    renderStateVerificationProcess: null,
+    renderStateEvidence: null,
     comparison: null,
     semanticDiff: null,
     report: null,
@@ -1292,6 +1472,8 @@ interface RevisionContext {
   compatibilityMode: boolean;
   mutationProcess: ControlledProcessResult | null;
   verificationProcess: ControlledProcessResult | null;
+  renderStateVerificationProcess: ControlledProcessResult | null;
+  renderStateEvidence: CanonicalRenderStateEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   baseArtifactPath: string;
@@ -1353,6 +1535,8 @@ function resultFor(context: RevisionContext, report: RevisionExecutionReport): R
     workspace: context.workspace.root,
     mutationProcess: context.mutationProcess,
     verificationProcess: context.verificationProcess,
+    renderStateVerificationProcess: context.renderStateVerificationProcess,
+    renderStateEvidence: context.renderStateEvidence,
     comparison: context.comparison,
     semanticDiff: context.semanticDiff,
     report,
@@ -1442,6 +1626,7 @@ export async function applySceneChangeSet(
     tolerances: ManifestTolerances;
     changeSet: ChangeSetContract;
     plan: RevisionMutationPlan;
+    expectedRenderState: Record<string, unknown> | null;
     baseArtifactPath: string;
     baseArtifactHash: string;
   };
@@ -1537,6 +1722,7 @@ export async function applySceneChangeSet(
       ) as ManifestTolerances,
       changeSet: planned.changeSet,
       plan: planned.plan,
+      expectedRenderState: canonicalRenderStateExpectation(targetScene),
       baseArtifactPath: verifiedBase.artifactPath,
       baseArtifactHash: verifiedBase.artifactHash,
     };
@@ -1562,7 +1748,15 @@ export async function applySceneChangeSet(
     projectId: prepared.changeSet.projectId,
     sceneId: prepared.changeSet.sceneId,
     targetRevisionId: prepared.changeSet.targetRevisionId,
-    workerRequirements: { os: "windows", dcc: "3ds_max", renderer: "none" },
+    workerRequirements: {
+      os: "windows",
+      dcc: "3ds_max",
+      renderer:
+        prepared.changeSet.operations[0]?.type === "SetRenderIntent" ||
+        prepared.changeSet.operations[0]?.type === "AddLight"
+          ? "corona"
+          : "none",
+    },
   });
   const jobId = options.jobId ?? `job_${prepared.changeSet.changeSetId}`;
   if (!/^[a-z][a-z0-9_]{2,127}$/u.test(jobId)) {
@@ -1621,6 +1815,8 @@ export async function applySceneChangeSet(
       compatibilityMode: false,
       mutationProcess: null,
       verificationProcess: null,
+      renderStateVerificationProcess: null,
+      renderStateEvidence: null,
       comparison: null,
       semanticDiff: null,
       baseArtifactPath: prepared.baseArtifactPath,
@@ -1630,6 +1826,9 @@ export async function applySceneChangeSet(
     writeDeterministicJson(workspace.sceneSpecPath, prepared.baseScene);
     writeDeterministicJson(workspace.targetSceneSpecPath, prepared.targetScene);
     writeDeterministicJson(workspace.expectedManifestPath, prepared.expectedManifest);
+    if (prepared.expectedRenderState) {
+      writeDeterministicJson(workspace.expectedRenderStatePath, prepared.expectedRenderState);
+    }
     writeDeterministicJson(workspace.changeSetPath, prepared.changeSet);
     writeDeterministicJson(workspace.revisionPlanPath, prepared.plan);
     copyFileSync(prepared.baseArtifactPath, workspace.baseScenePath);
@@ -1675,6 +1874,7 @@ export async function applySceneChangeSet(
         AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
         AI_ARCHVIZ_REVISION_PLAN_PATH: workspace.revisionPlanPath,
         AI_ARCHVIZ_MUTATION_RESULT_PATH: workspace.mutationResultPath,
+        ...(prepared.expectedRenderState ? { AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1" } : {}),
       },
       outputEncoding: "utf16le",
     });
@@ -1780,6 +1980,68 @@ export async function applySceneChangeSet(
     }
     context.semanticDiff = diffSemanticManifests(prepared.baseManifest, actualManifest);
     assertRevisionDiff(context.semanticDiff, prepared.changeSet);
+    if (prepared.expectedRenderState) {
+      context.renderStateVerificationProcess = await runControlledProcess({
+        executable: context.dcc.batchExecutablePath,
+        args: threeDsMaxBatchArguments(
+          resolve(config.repositoryRoot, "tools/3ds-max/python/verify_canonical_render_state.py"),
+        ),
+        cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
+        timeoutMs,
+        env: {
+          ...process.env,
+          AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+          AI_ARCHVIZ_EXPECTED_RENDER_STATE_PATH: workspace.expectedRenderStatePath,
+          AI_ARCHVIZ_RENDER_STATE_PATH: workspace.renderStatePath,
+          AI_ARCHVIZ_RENDER_STATE_RESULT_PATH: workspace.renderStateResultPath,
+          AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
+        },
+        outputEncoding: "utf16le",
+      });
+      if (context.renderStateVerificationProcess.errorCode) {
+        return failRevision(
+          config,
+          context,
+          context.renderStateVerificationProcess.errorCode,
+          "Fresh canonical render-state verification process failed",
+          context.renderStateVerificationProcess.errorCode === "PROCESS_TIMEOUT",
+          true,
+        );
+      }
+      if (!existsSync(workspace.renderStatePath) || !existsSync(workspace.renderStateResultPath)) {
+        return failRevision(
+          config,
+          context,
+          "RENDER_STATE_VERIFICATION_FAILED",
+          "Canonical render-state evidence is missing",
+          false,
+          true,
+        );
+      }
+      const renderStateEvidence = readJson(workspace.renderStatePath) as Record<string, unknown>;
+      const renderStateValidation = validateCanonicalRenderStateEvidence(renderStateEvidence);
+      if (!renderStateValidation.ok) {
+        return failRevision(
+          config,
+          context,
+          "RENDER_STATE_EVIDENCE_INVALID",
+          JSON.stringify(renderStateValidation.errors),
+          false,
+          true,
+        );
+      }
+      if (!isDeepStrictEqual(renderStateEvidence, prepared.expectedRenderState)) {
+        return failRevision(
+          config,
+          context,
+          "RENDER_STATE_MISMATCH",
+          `Expected ${JSON.stringify(prepared.expectedRenderState)}, received ${JSON.stringify(renderStateEvidence)}`,
+          false,
+          true,
+        );
+      }
+      context.renderStateEvidence = renderStateEvidence;
+    }
     if (rawFileHash(prepared.baseArtifactPath) !== prepared.baseArtifactHash) {
       return failRevision(
         config,
@@ -1881,6 +2143,29 @@ function replayRevision(
   const report = reportValidation.value as unknown as RevisionExecutionReport;
   const semanticDiff = diffSemanticManifests(baseManifest, manifest);
   assertRevisionDiff(semanticDiff, changeSet);
+  let renderStateEvidence: CanonicalRenderStateEvidence | null = null;
+  if (
+    changeSet.operations[0]?.type === "SetRenderIntent" ||
+    changeSet.operations[0]?.type === "AddLight"
+  ) {
+    const renderStatePath = resolve(dirname(manifestPath), "canonical-render-state.json");
+    if (!existsSync(renderStatePath)) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Canonical render-state replay evidence missing"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    const candidateEvidence = readJson(renderStatePath) as Record<string, unknown>;
+    if (!validateCanonicalRenderStateEvidence(candidateEvidence).ok) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Canonical render-state replay evidence invalid"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    renderStateEvidence = candidateEvidence;
+  }
   return {
     workerVersion: "0.1.0",
     status: "SUCCESS",
@@ -1891,6 +2176,8 @@ function replayRevision(
     workspace: dirname(dirname(outputPath)),
     mutationProcess: null,
     verificationProcess: null,
+    renderStateVerificationProcess: null,
+    renderStateEvidence,
     comparison: null,
     semanticDiff,
     report,

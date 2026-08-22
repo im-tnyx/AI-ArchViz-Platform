@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/canonical-render-state-v0.1.schema.json",
+  "title": "AI ArchViz Canonical Render State Evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["renderStateVersion", "sceneId", "revisionId", "render", "lights", "status"],
+  "properties": {
+    "renderStateVersion": { "const": "0.1.0" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "mode", "actualRendererClass"],
+      "properties": {
+        "engine": { "const": "corona" },
+        "mode": { "const": "preview" },
+        "actualRendererClass": { "type": "string", "minLength": 1 }
+      }
+    },
+    "lights": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/light" }
+    },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "vector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "type": "number" },
+        { "type": "number" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "light": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalId",
+        "type",
+        "actualClass",
+        "position",
+        "rotationEuler",
+        "canonicalIntensity",
+        "mappedIntensity",
+        "widthMm"
+      ],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "type": { "const": "area" },
+        "actualClass": { "const": "CoronaLight" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "rotationEuler": { "$ref": "#/$defs/vector3" },
+        "canonicalIntensity": { "type": "number", "minimum": 0 },
+        "mappedIntensity": { "type": "number", "minimum": 0 },
+        "widthMm": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

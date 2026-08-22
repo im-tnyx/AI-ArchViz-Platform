@@ -54,6 +54,7 @@ export type CoronaExecutionPlan = Record<string, unknown>;
 export type RendererRealizationEvidence = Record<string, unknown>;
 export type GoldenCoronaPreviewPlan = Record<string, unknown>;
 export type GoldenCoronaPreviewEvidence = Record<string, unknown>;
+export type CanonicalRenderStateEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -83,6 +84,7 @@ export const goldenCoronaPreviewPlanSchema = readSchema(
 export const goldenCoronaPreviewEvidenceSchema = readSchema(
   "golden-corona-preview-evidence-v0.1.schema.json",
 );
+export const canonicalRenderStateSchema = readSchema("canonical-render-state-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -123,6 +125,9 @@ const goldenCoronaPreviewPlanValidator = ajv.compile(
 const goldenCoronaPreviewEvidenceValidator = ajv.compile(
   goldenCoronaPreviewEvidenceSchema,
 ) as ValidateFunction<GoldenCoronaPreviewEvidence>;
+const canonicalRenderStateValidator = ajv.compile(
+  canonicalRenderStateSchema,
+) as ValidateFunction<CanonicalRenderStateEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -202,6 +207,12 @@ export function validateGoldenCoronaPreviewEvidence(
   value: unknown,
 ): ValidationResult<GoldenCoronaPreviewEvidence> {
   return runValidation(goldenCoronaPreviewEvidenceValidator, value);
+}
+
+export function validateCanonicalRenderStateEvidence(
+  value: unknown,
+): ValidationResult<CanonicalRenderStateEvidence> {
+  return runValidation(canonicalRenderStateValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

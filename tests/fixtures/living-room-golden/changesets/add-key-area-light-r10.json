@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "0.1.0",
+  "changeSetId": "chg_add_key_area_light_r10",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0009",
+  "targetRevisionId": "rev_golden_0010",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Add the canonical living-room Corona key area light.",
+  "riskLevel": "medium",
+  "operations": [
+    {
+      "operationId": "op_add_light_r10",
+      "type": "AddLight",
+      "targetId": "scene_golden_living_001",
+      "reason": "Golden deterministic canonical area-light revision.",
+      "riskLevel": "medium",
+      "parameters": {
+        "light": {
+          "id": "light_living_key_area",
+          "type": "area",
+          "transform": {
+            "position": [3000, 1600, 2800],
+            "rotationEuler": [-35, 0, 0],
+            "scale": [1, 1, 1]
+          },
+          "intensity": 1.25
+        }
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["scene_golden_living_001", "light_living_key_area"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-14T06:00:00Z"
+  }
+}

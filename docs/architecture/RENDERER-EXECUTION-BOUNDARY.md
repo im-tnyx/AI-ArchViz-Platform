@@ -188,3 +188,23 @@ head revision, or write renderer intent into SceneSpec. Canonical lighting and
 render-intent changes require a separate future revision contract. The next
 desired task after a verified 8C pass is **Technical Spike 8D — Canonical
 Lighting + Render Intent Revision Contract**.
+
+## Spike 8D: canonical render-state revision contract
+
+Spike 8D turns the previously diagnostic-only renderer intent into two
+deterministic SceneChangeSet revisions: `SetRenderIntent` creates rev9 with
+`render.engine: "corona"` and `render.mode: "preview"`; `AddLight` creates rev10
+with exactly one canonical `light_living_key_area` area light. Its transform is
+`position [3000,1600,2800]`, `rotationEuler [-35,0,0]`, `scale [1,1,1]`, and
+canonical intensity `1.25`. The DCC realization maps that intensity to `150`
+using the fixed adapter scalar `120` and uses the fixed `800 mm` area width.
+
+Each change remains one operation (`SceneChangeSet.maxItems = 1`). The pure
+SceneSpec transition is checked before execution; stale, unchanged, duplicate,
+wrong-target, and renderer-prerequisite requests fail closed. A fresh
+Safe-Scene process verifies the actual Corona renderer and canonical light,
+emits the separate `canonical-render-state-v0.1` evidence contract, and never
+saves renderer-modified `.max` state. Rev8 and rev9 artifacts remain hash-
+preserved, and replay uses the verified evidence without a second DCC mutation.
+This spike's compatibility evidence targets 3ds Max `2025.3`; no 2026
+verification is claimed.

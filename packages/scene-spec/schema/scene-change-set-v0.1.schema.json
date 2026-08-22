@@ -61,7 +61,9 @@
           { "$ref": "#/$defs/assignMaterial" },
           { "$ref": "#/$defs/lockProperty" },
           { "$ref": "#/$defs/unlockProperty" },
-          { "$ref": "#/$defs/replaceAsset" }
+          { "$ref": "#/$defs/replaceAsset" },
+          { "$ref": "#/$defs/setRenderIntent" },
+          { "$ref": "#/$defs/addLight" }
         ]
       }
     },
@@ -358,6 +360,95 @@
           "properties": {
             "newAssetDefinitionId": { "$ref": "#/$defs/id" },
             "placementPolicy": { "const": "preserve_anchor" }
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "setRenderIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "SetRenderIntent" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "medium" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["engine", "mode"],
+          "properties": {
+            "engine": { "const": "corona" },
+            "mode": { "const": "preview" }
+          }
+        },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        },
+        "provenance": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/provenance" }
+        },
+        "expectedImpact": { "$ref": "#/$defs/expectedImpact" }
+      }
+    },
+    "addLight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationId",
+        "type",
+        "targetId",
+        "reason",
+        "riskLevel",
+        "parameters",
+        "preconditions",
+        "provenance",
+        "expectedImpact"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/id" },
+        "type": { "const": "AddLight" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "riskLevel": { "const": "medium" },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["light"],
+          "properties": {
+            "light": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "type", "transform", "intensity"],
+              "properties": {
+                "id": { "$ref": "#/$defs/id" },
+                "type": { "const": "area" },
+                "transform": { "$ref": "#/$defs/transform" },
+                "intensity": { "type": "number", "minimum": 0 }
+              }
+            }
           }
         },
         "preconditions": {

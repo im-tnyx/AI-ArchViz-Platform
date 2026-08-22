@@ -681,6 +681,25 @@ Example:
 
 Renderer adapters compile semantic values into Corona or V-Ray implementations.
 
+### Technical Spike 8D canonical render-state operations
+
+The v0.1 implementation adds two bounded, single-operation transitions for
+the Golden living-room proof. `SetRenderIntent` accepts only
+`engine: "corona"` and `mode: "preview"`; it targets the scene identity and
+does not mutate geometry, materials, cameras, or locks. `AddLight` is valid
+only after that Corona preview intent exists and accepts only one canonical
+`area` light with an explicit absolute transform and unitless canonical
+intensity. `SceneChangeSet` remains `maxItems: 1`; a grouped or composite
+request is rejected rather than applied partially.
+
+The worker maps canonical light intensity through the adapter-owned scalar
+(`120`) and uses the adapter-owned area width (`800 mm`). These values are
+execution policy, not renderer-specific fields in SceneSpec. The canonical
+logical ID is preserved independently of any DCC display name or runtime
+class. A fresh DCC verification must observe Corona and exactly the expected
+canonical light before the revision is promoted; portable evidence is
+validated by `canonical-render-state-v0.1`.
+
 ---
 
 ## 20. Camera Operations

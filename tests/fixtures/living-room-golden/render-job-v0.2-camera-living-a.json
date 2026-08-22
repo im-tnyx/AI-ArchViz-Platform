@@ -1,0 +1,7 @@
+{
+  "renderJobVersion": "0.2.0",
+  "engine": "corona",
+  "cameraId": "camera_living_a",
+  "mode": "preview",
+  "resolution": { "width": 320, "height": 240 }
+}

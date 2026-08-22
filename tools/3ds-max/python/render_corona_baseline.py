@@ -32,6 +32,8 @@ MATERIAL_TARGET_ID = "asset_corona_baseline_subject"
 LIGHT_ID = "light_corona_baseline"
 CAMERA_FOCAL_LENGTH_MM = 35.0
 CAMERA_SENSOR_WIDTH_MM = 36.0
+INTENSITY_SCALE = 120.0
+AREA_LIGHT_WIDTH_MM = 800.0
 
 
 class CoronaBaselineError(RuntimeError):
@@ -155,6 +157,33 @@ def _property_names(instance: Any) -> dict[str, str]:
     return {_normalized_name(name): str(name) for name in rt.getPropNames(instance)}
 
 
+def read_discovered_property(
+    instance: Any, exact_names: tuple[str, ...], required_tokens: tuple[str, ...]
+) -> tuple[str, Any]:
+    properties = _property_names(instance)
+    selected = next((properties[name] for name in exact_names if name in properties), None)
+    if selected is None:
+        matches = [
+            original
+            for normalized, original in properties.items()
+            if all(token in normalized for token in required_tokens)
+        ]
+        if len(matches) == 1:
+            selected = matches[0]
+    if selected is None:
+        raise CoronaBaselineError(
+            "CORONA_LIGHT_PROPERTY_UNSUPPORTED",
+            f"Required Corona property is unavailable: {'/'.join(exact_names)}",
+        )
+    try:
+        return selected, rt.getProperty(instance, rt.Name(selected))
+    except Exception as error:
+        raise CoronaBaselineError(
+            "CORONA_LIGHT_PROPERTY_UNSUPPORTED",
+            f"Could not read supported property {selected}",
+        ) from error
+
+
 def _set_discovered_property(
     instance: Any,
     exact_names: tuple[str, ...],
@@ -264,7 +293,7 @@ def create_corona_area_light(
     position: list[float] | tuple[float, float, float] = (-1200.0, -1800.0, 2800.0),
     rotation_euler: list[float] | tuple[float, float, float] = (0.0, 0.0, 0.0),
     intensity: float = 120.0,
-    width_mm: float = 800.0,
+    width_mm: float = AREA_LIGHT_WIDTH_MM,
     light_name: str = "AVZ_CORONA_BASELINE_LIGHT",
 ) -> tuple[Any, str]:
     candidates = [

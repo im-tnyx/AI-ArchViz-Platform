@@ -19,6 +19,7 @@
     "test:3dsmax:corona-baseline": "pnpm run build && node apps/worker/dist/corona-baseline-integration.js",
     "test:3dsmax:corona-adapter": "pnpm run build && node apps/worker/dist/corona-adapter-integration.js",
     "test:3dsmax:golden-corona-preview": "pnpm run build && node apps/worker/dist/golden-corona-preview-integration.js",
+    "test:3dsmax:canonical-render-state-revision": "pnpm run build && node apps/worker/dist/canonical-render-state-revision-integration.js",
     "worker": "pnpm run build && node apps/worker/dist/cli.js",
     "test:3dsmax:health": "pnpm run build && node apps/worker/dist/cli.js probe-3ds-max",
     "test:3dsmax:golden": "pnpm run build && node apps/worker/dist/cli.js build-scene tests/fixtures/living-room-golden/job-envelope.json",

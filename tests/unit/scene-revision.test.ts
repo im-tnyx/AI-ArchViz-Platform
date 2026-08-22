@@ -183,3 +183,110 @@ describe("semantic preservation and replay", () => {
     expect(transform.position).not.toEqual([3500, 2200, 0]);
   });
 });
+
+describe("Technical Spike 8D canonical render-state revisions", () => {
+  it("accepts exactly the SetRenderIntent and AddLight operation contracts", () => {
+    expect(validateSceneChangeSet(fixture("changesets/set-render-intent-r9.json"))).toMatchObject({
+      ok: true,
+    });
+    expect(validateSceneChangeSet(fixture("changesets/add-key-area-light-r10.json"))).toMatchObject(
+      {
+        ok: true,
+      },
+    );
+    const composite = fixture("changesets/set-render-intent-r9.json") as {
+      operations: unknown[];
+    };
+    const addLight = fixture("changesets/add-key-area-light-r10.json") as {
+      operations: unknown[];
+    };
+    composite.operations.push(...addLight.operations);
+    expect(validateSceneChangeSet(composite)).toMatchObject({ ok: false });
+  });
+
+  it("computes exact rev8→rev9 and rev9→rev10 SceneSpec transitions", () => {
+    expect(
+      planSceneRevision(
+        fixture("revisions/rev_golden_0008/scene-spec.json"),
+        fixture("changesets/set-render-intent-r9.json"),
+      ).targetSceneSpec,
+    ).toEqual(fixture("revisions/rev_golden_0009/scene-spec.json"));
+    expect(
+      planSceneRevision(
+        fixture("revisions/rev_golden_0009/scene-spec.json"),
+        fixture("changesets/add-key-area-light-r10.json"),
+      ).targetSceneSpec,
+    ).toEqual(fixture("revisions/rev_golden_0010/scene-spec.json"));
+  });
+
+  it("blocks stale, unchanged, wrong-target, renderer-prerequisite, and duplicate-light requests", () => {
+    const stale = fixture("changesets/set-render-intent-r9.json");
+    stale.baseRevisionId = "rev_golden_0007";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0008/scene-spec.json"), stale),
+      ),
+    ).toBe("STALE_REVISION");
+
+    const unchanged = fixture("changesets/set-render-intent-r9.json");
+    unchanged.baseRevisionId = "rev_golden_0009";
+    unchanged.targetRevisionId = "rev_golden_0011";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0009/scene-spec.json"), unchanged),
+      ),
+    ).toBe("RENDER_INTENT_UNCHANGED");
+
+    const wrongTarget = fixture("changesets/set-render-intent-r9.json") as {
+      operations: Array<{ targetId: string }>;
+    };
+    const wrongTargetOperation = wrongTarget.operations[0];
+    if (!wrongTargetOperation) throw new Error("SetRenderIntent operation missing");
+    wrongTargetOperation.targetId = "scene_wrong_target";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0008/scene-spec.json"), wrongTarget),
+      ),
+    ).toBe("TARGET_NOT_FOUND");
+
+    const rendererMissing = fixture("changesets/add-key-area-light-r10.json") as {
+      baseRevisionId: string;
+      targetRevisionId: string;
+    };
+    rendererMissing.baseRevisionId = "rev_golden_0008";
+    rendererMissing.targetRevisionId = "rev_golden_0009_candidate";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0008/scene-spec.json"), rendererMissing),
+      ),
+    ).toBe("RENDERER_NOT_CONFIGURED");
+
+    const duplicate = fixture("changesets/add-key-area-light-r10.json");
+    duplicate.baseRevisionId = "rev_golden_0010";
+    duplicate.targetRevisionId = "rev_golden_0011";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), duplicate),
+      ),
+    ).toBe("LIGHT_ID_ALREADY_EXISTS");
+  });
+
+  it("keeps the canonical light order and adapter scalar mapping deterministic", () => {
+    const result = planSceneRevision(
+      fixture("revisions/rev_golden_0009/scene-spec.json"),
+      fixture("changesets/add-key-area-light-r10.json"),
+    );
+    expect(result.targetSceneSpec.lights).toEqual([
+      {
+        id: "light_living_key_area",
+        type: "area",
+        transform: {
+          position: [3000, 1600, 2800],
+          rotationEuler: [-35, 0, 0],
+          scale: [1, 1, 1],
+        },
+        intensity: 1.25,
+      },
+    ]);
+  });
+});
