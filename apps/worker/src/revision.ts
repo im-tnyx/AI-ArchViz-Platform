@@ -22,6 +22,8 @@ import {
   wallFrame,
 } from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
   evaluateLedger,
@@ -1414,9 +1416,23 @@ export async function applySceneChangeSet(
   config: WorkerConfig,
   suppliedBaseJobPath: string,
   suppliedChangeSetPath: string,
-  options: { jobId?: string } = {},
+  options: { jobId?: string; authorizeDccExecution?: boolean } = {},
 ): Promise<RevisionResult> {
   const defaultJobId = "job_revision_preflight";
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution: options.authorizeDccExecution === true,
+    })
+  ) {
+    return noExecution(
+      defaultJobId,
+      makeError(
+        "DCC_EXECUTION_DISABLED",
+        "DCC execution requires allowDccExecution=true and explicit call-site authorization",
+      ),
+    );
+  }
   let prepared: {
     baseJob: JobEnvelope;
     baseScene: Record<string, unknown>;
@@ -1648,7 +1664,9 @@ export async function applySceneChangeSet(
     );
     context.mutationProcess = await runControlledProcess({
       executable: context.dcc.batchExecutablePath,
-      args: [resolve(config.repositoryRoot, "tools/3ds-max/python/apply_change_set.py"), "-v", "2"],
+      args: threeDsMaxBatchArguments(
+        resolve(config.repositoryRoot, "tools/3ds-max/python/apply_change_set.py"),
+      ),
       cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
       timeoutMs,
       env: {
@@ -1696,7 +1714,9 @@ export async function applySceneChangeSet(
     }
     context.verificationProcess = await runControlledProcess({
       executable: context.dcc.batchExecutablePath,
-      args: [resolve(config.repositoryRoot, "tools/3ds-max/python/verify_scene.py"), "-v", "2"],
+      args: threeDsMaxBatchArguments(
+        resolve(config.repositoryRoot, "tools/3ds-max/python/verify_scene.py"),
+      ),
       cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
       timeoutMs,
       env: {

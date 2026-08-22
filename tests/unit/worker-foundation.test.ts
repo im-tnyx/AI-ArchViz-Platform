@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   discoverThreeDsMax,
   loadWorkerConfig,
+  requireDccTestApproval,
   resolveWithinRoot,
   runControlledProcess,
+  threeDsMaxBatchArguments,
 } from "../../apps/worker/src/index.js";
 
 const temporaryDirectories: string[] = [];
@@ -44,6 +46,7 @@ describe("trusted local paths and config", () => {
       processTimeoutMs: 5_000,
       threeDsMaxInstallationPath: null,
       allowCompatibilityVersionForSpike: false,
+      allowDccExecution: false,
       trustedAssetRoot: null,
     });
   });
@@ -69,6 +72,39 @@ describe("trusted local paths and config", () => {
     const configPath = join(root, "local-worker.json");
     writeFileSync(configPath, JSON.stringify({ allowCompatibilityVersionForSpike: true }), "utf8");
     expect(loadWorkerConfig(root, configPath).allowCompatibilityVersionForSpike).toBe(true);
+  });
+
+  it("keeps DCC execution disabled until trusted local config opts in", () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-archviz-dcc-config-"));
+    temporaryDirectories.push(root);
+    const configPath = join(root, "local-worker.json");
+    writeFileSync(configPath, JSON.stringify({ allowDccExecution: true }), "utf8");
+    expect(loadWorkerConfig(root, configPath).allowDccExecution).toBe(true);
+
+    writeFileSync(configPath, JSON.stringify({ allowDccExecution: false }), "utf8");
+    expect(loadWorkerConfig(root, configPath).allowDccExecution).toBe(false);
+
+    writeFileSync(configPath, JSON.stringify({ allowDccExecution: "yes" }), "utf8");
+    expect(() => loadWorkerConfig(root, configPath)).toThrow(/allowDccExecution/u);
+  });
+});
+
+describe("3ds Max batch arguments", () => {
+  it("uses documented dialog and Safe Scene controls without desktop-only flags", () => {
+    expect(threeDsMaxBatchArguments("trusted-runner.py")).toEqual([
+      "trusted-runner.py",
+      "-v",
+      "2",
+      "-dm",
+      "on",
+      "-safescene",
+      "ON",
+    ]);
+  });
+
+  it("requires an explicit opt-in before a DCC integration suite can launch", () => {
+    expect(() => requireDccTestApproval({})).toThrow(/AI_ARCHVIZ_ALLOW_DCC_TESTS=1/u);
+    expect(() => requireDccTestApproval({ AI_ARCHVIZ_ALLOW_DCC_TESTS: "1" })).not.toThrow();
   });
 });
 

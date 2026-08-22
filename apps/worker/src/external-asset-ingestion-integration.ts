@@ -15,6 +15,7 @@ import type { AssetArtifact, AssetInspectionEvidence } from "@ai-archviz/worker-
 import { inspectExternalMaxArtifact } from "./asset-inspection.js";
 import { type AssetArtifactRegistry, promoteArtifactAfterInspection } from "./asset-trust.js";
 import type { WorkerConfig } from "./config.js";
+import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import {
   type ExternalAssetIngestionInput,
@@ -35,14 +36,6 @@ const sourceAssetPath = join(fixtureRoot, "source_asset.max");
 const fixtureResultPath = join(fixtureRoot, "fixture-result.json");
 const trustedAssetPath = join(trustedAssetRoot, "objects", "external", "controlled-sofa.max");
 const artifactId = "artifact_controlled_sofa_external_v1";
-
-function requireDccTestApproval(): void {
-  if (process.env.AI_ARCHVIZ_ALLOW_DCC_TESTS !== "1") {
-    throw new Error(
-      "AI_ARCHVIZ_ALLOW_DCC_TESTS=1 is required before running a DCC integration suite",
-    );
-  }
-}
 
 function sha256File(path: string): string {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
@@ -144,6 +137,7 @@ function integrationConfig(): WorkerConfig {
       processTimeoutMs: 180_000,
       threeDsMaxInstallationPath: null,
       allowCompatibilityVersionForSpike: true,
+      allowDccExecution: true,
       trustedAssetRoot: null,
     },
     { allowDccExecution: true },
@@ -156,7 +150,7 @@ async function produceVerifiedRev8(config: WorkerConfig): Promise<{
   artifactPath: string;
 }> {
   const baseJobPath = "tests/fixtures/living-room-golden/job-envelope.json";
-  const build = await buildGoldenScene(config, baseJobPath);
+  const build = await buildGoldenScene(config, baseJobPath, { authorizeDccExecution: true });
   assert.equal(build.status, "SUCCESS", build.error?.message);
   const paths = [
     "changesets/move-coffee-table-r2.json",
@@ -173,6 +167,7 @@ async function produceVerifiedRev8(config: WorkerConfig): Promise<{
       config,
       baseJobPath,
       `tests/fixtures/living-room-golden/${path}`,
+      { authorizeDccExecution: true },
     );
     assert.equal(finalResult.status, "SUCCESS", finalResult.error?.message);
   }
@@ -223,6 +218,7 @@ async function createVerifiedArtifact(): Promise<{
       processTimeoutMs: 180_000,
       threeDsMaxInstallationPath: null,
       allowCompatibilityVersionForSpike: true,
+      allowDccExecution: true,
     },
     registry: registryFor(quarantined),
     job: {

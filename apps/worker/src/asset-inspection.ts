@@ -7,6 +7,7 @@ import {
   validateAssetInspectionJob,
 } from "@ai-archviz/worker-contracts";
 import { type AssetArtifactRegistry, resolveArtifactForInspection } from "./asset-trust.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
 
@@ -18,6 +19,7 @@ export interface AssetInspectionConfig {
   processTimeoutMs: number;
   threeDsMaxInstallationPath: string | null;
   allowCompatibilityVersionForSpike: boolean;
+  allowDccExecution: boolean;
 }
 
 export interface ExternalAssetInspectionResult {
@@ -128,7 +130,14 @@ export async function inspectExternalMaxArtifact({
 }): Promise<ExternalAssetInspectionResult> {
   const jobValidation = validateAssetInspectionJob(job);
   if (!jobValidation.ok) return failure("BLOCKED", "ASSET_INSPECTION_JOB_INVALID");
-  if (!authorizeDccExecution) return failure("BLOCKED", "DCC_EXECUTION_DISABLED");
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution,
+    })
+  ) {
+    return failure("BLOCKED", "DCC_EXECUTION_DISABLED");
+  }
 
   const normalizedJob = jobValidation.value as {
     artifactId: string;

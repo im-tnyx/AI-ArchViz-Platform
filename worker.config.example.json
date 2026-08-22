@@ -2,5 +2,6 @@
   "workspaceRoot": ".workspace",
   "processTimeoutMs": 120000,
   "threeDsMaxInstallationPath": null,
-  "allowCompatibilityVersionForSpike": false
+  "allowCompatibilityVersionForSpike": false,
+  "allowDccExecution": false
 }

@@ -9,6 +9,7 @@ export interface WorkerConfig {
   processTimeoutMs: number;
   threeDsMaxInstallationPath: string | null;
   allowCompatibilityVersionForSpike: boolean;
+  allowDccExecution: boolean;
   trustedAssetRoot: string | null;
 }
 
@@ -17,6 +18,7 @@ interface ConfigFile {
   processTimeoutMs?: unknown;
   threeDsMaxInstallationPath?: unknown;
   allowCompatibilityVersionForSpike?: unknown;
+  allowDccExecution?: unknown;
   trustedAssetRoot?: unknown;
 }
 
@@ -25,6 +27,7 @@ const allowedKeys = new Set([
   "processTimeoutMs",
   "threeDsMaxInstallationPath",
   "allowCompatibilityVersionForSpike",
+  "allowDccExecution",
   "trustedAssetRoot",
 ]);
 
@@ -87,6 +90,11 @@ export function loadWorkerConfig(
     throw new WorkerError("CONFIG_INVALID", "allowCompatibilityVersionForSpike must be a boolean");
   }
 
+  const allowDccExecution = raw.allowDccExecution ?? false;
+  if (typeof allowDccExecution !== "boolean") {
+    throw new WorkerError("CONFIG_INVALID", "allowDccExecution must be a boolean");
+  }
+
   const trustedAssetRoot = raw.trustedAssetRoot ?? null;
   if (
     trustedAssetRoot !== null &&
@@ -101,6 +109,7 @@ export function loadWorkerConfig(
     processTimeoutMs: Number(timeout),
     threeDsMaxInstallationPath: installation,
     allowCompatibilityVersionForSpike,
+    allowDccExecution,
     trustedAssetRoot: trustedAssetRoot === null ? null : resolve(trustedAssetRoot),
   };
 }

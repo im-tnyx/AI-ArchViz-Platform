@@ -13,6 +13,8 @@ import {
 } from "@ai-archviz/worker-contracts";
 import { compileGoldenBuildPlan } from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
   evaluateLedger,
@@ -85,6 +87,11 @@ export interface TrustedFailureControls {
   forceVerificationFailure: boolean;
   forceManifestMismatch: boolean;
   forceDccTimeout: boolean;
+}
+
+export interface GoldenBuildExecutionOptions {
+  authorizeDccExecution?: boolean;
+  controls?: TrustedFailureControls;
 }
 
 interface BuildContext {
@@ -336,7 +343,6 @@ async function executeGoldenAttempt(
       validationFailed: true,
     });
   }
-
   context.dcc = await discoverThreeDsMax({
     installationOverride: config.threeDsMaxInstallationPath,
   });
@@ -372,7 +378,9 @@ async function executeGoldenAttempt(
   };
   context.buildProcess = await runControlledProcess({
     executable: context.dcc.batchExecutablePath,
-    args: [resolve(config.repositoryRoot, "tools/3ds-max/python/build_scene.py"), "-v", "2"],
+    args: threeDsMaxBatchArguments(
+      resolve(config.repositoryRoot, "tools/3ds-max/python/build_scene.py"),
+    ),
     cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
     timeoutMs: Math.min(config.processTimeoutMs, job.policy.timeoutSeconds * 1_000),
     env: {
@@ -413,7 +421,9 @@ async function executeGoldenAttempt(
 
   context.verificationProcess = await runControlledProcess({
     executable: context.dcc.batchExecutablePath,
-    args: [resolve(config.repositoryRoot, "tools/3ds-max/python/verify_scene.py"), "-v", "2"],
+    args: threeDsMaxBatchArguments(
+      resolve(config.repositoryRoot, "tools/3ds-max/python/verify_scene.py"),
+    ),
     cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
     timeoutMs: Math.min(config.processTimeoutMs, job.policy.timeoutSeconds * 1_000),
     env: {
@@ -495,7 +505,7 @@ export function readTrustedFailureControls(
 export async function buildGoldenScene(
   config: WorkerConfig,
   suppliedJobPath: string,
-  controls = readTrustedFailureControls(),
+  options: GoldenBuildExecutionOptions = {},
 ): Promise<GoldenBuildResult> {
   const absoluteJobPath = resolveWithinRoot(
     config.repositoryRoot,
@@ -506,6 +516,19 @@ export async function buildGoldenScene(
     throw new Error(`Job Envelope validation failed: ${JSON.stringify(validation.errors)}`);
   }
   const job = validation.value;
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution: options.authorizeDccExecution === true,
+    })
+  ) {
+    return resultWithoutExecution(
+      job,
+      "DCC_EXECUTION_DISABLED",
+      "DCC execution requires allowDccExecution=true and explicit call-site authorization",
+    );
+  }
+  const controls = options.controls ?? readTrustedFailureControls();
   let idempotencyLock: ReturnType<typeof acquireExecutionLock> | null = null;
   let sceneLock: ReturnType<typeof acquireExecutionLock> | null = null;
   let activeRecord: IdempotencyLedgerRecord | null = null;

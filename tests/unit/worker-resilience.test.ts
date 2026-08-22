@@ -40,13 +40,14 @@ function isolatedRepository(job: JobEnvelope): {
   return { root, jobPath, workspace: join(root, ".workspace") };
 }
 
-function workerConfig(root: string, workspace: string) {
+function workerConfig(root: string, workspace: string, allowDccExecution = false) {
   return {
     repositoryRoot: root,
     workspaceRoot: workspace,
     processTimeoutMs: 5_000,
     threeDsMaxInstallationPath: null,
     allowCompatibilityVersionForSpike: false,
+    allowDccExecution,
     trustedAssetRoot: null,
   };
 }
@@ -174,7 +175,9 @@ describe("durable idempotency ledger", () => {
       dccVersion: "2025",
       compatibilityMode: true,
     });
-    const result = await buildGoldenScene(workerConfig(root, workspace), jobPath);
+    const result = await buildGoldenScene(workerConfig(root, workspace, true), jobPath, {
+      authorizeDccExecution: true,
+    });
     expect(result).toMatchObject({
       status: "SUCCESS",
       replayed: true,
@@ -235,7 +238,9 @@ describe("durable idempotency ledger", () => {
       verifiedOutputHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       manifestHash: semanticJsonHash(manifest),
     });
-    const result = await buildGoldenScene(workerConfig(root, workspace), jobPath);
+    const result = await buildGoldenScene(workerConfig(root, workspace, true), jobPath, {
+      authorizeDccExecution: true,
+    });
     expect(result).toMatchObject({
       status: "BLOCKED",
       error: { code: "RECOVERY_REQUIRED" },
@@ -284,7 +289,9 @@ describe("revision safety", () => {
   it("consumes the frozen stale-revision job and blocks before DCC discovery", async () => {
     const stale = fixture("invalid/stale-revision-job.json") as JobEnvelope;
     const { root, jobPath, workspace } = isolatedRepository(stale);
-    const result = await buildGoldenScene(workerConfig(root, workspace), jobPath);
+    const result = await buildGoldenScene(workerConfig(root, workspace, true), jobPath, {
+      authorizeDccExecution: true,
+    });
     expect(result).toMatchObject({
       status: "FAILED",
       dcc: null,

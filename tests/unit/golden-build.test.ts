@@ -207,6 +207,31 @@ describe("workspace lifecycle and promotion guard", () => {
 });
 
 describe("pre-DCC failure gates", () => {
+  it("blocks a valid build before 3ds Max discovery when execution is disabled", async () => {
+    const { root, jobPath } = isolatedFixture(() => {});
+    const result = await buildGoldenScene(
+      {
+        repositoryRoot: root,
+        workspaceRoot: join(root, ".workspace"),
+        processTimeoutMs: 5_000,
+        threeDsMaxInstallationPath: null,
+        allowCompatibilityVersionForSpike: false,
+        allowDccExecution: false,
+        trustedAssetRoot: null,
+      },
+      jobPath,
+      { authorizeDccExecution: true },
+    );
+    expect(result).toMatchObject({
+      status: "BLOCKED",
+      dcc: null,
+      buildProcess: null,
+      verificationProcess: null,
+      report: null,
+      error: { code: "DCC_EXECUTION_DISABLED" },
+    });
+  });
+
   it("rejects an invalid SceneSpec before discovery or launch", async () => {
     const { root, jobPath } = isolatedFixture((scene, job) => {
       scene.sceneSpecVersion = "9.9.9";
@@ -220,9 +245,11 @@ describe("pre-DCC failure gates", () => {
         processTimeoutMs: 5_000,
         threeDsMaxInstallationPath: null,
         allowCompatibilityVersionForSpike: false,
+        allowDccExecution: true,
         trustedAssetRoot: null,
       },
       jobPath,
+      { authorizeDccExecution: true },
     );
     expect(result).toMatchObject({
       status: "FAILED",
@@ -245,9 +272,11 @@ describe("pre-DCC failure gates", () => {
         processTimeoutMs: 5_000,
         threeDsMaxInstallationPath: null,
         allowCompatibilityVersionForSpike: false,
+        allowDccExecution: true,
         trustedAssetRoot: null,
       },
       jobPath,
+      { authorizeDccExecution: true },
     );
     expect(result).toMatchObject({
       status: "FAILED",

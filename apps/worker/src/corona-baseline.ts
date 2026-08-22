@@ -6,6 +6,7 @@ import {
   validateRenderEvidence,
   validateRenderJob,
 } from "@ai-archviz/worker-contracts";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
 import { writeDeterministicJson } from "./workspace.js";
@@ -22,6 +23,7 @@ export interface CoronaBaselineConfig {
   processTimeoutMs: number;
   threeDsMaxInstallationPath: string | null;
   allowCompatibilityVersionForSpike: boolean;
+  allowDccExecution: boolean;
 }
 
 export interface CoronaRendererClassMetadata {
@@ -310,12 +312,17 @@ export async function renderCoronaBaseline({
       evidence: null,
     };
   }
-  if (!authorizeDccExecution) {
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution,
+    })
+  ) {
     return {
       status: "BLOCKED",
       error: {
         code: "DCC_EXECUTION_DISABLED",
-        message: "Corona baseline requires DCC authorization",
+        message: "Corona baseline requires allowDccExecution=true and DCC authorization",
       },
       dcc: null,
       compatibilityMode: false,

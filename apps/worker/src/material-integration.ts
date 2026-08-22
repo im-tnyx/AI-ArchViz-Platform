@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { resolveWithinRoot } from "./paths.js";
 
 interface Invocation {
@@ -149,12 +150,14 @@ async function invoke(command: string[], revisionJobId?: string): Promise<Invoca
 }
 
 async function main(): Promise<void> {
+  requireDccTestApproval();
   if (existsSync(runRoot)) rmSync(runRoot, { recursive: true, force: true });
   mkdirSync(runRoot, { recursive: true });
   writeJson(configPath, {
     workspaceRoot: relative(repositoryRoot, workspaceRoot).replaceAll("\\", "/"),
     processTimeoutMs: 180_000,
     allowCompatibilityVersionForSpike: true,
+    allowDccExecution: true,
   });
 
   const rev1 = await invoke(["build-scene", baseJobPath]);

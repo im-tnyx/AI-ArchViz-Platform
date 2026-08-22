@@ -613,6 +613,42 @@ Why:
 
 Process reuse may be optimized later after benchmarks.
 
+### 17.1 Explicit local DCC execution authorization
+
+Discovery is read-only, but any command that would start 3ds Max Batch is
+default-deny. The trusted local worker config must set:
+
+```json
+{ "allowDccExecution": true }
+```
+
+Job payloads cannot enable this field. A production-capable entrypoint also
+requires its trusted caller to explicitly set `authorizeDccExecution: true`.
+Both conditions are required; either false returns `DCC_EXECUTION_DISABLED`
+before DCC discovery, workspace creation, or launch.
+
+DCC integration suites have one further operator gate:
+
+```powershell
+$env:AI_ARCHVIZ_ALLOW_DCC_TESTS = "1"
+pnpm test:3dsmax:replace-asset
+```
+
+This gate avoids an ordinary test command unexpectedly consuming a local 3ds
+Max license or taking foreground focus. It is not a production-job bypass and
+cannot override `allowDccExecution: false`.
+
+The worker invokes the Autodesk-supported `3dsmaxbatch.exe` path with Dialog
+Monitor enabled and Safe Scene execution enabled. Desktop-only `3dsmax.exe`
+flags such as `-silent` are not sent to the batch executable.
+
+### 17.2 Deferred environment and lock hardening
+
+Controlled child processes currently inherit `process.env`; environment
+allowlisting is a separate security backlog item and is not implied by DCC
+authorization. Lock PID-reuse / TOCTOU hardening is also separate and remains
+unchanged by this guard closure.
+
 ---
 
 ## 18. Environment Manifest

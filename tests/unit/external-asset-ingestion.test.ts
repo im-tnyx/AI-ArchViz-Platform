@@ -10,6 +10,7 @@ import {
   diffExternalSemanticManifests,
   ExternalAssetIngestionError,
   externalIngestionRequestHash,
+  ingestVerifiedExternalMaxAsset,
   preflightExternalAssetIngestion,
   stageExactVerifiedArtifact,
   type TrustedExternalAssetCatalog,
@@ -155,6 +156,55 @@ function required<T>(value: T | undefined, label: string): T {
 }
 
 describe("Technical Spike 7C controlled external ingestion preflight", () => {
+  it("requires both trusted config and operator authorization before DCC launch", async () => {
+    const { scene, manifest } = base();
+    const root = mkdtempSync(join(tmpdir(), "ai-archviz-7c-guard-"));
+    try {
+      const baseArtifactPath = join(root, "base.max");
+      writeFileSync(baseArtifactPath, Buffer.from("verified base bytes"));
+      for (const { allowDccExecution, authorizeDccExecution } of [
+        { allowDccExecution: false, authorizeDccExecution: true },
+        { allowDccExecution: true, authorizeDccExecution: false },
+        { allowDccExecution: false, authorizeDccExecution: false },
+      ]) {
+        const result = await ingestVerifiedExternalMaxAsset({
+          config: {
+            repositoryRoot: root,
+            workspaceRoot: join(root, ".workspace"),
+            processTimeoutMs: 5_000,
+            threeDsMaxInstallationPath: null,
+            allowCompatibilityVersionForSpike: false,
+            allowDccExecution,
+          },
+          jobId: "job_external_guard_0001",
+          idempotencyKey: "external.guard.test.0001",
+          baseSceneSpec: scene,
+          baseManifest: manifest,
+          baseArtifactPath,
+          changeSet: changeSet(),
+          catalog: catalog(),
+          registry: registry(),
+          trustedAssetRoot: root,
+          tolerances: {
+            geometryToleranceMm: 0.01,
+            transformToleranceMm: 0.01,
+            rotationToleranceDeg: 0.001,
+          },
+          authorizeDccExecution,
+        });
+        expect(result).toMatchObject({
+          status: "BLOCKED",
+          error: { code: "DCC_EXECUTION_DISABLED" },
+          dcc: null,
+          mutationProcess: null,
+          verificationProcess: null,
+        });
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("materializes exactly one immutable verified definition and preserves canonical instance fields", () => {
     const { scene, manifest } = base();
     const result = preflightExternalAssetIngestion({

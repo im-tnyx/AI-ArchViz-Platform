@@ -13,6 +13,7 @@ import {
   executeCoronaAdapter,
 } from "./corona-adapter-execution.js";
 import { CoronaRendererAdapter } from "./corona-renderer-adapter.js";
+import { requireDccTestApproval } from "./dcc-test-guard.js";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixtureRoot = resolve(repositoryRoot, "tests/fixtures/corona-adapter");
@@ -34,14 +35,6 @@ interface EvidenceView {
   output: { byteLength: number; sha256: string };
 }
 
-function requireDccTestApproval(): void {
-  if (process.env.AI_ARCHVIZ_ALLOW_DCC_TESTS !== "1") {
-    throw new Error(
-      "AI_ARCHVIZ_ALLOW_DCC_TESTS=1 is required before running a DCC integration suite",
-    );
-  }
-}
-
 function readJson(name: string): Record<string, unknown> {
   return JSON.parse(readFileSync(resolve(fixtureRoot, name), "utf8")) as Record<string, unknown>;
 }
@@ -53,6 +46,7 @@ function config(timeoutMs = 180_000): CoronaAdapterExecutionConfig {
     processTimeoutMs: timeoutMs,
     threeDsMaxInstallationPath: null,
     allowCompatibilityVersionForSpike: true,
+    allowDccExecution: true,
   };
 }
 

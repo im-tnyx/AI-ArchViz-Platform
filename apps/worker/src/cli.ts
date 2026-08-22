@@ -47,7 +47,7 @@ async function execute(argv: string[]): Promise<CliResult> {
     }
     case "probe-3ds-max": {
       const config = loadWorkerConfig(repositoryRoot);
-      const result = await runThreeDsMaxProbe(config);
+      const result = await runThreeDsMaxProbe(config, { authorizeDccExecution: true });
       return {
         exitCode: result.pythonProbe?.status === "SUCCESS" ? 0 : 1,
         output: result,
@@ -57,7 +57,7 @@ async function execute(argv: string[]): Promise<CliResult> {
       const [jobPath] = args;
       if (!jobPath) return usage("build-scene requires a Job Envelope path");
       const config = loadWorkerConfig(repositoryRoot);
-      const result = await buildGoldenScene(config, jobPath);
+      const result = await buildGoldenScene(config, jobPath, { authorizeDccExecution: true });
       return { exitCode: result.status === "SUCCESS" ? 0 : 1, output: result };
     }
     case "inspect-ledger": {
@@ -77,6 +77,7 @@ async function execute(argv: string[]): Promise<CliResult> {
       }
       const config = loadWorkerConfig(repositoryRoot);
       const result = await applySceneChangeSet(config, baseJobPath, changeSetPath, {
+        authorizeDccExecution: true,
         ...(process.env.AI_ARCHVIZ_REVISION_JOB_ID
           ? { jobId: process.env.AI_ARCHVIZ_REVISION_JOB_ID }
           : {}),

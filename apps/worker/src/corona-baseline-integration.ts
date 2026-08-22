@@ -10,6 +10,7 @@ import {
   coronaBaselineResolution,
   renderCoronaBaseline,
 } from "./corona-baseline.js";
+import { requireDccTestApproval } from "./dcc-test-guard.js";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const runRoot = resolve(repositoryRoot, ".workspace/corona-baseline-8a");
@@ -26,14 +27,6 @@ interface RenderEvidenceView {
   output: { format: string; byteLength: number; sha256: string };
 }
 
-function requireDccTestApproval(): void {
-  if (process.env.AI_ARCHVIZ_ALLOW_DCC_TESTS !== "1") {
-    throw new Error(
-      "AI_ARCHVIZ_ALLOW_DCC_TESTS=1 is required before running a DCC integration suite",
-    );
-  }
-}
-
 function config(timeoutMs = 180_000): CoronaBaselineConfig {
   return {
     repositoryRoot,
@@ -41,6 +34,7 @@ function config(timeoutMs = 180_000): CoronaBaselineConfig {
     processTimeoutMs: timeoutMs,
     threeDsMaxInstallationPath: null,
     allowCompatibilityVersionForSpike: true,
+    allowDccExecution: true,
   };
 }
 

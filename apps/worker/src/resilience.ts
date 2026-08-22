@@ -9,6 +9,7 @@ import {
   type JobEnvelope,
   semanticJsonHash,
 } from "@ai-archviz/worker-contracts";
+import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { readLedger } from "./ledger.js";
 import { resolveWithinRoot } from "./paths.js";
 
@@ -69,6 +70,7 @@ function createConfig(name: string, processTimeoutMs: number): string {
     workspaceRoot: relative(repositoryRoot, workspaceRoot).replaceAll("\\", "/"),
     processTimeoutMs,
     allowCompatibilityVersionForSpike: true,
+    allowDccExecution: true,
   });
   return path;
 }
@@ -152,6 +154,7 @@ function semanticCount(invocation: ChildInvocation): number {
 }
 
 async function main(): Promise<void> {
+  requireDccTestApproval();
   if (existsSync(runRoot)) rmSync(runRoot, { recursive: true, force: true });
   mkdirSync(inputRoot, { recursive: true });
   const normalConfig = createConfig("normal", 180_000);

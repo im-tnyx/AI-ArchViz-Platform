@@ -23,6 +23,7 @@ import {
   type GoldenCoronaPreviewPlan,
   goldenLivingCoronaPreviewProfile,
 } from "./corona-renderer-adapter.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
 import { writeDeterministicJson } from "./workspace.js";
@@ -33,6 +34,7 @@ export interface GoldenCoronaPreviewExecutionConfig {
   processTimeoutMs: number;
   threeDsMaxInstallationPath: string | null;
   allowCompatibilityVersionForSpike: boolean;
+  allowDccExecution: boolean;
 }
 
 export interface GoldenCoronaPreviewExecutionResult {
@@ -272,12 +274,17 @@ export async function executeGoldenCoronaPreview({
       requestHash,
     );
   }
-  if (!authorizeDccExecution) {
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution,
+    })
+  ) {
     return {
       status: "BLOCKED",
       error: {
         code: "DCC_EXECUTION_DISABLED",
-        message: "Golden Corona preview requires DCC authorization",
+        message: "Golden Corona preview requires allowDccExecution=true and DCC authorization",
       },
       dcc: null,
       compatibilityMode: false,

@@ -24,6 +24,7 @@ import {
   resolveArtifactForInspection,
   resolveVerifiedAssetArtifact,
 } from "./asset-trust.js";
+import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { runControlledProcess } from "./process.js";
 
@@ -103,14 +104,6 @@ function registryFor(
   };
 }
 
-function requireDccTestApproval(): void {
-  if (process.env.AI_ARCHVIZ_ALLOW_DCC_TESTS !== "1") {
-    throw new Error(
-      "AI_ARCHVIZ_ALLOW_DCC_TESTS=1 is required before running a DCC integration suite",
-    );
-  }
-}
-
 function batchArguments(scriptPath: string): string[] {
   return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
@@ -166,6 +159,7 @@ async function main(): Promise<void> {
         processTimeoutMs: 180_000,
         threeDsMaxInstallationPath: null,
         allowCompatibilityVersionForSpike: true,
+        allowDccExecution: true,
       },
       registry,
       job,
@@ -221,6 +215,7 @@ async function main(): Promise<void> {
           processTimeoutMs: 1_000,
           threeDsMaxInstallationPath: null,
           allowCompatibilityVersionForSpike: true,
+          allowDccExecution: true,
         },
         registry,
         job,
@@ -278,6 +273,7 @@ async function main(): Promise<void> {
         processTimeoutMs: 180_000,
         threeDsMaxInstallationPath: null,
         allowCompatibilityVersionForSpike: true,
+        allowDccExecution: true,
       },
       registry: fakeRegistry,
       job: {

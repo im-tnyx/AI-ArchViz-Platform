@@ -10,6 +10,7 @@ import {
   validateAssetArtifactEligibility,
 } from "./asset-trust.js";
 import type { WorkerConfig } from "./config.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
   evaluateLedger,
@@ -126,6 +127,7 @@ export interface ExternalAssetIngestionInput {
     | "processTimeoutMs"
     | "threeDsMaxInstallationPath"
     | "allowCompatibilityVersionForSpike"
+    | "allowDccExecution"
   >;
   jobId: string;
   idempotencyKey: string;
@@ -895,11 +897,16 @@ export async function ingestVerifiedExternalMaxAsset(
   }
   const requestHash = externalIngestionRequestHash(preflight, baseArtifactHash);
   const ledgerPartial = { idempotencyKey: input.idempotencyKey, requestHash, baseArtifactHash };
-  if (!input.authorizeDccExecution) {
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: input.config.allowDccExecution,
+      authorizeDccExecution: input.authorizeDccExecution,
+    })
+  ) {
     return noExecution(
       {
         code: "DCC_EXECUTION_DISABLED",
-        message: "External ingestion requires trusted DCC authorization",
+        message: "External ingestion requires allowDccExecution=true and trusted DCC authorization",
       },
       ledgerPartial,
     );

@@ -108,6 +108,7 @@ function previewConfig(timeoutMs = 180_000) {
     processTimeoutMs: timeoutMs,
     threeDsMaxInstallationPath: null,
     allowCompatibilityVersionForSpike: true,
+    allowDccExecution: true,
   };
 }
 

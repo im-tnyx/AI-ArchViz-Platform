@@ -11,6 +11,7 @@ import {
   type CoronaExecutionPlan,
   CoronaRendererAdapter,
 } from "./corona-renderer-adapter.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
 import { writeDeterministicJson } from "./workspace.js";
@@ -21,6 +22,7 @@ export interface CoronaAdapterExecutionConfig {
   processTimeoutMs: number;
   threeDsMaxInstallationPath: string | null;
   allowCompatibilityVersionForSpike: boolean;
+  allowDccExecution: boolean;
 }
 
 export interface CoronaAdapterExecutionResult {
@@ -199,12 +201,17 @@ export async function executeCoronaAdapter({
       plan,
     );
   }
-  if (!authorizeDccExecution) {
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution,
+    })
+  ) {
     return {
       status: "BLOCKED",
       error: {
         code: "DCC_EXECUTION_DISABLED",
-        message: "Corona adapter requires DCC authorization",
+        message: "Corona adapter requires allowDccExecution=true and DCC authorization",
       },
       dcc: null,
       compatibilityMode: false,

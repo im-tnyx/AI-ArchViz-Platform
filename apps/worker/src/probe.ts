@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { WorkerConfig } from "./config.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
+import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
 
@@ -20,13 +22,14 @@ export interface PythonProbePayload {
 export interface ProbeResult {
   workerVersion: "0.1.0";
   platform: NodeJS.Platform;
-  status: "SUCCESS" | "UNSUPPORTED" | "FAILED";
-  dcc: ThreeDsMaxDiscoveryResult;
+  status: "SUCCESS" | "UNSUPPORTED" | "FAILED" | "BLOCKED";
+  dcc: ThreeDsMaxDiscoveryResult | null;
   pythonProbe: PythonProbePayload | null;
   process: ControlledProcessResult | null;
   errorCode:
     | "DCC_NOT_FOUND"
     | "DCC_BATCH_NOT_FOUND"
+    | "DCC_EXECUTION_DISABLED"
     | "DCC_LAUNCH_FAILED"
     | "PYTHON_PROBE_FAILED"
     | "PYMXS_UNAVAILABLE"
@@ -35,7 +38,18 @@ export interface ProbeResult {
     | null;
 }
 
-export async function runThreeDsMaxProbe(config: WorkerConfig): Promise<ProbeResult> {
+export async function runThreeDsMaxProbe(
+  config: WorkerConfig,
+  options: { authorizeDccExecution?: boolean } = {},
+): Promise<ProbeResult> {
+  if (
+    !isDccExecutionAuthorized({
+      allowDccExecution: config.allowDccExecution,
+      authorizeDccExecution: options.authorizeDccExecution === true,
+    })
+  ) {
+    return blocked();
+  }
   const dcc = await discoverThreeDsMax({
     installationOverride: config.threeDsMaxInstallationPath,
   });
@@ -43,7 +57,6 @@ export async function runThreeDsMaxProbe(config: WorkerConfig): Promise<ProbeRes
   if (!dcc.batchExecutablePath || !dcc.batchExecutableAvailable) {
     return failed(dcc, "DCC_BATCH_NOT_FOUND");
   }
-
   const scriptPath = join(config.repositoryRoot, "tools", "3ds-max", "python", "health_probe.py");
   const probeDirectory = join(config.workspaceRoot, "health", randomUUID());
   const resultPath = join(probeDirectory, "probe-result.json");
@@ -51,7 +64,7 @@ export async function runThreeDsMaxProbe(config: WorkerConfig): Promise<ProbeRes
 
   const processResult = await runControlledProcess({
     executable: dcc.batchExecutablePath,
-    args: [scriptPath, "-v", "2"],
+    args: threeDsMaxBatchArguments(scriptPath),
     cwd: dcc.installationPath ?? dirname(dcc.batchExecutablePath),
     timeoutMs: config.processTimeoutMs,
     env: { ...process.env, AI_ARCHVIZ_HEALTH_RESULT_PATH: resultPath },
@@ -110,5 +123,17 @@ function failed(
     pythonProbe: null,
     process: null,
     errorCode,
+  };
+}
+
+function blocked(): ProbeResult {
+  return {
+    workerVersion: "0.1.0",
+    platform: process.platform,
+    status: "BLOCKED",
+    dcc: null,
+    pythonProbe: null,
+    process: null,
+    errorCode: "DCC_EXECUTION_DISABLED",
   };
 }
