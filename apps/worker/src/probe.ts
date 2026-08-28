@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { WorkerConfig } from "./config.js";
 import { threeDsMaxBatchArguments } from "./dcc-batch.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
@@ -67,7 +68,9 @@ export async function runThreeDsMaxProbe(
     args: threeDsMaxBatchArguments(scriptPath),
     cwd: dcc.installationPath ?? dirname(dcc.batchExecutablePath),
     timeoutMs: config.processTimeoutMs,
-    env: { ...process.env, AI_ARCHVIZ_HEALTH_RESULT_PATH: resultPath },
+    env: buildDccChildEnvironment({
+      overrides: { AI_ARCHVIZ_HEALTH_RESULT_PATH: resultPath },
+    }),
     outputEncoding: "utf16le",
   });
 

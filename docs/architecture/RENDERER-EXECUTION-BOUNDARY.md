@@ -90,6 +90,15 @@ length.
   script-asset protected; it is never weakened for Corona.
 - Jobs cannot carry renderer class overrides, scripts, plug-in paths,
   credential/license fields, or output paths.
+- Every DCC child process receives a newly constructed environment containing
+  only the allowlisted Windows runtime keys needed by 3ds Max/Corona plus
+  explicit worker-owned `AI_ARCHVIZ_*` input overrides for that runner. The
+  parent environment is never implicitly inherited; vendor and secret
+  variables are not copied by wildcard. The exact `VRAY_FOR_3DSMAX2025_MAIN`
+  runtime location is allowlisted because Corona shares Chaos's V-Ray USD/DR
+  startup component, which fails to render when that variable is absent even
+  though the assigned renderer is Corona, not V-Ray; no `VRAY_*`, `CHAOS_*`,
+  or `ADSK_*` wildcard is allowed.
 - The runner performs no install, upgrade, activation, license-server change,
   distributed render action, download, Cosmos access, or plugin configuration
   mutation.

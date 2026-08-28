@@ -11,6 +11,7 @@ import {
   type CoronaExecutionPlan,
   CoronaRendererAdapter,
 } from "./corona-renderer-adapter.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
@@ -262,12 +263,16 @@ export async function executeCoronaAdapter({
       ),
       cwd: dcc.installationPath ?? config.repositoryRoot,
       timeoutMs: config.processTimeoutMs,
-      env: {
-        ...executionEnvironment,
-        AI_ARCHVIZ_CORONA_ADAPTER_PLAN_PATH: planPath,
-        AI_ARCHVIZ_CORONA_ADAPTER_OUTPUT_PATH: outputPath,
-        AI_ARCHVIZ_CORONA_ADAPTER_RESULT_PATH: resultPath,
-      },
+      env: buildDccChildEnvironment({
+        parentEnvironment: executionEnvironment,
+        overrides: {
+          AI_ARCHVIZ_TEST_FORCE_CORONA_ADAPTER_FAILURE:
+            executionEnvironment.AI_ARCHVIZ_TEST_FORCE_CORONA_ADAPTER_FAILURE,
+          AI_ARCHVIZ_CORONA_ADAPTER_PLAN_PATH: planPath,
+          AI_ARCHVIZ_CORONA_ADAPTER_OUTPUT_PATH: outputPath,
+          AI_ARCHVIZ_CORONA_ADAPTER_RESULT_PATH: resultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     if (process.errorCode === "PROCESS_TIMEOUT") {

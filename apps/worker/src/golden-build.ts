@@ -14,6 +14,7 @@ import {
 import { compileGoldenBuildPlan } from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
 import { threeDsMaxBatchArguments } from "./dcc-batch.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
@@ -368,14 +369,6 @@ async function executeGoldenAttempt(
     context.compatibilityMode = true;
   }
 
-  const commonEnvironment = {
-    ...process.env,
-    AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
-    AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE: controls.forceBuildFailure ? "1" : "0",
-    AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE: controls.forceVerificationFailure ? "1" : "0",
-    AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH: controls.forceManifestMismatch ? "1" : "0",
-    AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT: controls.forceDccTimeout ? "1" : "0",
-  };
   context.buildProcess = await runControlledProcess({
     executable: context.dcc.batchExecutablePath,
     args: threeDsMaxBatchArguments(
@@ -383,11 +376,15 @@ async function executeGoldenAttempt(
     ),
     cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
     timeoutMs: Math.min(config.processTimeoutMs, job.policy.timeoutSeconds * 1_000),
-    env: {
-      ...commonEnvironment,
-      AI_ARCHVIZ_BUILD_PLAN_PATH: workspace.buildPlanPath,
-      AI_ARCHVIZ_BUILD_RESULT_PATH: workspace.buildResultPath,
-    },
+    env: buildDccChildEnvironment({
+      overrides: {
+        AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+        AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE: controls.forceBuildFailure ? "1" : "0",
+        AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT: controls.forceDccTimeout ? "1" : "0",
+        AI_ARCHVIZ_BUILD_PLAN_PATH: workspace.buildPlanPath,
+        AI_ARCHVIZ_BUILD_RESULT_PATH: workspace.buildResultPath,
+      },
+    }),
     outputEncoding: "utf16le",
   });
   if (context.buildProcess.errorCode) {
@@ -426,11 +423,15 @@ async function executeGoldenAttempt(
     ),
     cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
     timeoutMs: Math.min(config.processTimeoutMs, job.policy.timeoutSeconds * 1_000),
-    env: {
-      ...commonEnvironment,
-      AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
-      AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
-    },
+    env: buildDccChildEnvironment({
+      overrides: {
+        AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+        AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE: controls.forceVerificationFailure ? "1" : "0",
+        AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH: controls.forceManifestMismatch ? "1" : "0",
+        AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
+        AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
+      },
+    }),
     outputEncoding: "utf16le",
   });
   if (context.verificationProcess.errorCode) {

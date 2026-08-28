@@ -23,7 +23,14 @@ import {
   wallFrame,
 } from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
+import {
+  coronaCanonicalAreaLightWidthMm,
+  coronaCanonicalIntensityScale,
+  isSupportedCanonicalCoronaLightType,
+  sortCanonicalCoronaLights,
+} from "./corona-renderer-policy.js";
 import { threeDsMaxBatchArguments } from "./dcc-batch.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
@@ -889,6 +896,7 @@ export function planSceneRevision(
       `Revised SceneSpec is invalid: ${JSON.stringify(targetValidation.errors)}`,
     );
   }
+  validateCanonicalCoronaRenderState(targetSceneSpec);
   return {
     changeSet,
     targetSceneSpec,
@@ -1330,25 +1338,39 @@ function rawFileHash(path: string): string {
   return `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 }
 
-function canonicalRenderStateExpectation(
+function validateCanonicalCoronaRenderState(scene: SceneDocument): void {
+  if (scene.render.engine !== "corona" || scene.render.mode !== "preview") return;
+  for (const light of scene.lights ?? []) {
+    if (!isSupportedCanonicalCoronaLightType(light.type)) {
+      throw new RevisionValidationError(
+        "RENDERER_LIGHT_TYPE_UNSUPPORTED",
+        `Canonical Corona preview supports area lights only: ${light.id}`,
+      );
+    }
+  }
+}
+
+export function canonicalRenderStateExpectation(
   scene: Record<string, unknown>,
 ): Record<string, unknown> | null {
   const value = scene as unknown as SceneDocument;
   if (value.render.engine !== "corona" || value.render.mode !== "preview") return null;
+  const lights = value.lights ?? [];
+  validateCanonicalCoronaRenderState(value);
   return {
     renderStateVersion: "0.1.0",
     sceneId: value.scene.id,
     revisionId: value.scene.revisionId,
     render: { engine: "corona", mode: "preview", actualRendererClass: "Corona" },
-    lights: (value.lights ?? []).map((light) => ({
+    lights: sortCanonicalCoronaLights(lights).map((light) => ({
       logicalId: light.id,
       type: "area",
       actualClass: "CoronaLight",
       position: [...light.transform.position],
       rotationEuler: [...light.transform.rotationEuler],
       canonicalIntensity: light.intensity,
-      mappedIntensity: light.intensity * 120,
-      widthMm: 800,
+      mappedIntensity: light.intensity * coronaCanonicalIntensityScale,
+      widthMm: coronaCanonicalAreaLightWidthMm,
     })),
     status: "PASS",
   };
@@ -1868,14 +1890,15 @@ export async function applySceneChangeSet(
       ),
       cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
       timeoutMs,
-      env: {
-        ...process.env,
-        AI_ARCHVIZ_BASE_SCENE_PATH: workspace.baseScenePath,
-        AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
-        AI_ARCHVIZ_REVISION_PLAN_PATH: workspace.revisionPlanPath,
-        AI_ARCHVIZ_MUTATION_RESULT_PATH: workspace.mutationResultPath,
-        ...(prepared.expectedRenderState ? { AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1" } : {}),
-      },
+      env: buildDccChildEnvironment({
+        overrides: {
+          AI_ARCHVIZ_BASE_SCENE_PATH: workspace.baseScenePath,
+          AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+          AI_ARCHVIZ_REVISION_PLAN_PATH: workspace.revisionPlanPath,
+          AI_ARCHVIZ_MUTATION_RESULT_PATH: workspace.mutationResultPath,
+          ...(prepared.expectedRenderState ? { AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1" } : {}),
+        },
+      }),
       outputEncoding: "utf16le",
     });
     if (context.mutationProcess.errorCode) {
@@ -1919,12 +1942,13 @@ export async function applySceneChangeSet(
       ),
       cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
       timeoutMs,
-      env: {
-        ...process.env,
-        AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
-        AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
-        AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
-      },
+      env: buildDccChildEnvironment({
+        overrides: {
+          AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+          AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
+          AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     if (context.verificationProcess.errorCode) {
@@ -1988,14 +2012,15 @@ export async function applySceneChangeSet(
         ),
         cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
         timeoutMs,
-        env: {
-          ...process.env,
-          AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
-          AI_ARCHVIZ_EXPECTED_RENDER_STATE_PATH: workspace.expectedRenderStatePath,
-          AI_ARCHVIZ_RENDER_STATE_PATH: workspace.renderStatePath,
-          AI_ARCHVIZ_RENDER_STATE_RESULT_PATH: workspace.renderStateResultPath,
-          AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
-        },
+        env: buildDccChildEnvironment({
+          overrides: {
+            AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+            AI_ARCHVIZ_EXPECTED_RENDER_STATE_PATH: workspace.expectedRenderStatePath,
+            AI_ARCHVIZ_RENDER_STATE_PATH: workspace.renderStatePath,
+            AI_ARCHVIZ_RENDER_STATE_RESULT_PATH: workspace.renderStateResultPath,
+            AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
+          },
+        }),
         outputEncoding: "utf16le",
       });
       if (context.renderStateVerificationProcess.errorCode) {

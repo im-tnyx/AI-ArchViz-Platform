@@ -4,6 +4,7 @@ import { validateSceneChangeSet, validateSceneSpec } from "@ai-archviz/scene-spe
 import { describe, expect, it } from "vitest";
 import {
   assertGoldenRevisionDiff,
+  canonicalRenderStateExpectation,
   diffSemanticManifests,
   evaluateLedger,
   planSceneRevision,
@@ -185,6 +186,61 @@ describe("semantic preservation and replay", () => {
 });
 
 describe("Technical Spike 8D canonical render-state revisions", () => {
+  function sceneWithLights(
+    types: Array<"area" | "point" | "directional">,
+    renderEngine: "none" | "corona" = "none",
+  ): Record<string, unknown> {
+    const scene = fixture("revisions/rev_golden_0008/scene-spec.json");
+    scene.render = {
+      engine: renderEngine,
+      mode: renderEngine === "corona" ? "preview" : "build_only",
+    };
+    scene.lights = types.map((type, index) => ({
+      id: `light_${type}_${index}`,
+      type,
+      transform: {
+        position: [index * 100, 200, 300],
+        rotationEuler: [0, 0, 0],
+        scale: [1, 1, 1],
+      },
+      intensity: 1,
+    }));
+    return scene;
+  }
+
+  it("sorts evidence lights without mutating SceneSpec source order", () => {
+    const scene = sceneWithLights(["area", "area"], "corona") as {
+      lights: Array<Record<string, unknown>>;
+    };
+    const firstLight = scene.lights[0];
+    const secondLight = scene.lights[1];
+    if (!firstLight || !secondLight) throw new Error("Two test lights are required");
+    firstLight.id = "light_z_area";
+    secondLight.id = "light_a_area";
+    const sourceOrder = structuredClone(scene.lights);
+    const expected = canonicalRenderStateExpectation(scene);
+    const reversed = structuredClone(scene);
+    reversed.lights.reverse();
+
+    expect(scene.lights).toEqual(sourceOrder);
+    if (!expected) throw new Error("Expected render state is required");
+    expect(
+      (expected.lights as Array<{ logicalId: string }>).map((light) => light.logicalId),
+    ).toEqual(["light_a_area", "light_z_area"]);
+    expect(canonicalRenderStateExpectation(reversed)).toEqual(expected);
+  });
+
+  it.each(["point", "directional"] as const)(
+    "rejects %s lights before DCC during SetRenderIntent preparation",
+    (type) => {
+      const scene = sceneWithLights([type]);
+      expect(validateSceneSpec(scene)).toMatchObject({ ok: true });
+      expect(
+        errorCode(() => planSceneRevision(scene, fixture("changesets/set-render-intent-r9.json"))),
+      ).toBe("RENDERER_LIGHT_TYPE_UNSUPPORTED");
+    },
+  );
+
   it("accepts exactly the SetRenderIntent and AddLight operation contracts", () => {
     expect(validateSceneChangeSet(fixture("changesets/set-render-intent-r9.json"))).toMatchObject({
       ok: true,

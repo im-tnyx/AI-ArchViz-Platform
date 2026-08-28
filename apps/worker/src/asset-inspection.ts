@@ -7,6 +7,7 @@ import {
   validateAssetInspectionJob,
 } from "@ai-archviz/worker-contracts";
 import { type AssetArtifactRegistry, resolveArtifactForInspection } from "./asset-trust.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
@@ -186,13 +187,14 @@ export async function inspectExternalMaxArtifact({
       args: batchArguments(resolve(config.repositoryRoot, "tools/3ds-max/python/inspect_asset.py")),
       cwd: dcc.installationPath ?? resolve(config.repositoryRoot),
       timeoutMs: config.processTimeoutMs,
-      env: {
-        ...process.env,
-        AI_ARCHVIZ_INSPECTION_ARTIFACT_ID: resolved.artifactId,
-        AI_ARCHVIZ_INSPECTION_ARTIFACT_SHA256: resolved.sha256,
-        AI_ARCHVIZ_INSPECTION_ASSET_PATH: resolved.internalPath,
-        AI_ARCHVIZ_INSPECTION_RESULT_PATH: resultPath,
-      },
+      env: buildDccChildEnvironment({
+        overrides: {
+          AI_ARCHVIZ_INSPECTION_ARTIFACT_ID: resolved.artifactId,
+          AI_ARCHVIZ_INSPECTION_ARTIFACT_SHA256: resolved.sha256,
+          AI_ARCHVIZ_INSPECTION_ASSET_PATH: resolved.internalPath,
+          AI_ARCHVIZ_INSPECTION_RESULT_PATH: resultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     const evidence = readInspectionEvidence(resultPath);

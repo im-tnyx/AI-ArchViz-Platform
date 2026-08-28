@@ -6,6 +6,12 @@ import {
   type OpeningMarker,
   type WallSegment,
 } from "./build-plan.js";
+import {
+  coronaCanonicalAreaLightWidthMm,
+  coronaCanonicalIntensityScale,
+  isSupportedCanonicalCoronaLightType,
+  sortCanonicalCoronaLights,
+} from "./corona-renderer-policy.js";
 import type { RendererAdapter } from "./renderer-adapter.js";
 
 export type Vector3 = [number, number, number];
@@ -17,8 +23,8 @@ export const coronaAdapterMaterialDefaults = {
   nonMetalMode: true,
 } as const;
 export const coronaAdapterAreaLightDefaults = {
-  widthMm: 800,
-  intensityScale: 120,
+  widthMm: coronaCanonicalAreaLightWidthMm,
+  intensityScale: coronaCanonicalIntensityScale,
 } as const;
 
 export type CoronaAdapterErrorCode =
@@ -319,8 +325,8 @@ function resolveMaterials(scene: SceneSpecSubset): {
 function resolveLights(scene: SceneSpecSubset): CoronaExecutionLight[] {
   const inputs = scene.lights ?? [];
   assertUniqueIds(inputs, "LIGHT_ID_DUPLICATE");
-  return sortedById(inputs).map((light) => {
-    if (light.type !== "area") {
+  return sortCanonicalCoronaLights(inputs).map((light) => {
+    if (!isSupportedCanonicalCoronaLightType(light.type)) {
       fail(
         "RENDERER_LIGHT_TYPE_UNSUPPORTED",
         `Corona adapter supports SceneSpec area lights only: ${light.id}`,

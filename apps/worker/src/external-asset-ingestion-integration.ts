@@ -15,6 +15,7 @@ import type { AssetArtifact, AssetInspectionEvidence } from "@ai-archviz/worker-
 import { inspectExternalMaxArtifact } from "./asset-inspection.js";
 import { type AssetArtifactRegistry, promoteArtifactAfterInspection } from "./asset-trust.js";
 import type { WorkerConfig } from "./config.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import {
@@ -197,11 +198,12 @@ async function createVerifiedArtifact(): Promise<{
     ),
     cwd: dcc.installationPath ?? repositoryRoot,
     timeoutMs: 180_000,
-    env: {
-      ...process.env,
-      AI_ARCHVIZ_INSPECTION_FIXTURE_PATH: sourceAssetPath,
-      AI_ARCHVIZ_INSPECTION_FIXTURE_RESULT_PATH: fixtureResultPath,
-    },
+    env: buildDccChildEnvironment({
+      overrides: {
+        AI_ARCHVIZ_INSPECTION_FIXTURE_PATH: sourceAssetPath,
+        AI_ARCHVIZ_INSPECTION_FIXTURE_RESULT_PATH: fixtureResultPath,
+      },
+    }),
     outputEncoding: "utf16le",
   });
   assert.equal(fixtureProcess.errorCode, null, fixtureProcess.stderr);
@@ -292,7 +294,7 @@ async function assertFailedDccMutation(
     verified,
     `job_external_failure_${suffix}`,
     `external.failure.${suffix}`,
-    environment,
+    { ...process.env, ...environment },
   );
   if (suffix === "timeout") {
     input.config = { ...input.config, processTimeoutMs: 1_000 };

@@ -6,6 +6,7 @@ import {
   validateRenderEvidence,
   validateRenderJob,
 } from "@ai-archviz/worker-contracts";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
@@ -365,12 +366,13 @@ export async function renderCoronaBaseline({
       ),
       cwd: dcc.installationPath ?? config.repositoryRoot,
       timeoutMs: config.processTimeoutMs,
-      env: {
-        ...process.env,
-        AI_ARCHVIZ_CORONA_RENDER_JOB_PATH: jobPath,
-        AI_ARCHVIZ_CORONA_RENDER_OUTPUT_PATH: outputPath,
-        AI_ARCHVIZ_CORONA_RENDER_RESULT_PATH: resultPath,
-      },
+      env: buildDccChildEnvironment({
+        overrides: {
+          AI_ARCHVIZ_CORONA_RENDER_JOB_PATH: jobPath,
+          AI_ARCHVIZ_CORONA_RENDER_OUTPUT_PATH: outputPath,
+          AI_ARCHVIZ_CORONA_RENDER_RESULT_PATH: resultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     if (controlledProcess.errorCode === "PROCESS_TIMEOUT") {

@@ -24,6 +24,7 @@ import {
   resolveArtifactForInspection,
   resolveVerifiedAssetArtifact,
 } from "./asset-trust.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { runControlledProcess } from "./process.js";
@@ -124,11 +125,12 @@ async function main(): Promise<void> {
       ),
       cwd: dcc.installationPath ?? repositoryRoot,
       timeoutMs: 180_000,
-      env: {
-        ...process.env,
-        AI_ARCHVIZ_INSPECTION_FIXTURE_PATH: sourceAssetPath,
-        AI_ARCHVIZ_INSPECTION_FIXTURE_RESULT_PATH: fixtureResultPath,
-      },
+      env: buildDccChildEnvironment({
+        overrides: {
+          AI_ARCHVIZ_INSPECTION_FIXTURE_PATH: sourceAssetPath,
+          AI_ARCHVIZ_INSPECTION_FIXTURE_RESULT_PATH: fixtureResultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     assert.equal(fixtureProcess.errorCode, null, fixtureProcess.stderr);

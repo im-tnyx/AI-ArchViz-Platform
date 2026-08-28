@@ -6,7 +6,7 @@ export interface ControlledProcessOptions {
   args: readonly string[];
   cwd: string;
   timeoutMs: number;
-  env?: NodeJS.ProcessEnv;
+  env: NodeJS.ProcessEnv;
   maxOutputCharacters?: number;
   outputEncoding?: BufferEncoding;
 }
@@ -47,7 +47,7 @@ export function runControlledProcess(
     try {
       child = spawn(options.executable, [...options.args], {
         cwd: options.cwd,
-        env: options.env ?? process.env,
+        env: options.env,
         shell: false,
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],

@@ -23,6 +23,7 @@ import {
   type GoldenCoronaPreviewPlan,
   goldenLivingCoronaPreviewProfile,
 } from "./corona-renderer-adapter.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
@@ -364,17 +365,23 @@ export async function executeGoldenCoronaPreview({
       ),
       cwd: dcc.installationPath ?? config.repositoryRoot,
       timeoutMs: config.processTimeoutMs,
-      env: {
-        ...executionEnvironment,
-        AI_ARCHVIZ_CANDIDATE_PATH: stagedArtifactPath,
-        AI_ARCHVIZ_MANIFEST_PATH: actualManifestPath,
-        AI_ARCHVIZ_VERIFY_RESULT_PATH: verifyResultPath,
-        AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
-        AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_PLAN_PATH: planPath,
-        AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_EXPECTED_MANIFEST_PATH: expectedManifestPath,
-        AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_OUTPUT_PATH: outputPath,
-        AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_RESULT_PATH: resultPath,
-      },
+      env: buildDccChildEnvironment({
+        parentEnvironment: executionEnvironment,
+        overrides: {
+          AI_ARCHVIZ_TEST_FORCE_GOLDEN_CORONA_PREVIEW_FAILURE:
+            executionEnvironment.AI_ARCHVIZ_TEST_FORCE_GOLDEN_CORONA_PREVIEW_FAILURE,
+          AI_ARCHVIZ_TEST_FORCE_CORONA_ADAPTER_FAILURE:
+            executionEnvironment.AI_ARCHVIZ_TEST_FORCE_CORONA_ADAPTER_FAILURE,
+          AI_ARCHVIZ_CANDIDATE_PATH: stagedArtifactPath,
+          AI_ARCHVIZ_MANIFEST_PATH: actualManifestPath,
+          AI_ARCHVIZ_VERIFY_RESULT_PATH: verifyResultPath,
+          AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
+          AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_PLAN_PATH: planPath,
+          AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_EXPECTED_MANIFEST_PATH: expectedManifestPath,
+          AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_OUTPUT_PATH: outputPath,
+          AI_ARCHVIZ_GOLDEN_CORONA_PREVIEW_RESULT_PATH: resultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     if (process.errorCode === "PROCESS_TIMEOUT") {

@@ -168,6 +168,7 @@ describe("controlled process execution", () => {
       args: ["-e", "process.stdout.write('probe-ok')"],
       cwd: process.cwd(),
       timeoutMs: 5_000,
+      env: {},
     });
     expect(result).toMatchObject({
       exitCode: 0,
@@ -183,6 +184,7 @@ describe("controlled process execution", () => {
       args: ["-e", "process.stdout.write(Buffer.from('3ds-max-probe', 'utf16le'))"],
       cwd: process.cwd(),
       timeoutMs: 5_000,
+      env: {},
       outputEncoding: "utf16le",
     });
     expect(result).toMatchObject({
@@ -198,6 +200,7 @@ describe("controlled process execution", () => {
       args: ["-e", "setInterval(() => {}, 1000)"],
       cwd: process.cwd(),
       timeoutMs: 100,
+      env: {},
     });
     expect(result.timedOut).toBe(true);
     expect(result.errorCode).toBe("PROCESS_TIMEOUT");

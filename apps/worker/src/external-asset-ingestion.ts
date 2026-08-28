@@ -10,6 +10,7 @@ import {
   validateAssetArtifactEligibility,
 } from "./asset-trust.js";
 import type { WorkerConfig } from "./config.js";
+import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
 import {
@@ -1030,15 +1031,28 @@ export async function ingestVerifiedExternalMaxAsset(
       ),
       cwd: dcc.installationPath ?? dirname(dcc.batchExecutablePath),
       timeoutMs,
-      env: {
-        ...process.env,
-        ...input.executionEnvironment,
-        AI_ARCHVIZ_EXTERNAL_BASE_SCENE_PATH: workspace.baseScenePath,
-        AI_ARCHVIZ_EXTERNAL_STAGED_ASSET_PATH: stagedAssetPath,
-        AI_ARCHVIZ_EXTERNAL_CANDIDATE_PATH: workspace.candidatePath,
-        AI_ARCHVIZ_EXTERNAL_PLAN_PATH: workspace.revisionPlanPath,
-        AI_ARCHVIZ_EXTERNAL_MUTATION_RESULT_PATH: workspace.mutationResultPath,
-      },
+      env: buildDccChildEnvironment({
+        parentEnvironment: input.executionEnvironment,
+        overrides: {
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_SAFE_SCENE_FAILURE:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_SAFE_SCENE_FAILURE,
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MUTATION_TIMEOUT:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MUTATION_TIMEOUT,
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MERGE_FALSE:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MERGE_FALSE,
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MERGE_DEPENDENCY:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MERGE_DEPENDENCY,
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MERGED_NODE_COUNT:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_MERGED_NODE_COUNT,
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_NON_GEOMETRY:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_NON_GEOMETRY,
+          AI_ARCHVIZ_EXTERNAL_BASE_SCENE_PATH: workspace.baseScenePath,
+          AI_ARCHVIZ_EXTERNAL_STAGED_ASSET_PATH: stagedAssetPath,
+          AI_ARCHVIZ_EXTERNAL_CANDIDATE_PATH: workspace.candidatePath,
+          AI_ARCHVIZ_EXTERNAL_PLAN_PATH: workspace.revisionPlanPath,
+          AI_ARCHVIZ_EXTERNAL_MUTATION_RESULT_PATH: workspace.mutationResultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     const mutationResult = existsSync(workspace.mutationResultPath)
@@ -1087,14 +1101,19 @@ export async function ingestVerifiedExternalMaxAsset(
       ),
       cwd: dcc.installationPath ?? dirname(dcc.batchExecutablePath),
       timeoutMs,
-      env: {
-        ...process.env,
-        ...input.executionEnvironment,
-        AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
-        AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
-        AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
-        AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
-      },
+      env: buildDccChildEnvironment({
+        parentEnvironment: input.executionEnvironment,
+        overrides: {
+          AI_ARCHVIZ_TEST_FORCE_EXTERNAL_SAFE_SCENE_FAILURE:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_EXTERNAL_SAFE_SCENE_FAILURE,
+          AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH:
+            input.executionEnvironment?.AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH,
+          AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
+          AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+          AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
+          AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
+        },
+      }),
       outputEncoding: "utf16le",
     });
     const verificationResult = existsSync(workspace.verificationResultPath)
