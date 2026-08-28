@@ -21,14 +21,27 @@
 
 ## ReplaceAsset subset
 
-- Supported only for `procedural_proxy` asset definitions.
+- Procedural `ReplaceAsset` (targeting a `procedural_proxy` asset definition)
+  remains supported, unchanged since the Spike 1B/7A groundwork.
+- Spike 7C additionally proved a **controlled** `ReplaceAsset` path onto an
+  already-`VERIFIED` `external_max` asset definition. It is gated by all of:
+  a trusted worker-controlled asset-definition catalog; immutable
+  `artifactId` binding; `VERIFIED` trust state; matching successful inspection
+  evidence; exact trusted-root containment; `byteLength` + SHA-256
+  revalidation; worker-controlled staging with a staged-copy rehash; Safe
+  Scene; an isolated candidate revision; fresh second-process semantic
+  verification; and promotion only after that verification's `PASS`. This is
+  a controlled verified-ingestion contract, not general production-readiness
+  for arbitrary external `.max` assets.
 - Operation parameters are exactly `newAssetDefinitionId` and
-  `placementPolicy: "preserve_anchor"`.
+  `placementPolicy: "preserve_anchor"` for both source types. The operation
+  cannot carry a path, URL, artifact-hash override, trust-state override,
+  script, or executable data.
 - Category and pivot policy must match; non-uniform scale and spatial fit are
   validated before DCC launch.
 - Geometry lock blocks replacement. Transform and material locks do not block
   it because those properties are preserved.
-- Fresh DCC verification must observe actual Box dimensions and persisted
+- Fresh DCC verification must observe actual dimensions and persisted
   metadata, not only planned JSON.
 
 ## External asset trust boundary (Spike 7A)
@@ -42,8 +55,12 @@
 - `trustedAssetRoot` and registry storage keys are worker-only. The resolver
   canonicalizes both and verifies file type, exact size, and SHA-256 before an
   internal path may be returned. It never invokes a DCC.
-- Current Golden compilation and `ReplaceAsset` reject external definitions;
-  controlled staging import remains future Spike 7B scope.
+- Spike 7A itself defined only this eligibility/resolver boundary; it did not
+  open, import, merge, execute, or render an external `.max` file. Initial
+  Golden compilation (`build-plan.ts`) still rejects any non-`procedural_proxy`
+  definition today — that boundary is unchanged. Controlled staging import
+  onto an existing verified revision was later proved for `ReplaceAsset` only,
+  in Spike 7C (see the `ReplaceAsset subset` section above).
 
 ## Isolated external `.max` inspection (Spike 7B)
 
@@ -58,9 +75,11 @@
   protected; no unobserved or weakened posture promotes trust.
 - Passing evidence records normalized units, bounds, pivot, scene/material
   counts, and dependency counts. Raw source-machine paths are not evidence.
-- Pure worker-owned promotion is `QUARANTINED` plus matching policy-clean
-  passing evidence to `VERIFIED`. Current Golden/ReplaceAsset execution remains
-  procedural-proxy-only until 7C.
+- Spike 7B itself defined pure worker-owned promotion (`QUARANTINED` plus
+  matching policy-clean passing evidence to `VERIFIED`) and did not perform a
+  production merge. Golden compilation remains procedural-proxy-only; the
+  `VERIFIED` artifacts this spike produces are what Spike 7C's controlled
+  `ReplaceAsset` path (above) later consumed.
 
 ## DCC execution safety
 
