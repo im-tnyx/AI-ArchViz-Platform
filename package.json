@@ -21,6 +21,7 @@
     "test:3dsmax:golden-corona-preview": "pnpm run build && node apps/worker/dist/golden-corona-preview-integration.js",
     "test:3dsmax:canonical-render-state-revision": "pnpm run build && node apps/worker/dist/canonical-render-state-revision-integration.js",
     "test:3dsmax:canonical-golden-corona-preview": "pnpm run build && node apps/worker/dist/canonical-golden-corona-preview-integration.js",
+    "test:3dsmax:canonical-golden-corona-preview-rev11": "pnpm run build && node apps/worker/dist/canonical-golden-corona-preview-rev11-integration.js",
     "test:3dsmax:corona-material-appearance": "pnpm run build && node apps/worker/dist/corona-material-appearance-integration.js",
     "test:3dsmax:canonical-material-appearance-revision": "pnpm run build && node apps/worker/dist/canonical-material-appearance-revision-integration.js",
     "worker": "pnpm run build && node apps/worker/dist/cli.js",

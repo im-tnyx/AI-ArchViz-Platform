@@ -1,15 +1,22 @@
-"""Render the first canonical Corona preview whose renderer and light intent
-are both canonical rev10 SceneSpec revision state (Technical Spike 8E).
+"""Render the first canonical Corona preview whose renderer, light, MATERIAL,
+and camera intent are all already-canonical, already-PERSISTED rev11
+SceneSpec v0.3 revision state (Technical Spike 8H).
 
 This runner opens only a staged worker copy of the already-VERIFIED canonical
-rev10 artifact. It never rebuilds geometry from a plan, never assigns or
-switches the renderer, never creates or mutates a light, and never saves the
-loaded scene.
+rev11 artifact. Unlike Spike 8E (which realized temporary Corona Physical
+Materials because rev10 predates the material-appearance contract), rev11
+already contains real, persisted, canonically-named Corona Physical Materials
+(Spike 8G): this runner only RESOLVES, OBSERVES, and VERIFIES them, reusing
+`verify_canonical_material_state`'s trusted resolution/property-discovery
+logic rather than a fourth Corona material-property mapper. It never creates
+a light, never switches the renderer, never creates or assigns a material,
+never mutates the camera, and never saves the loaded scene.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -21,17 +28,21 @@ if SCRIPT_DIRECTORY not in sys.path:
     sys.path.insert(0, SCRIPT_DIRECTORY)
 
 import render_corona_baseline as corona  # noqa: E402
+import verify_canonical_material_state  # noqa: E402
 import verify_canonical_render_state  # noqa: E402
 import verify_scene  # noqa: E402
 from pymxs import runtime as rt  # noqa: E402
 
 
 RUNNER_VERSION = "0.1.0"
-PLAN_VERSION = "0.1.0"
+PLAN_VERSION = "0.2.0"
+CANONICAL_REVISION_ID = "rev_golden_0011"
 EXPECTED_RESOLUTION = {"width": 320, "height": 240}
 EXPECTED_TERMINATION = {"type": "pass_limit", "value": 4}
 DIAGNOSTIC_LIGHT_LOGICAL_ID = "preview_key_area"
 DIAGNOSTIC_LIGHT_NAME = "AVZ_PREVIEW_CORONA_KEY"
+CAMERA_TOLERANCE = 0.01
+ANGLE_TOLERANCE = 0.001
 RENDER_STATE_ERROR_CODES = (
     "SAFE_SCENE_REQUIRED",
     "CORONA_NOT_FOUND",
@@ -41,6 +52,19 @@ RENDER_STATE_ERROR_CODES = (
     "LIGHT_PHYSICAL_PROPERTY_MISMATCH",
     "CORONA_LIGHT_CLASS_NOT_FOUND",
     "CORONA_LIGHT_PROPERTY_UNSUPPORTED",
+)
+MATERIAL_STATE_ERROR_CODES = (
+    "SAFE_SCENE_REQUIRED",
+    "CANDIDATE_MISSING",
+    "CANDIDATE_OPEN_FAILED",
+    "MATERIAL_STATE_INVALID",
+    "MATERIAL_NOT_FOUND",
+    "MATERIAL_TYPE_MISMATCH",
+    "MATERIAL_COLOR_MISMATCH",
+    "CORONA_MATERIAL_ROUGHNESS_PROPERTY_UNSUPPORTED",
+    "CORONA_MATERIAL_METALNESS_PROPERTY_UNSUPPORTED",
+    "MATERIAL_ASSIGNMENT_MISMATCH",
+    "CORONA_MATERIAL_ASSIGNMENT_FAILED",
 )
 
 
@@ -69,23 +93,24 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def _force(code: str) -> bool:
-    return os.environ.get("AI_ARCHVIZ_TEST_FORCE_CANONICAL_GOLDEN_PREVIEW_FAILURE") == code
-
-
-def _normalized_name(value: Any) -> str:
-    return corona._normalized_name(value)
+    return os.environ.get("AI_ARCHVIZ_TEST_FORCE_CANONICAL_GOLDEN_PREVIEW_REV11_FAILURE") == code
 
 
 def _class_name(value: Any) -> str:
     return corona._class_name(value)
 
 
-def _point(value: list[float]) -> Any:
-    return rt.Point3(float(value[0]), float(value[1]), float(value[2]))
-
-
 def _vector(value: Any) -> list[float]:
     return [float(value.x), float(value.y), float(value.z)]
+
+
+def _close(left: float, right: float, tolerance: float = CAMERA_TOLERANCE) -> bool:
+    return abs(float(left) - float(right)) <= tolerance
+
+
+def _angle_close(left: float, right: float) -> bool:
+    difference = (float(left) - float(right) + 180.0) % 360.0 - 180.0
+    return abs(difference) <= ANGLE_TOLERANCE
 
 
 def _logical_id(node: Any) -> str | None:
@@ -93,14 +118,7 @@ def _logical_id(node: Any) -> str | None:
     return str(value) if value is not None else None
 
 
-def _host_logical_id(node: Any) -> str | None:
-    value = rt.getUserProp(node, "AIArchViz.HostLogicalId")
-    return str(value) if value is not None else None
-
-
 def _look_at_rotation(position: list[float], target: list[float]) -> tuple[float, float, float]:
-    import math
-
     dx = float(target[0]) - float(position[0])
     dy = float(target[1]) - float(position[1])
     dz = float(target[2]) - float(position[2])
@@ -132,18 +150,15 @@ def _validate_plan(value: Any) -> dict[str, Any]:
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan keys are not trusted")
     if value["planVersion"] != PLAN_VERSION or value["engine"] != "corona":
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Unsupported plan version or engine")
-    if value["revisionId"] != "rev_golden_0010":
-        raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan is not the canonical rev10 revision")
+    if value["revisionId"] != CANONICAL_REVISION_ID:
+        raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan is not the canonical rev11 revision")
     if value["render"] != {
         "mode": "preview",
         "resolution": EXPECTED_RESOLUTION,
         "termination": EXPECTED_TERMINATION,
     }:
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan render policy is unsupported")
-    if value["adapterDefaults"] != {
-        "material": {"roughness": 0.45, "nonMetalMode": True},
-        "areaLight": {"widthMm": 800, "intensityScale": 120},
-    }:
+    if value["adapterDefaults"] != {"areaLight": {"widthMm": 800, "intensityScale": 120}}:
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan adapter defaults are unsupported")
     if not isinstance(value["camera"], dict) or value["camera"].get("logicalId") != "camera_living_a":
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan camera is unsupported")
@@ -151,7 +166,14 @@ def _validate_plan(value: Any) -> dict[str, Any]:
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan must contain canonical lights")
     if any(entry.get("type") != "area" for entry in value["lights"] if isinstance(entry, dict)):
         raise CanonicalPreviewError("RENDERER_LIGHT_TYPE_UNSUPPORTED", "Corona supports area lights only")
-    if not isinstance(value["materials"], list) or not isinstance(value["materialAssignments"], list):
+    if not isinstance(value["materials"], list) or not value["materials"]:
+        raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan must contain canonical materials")
+    for entry in value["materials"]:
+        if not isinstance(entry, dict) or "roughness" not in entry or "metalness" not in entry:
+            raise CanonicalPreviewError(
+                "CORONA_EXECUTION_PLAN_INVALID", "Plan v0.2 material is missing canonical appearance"
+            )
+    if not isinstance(value["materialAssignments"], list) or not value["materialAssignments"]:
         raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Plan material data is invalid")
     return value
 
@@ -186,6 +208,23 @@ def _verify_render_state() -> dict[str, Any]:
     return evidence
 
 
+def _verify_material_state() -> dict[str, Any]:
+    try:
+        evidence, _result = verify_canonical_material_state.verify()
+    except Exception as error:
+        code = getattr(error, "code", None)
+        if not isinstance(code, str) or code not in MATERIAL_STATE_ERROR_CODES:
+            code = "CORONA_MATERIAL_ASSIGNMENT_FAILED"
+        raise CanonicalPreviewError(code, "Canonical material-state verification failed") from error
+    if not evidence.get("deduplication", {}).get("sameIdSharedInstance") or not evidence.get(
+        "deduplication", {}
+    ).get("differentIdDistinctInstances"):
+        raise CanonicalPreviewError(
+            "CORONA_MATERIAL_ASSIGNMENT_FAILED", "Persisted material deduplication proof failed"
+        )
+    return evidence
+
+
 def _require_no_diagnostic_light() -> None:
     if _force("diagnostic_light"):
         raise CanonicalPreviewError(
@@ -194,87 +233,6 @@ def _require_no_diagnostic_light() -> None:
     for node in rt.objects:
         if _logical_id(node) == DIAGNOSTIC_LIGHT_LOGICAL_ID or str(node.name) == DIAGNOSTIC_LIGHT_NAME:
             raise CanonicalPreviewError("UNEXPECTED_DIAGNOSTIC_LIGHT", "Obsolete diagnostic light is present")
-
-
-def _canonical_targets(target_id: str) -> list[Any]:
-    physical_segments = [node for node in rt.objects if _host_logical_id(node) == target_id]
-    # Wall semantic helpers are Dummies; physical segments are canonical for
-    # renderer assignment, exactly as in the 8B/8C realization paths.
-    targets = physical_segments or [node for node in rt.objects if _logical_id(node) == target_id]
-    if not targets:
-        raise CanonicalPreviewError(
-            "MATERIAL_ASSIGNMENT_TARGET_MISSING", f"Canonical target is missing: {target_id}"
-        )
-    return targets
-
-
-def _same_material_instance(left: Any, right: Any) -> bool:
-    try:
-        return int(rt.getHandleByAnim(left)) == int(rt.getHandleByAnim(right))
-    except Exception:
-        return str(left) == str(right) and str(left.name) == str(right.name)
-
-
-def _realize_materials(plan: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    if _force("material_missing"):
-        raise CanonicalPreviewError("CORONA_MATERIAL_CLASS_NOT_FOUND", "Trusted test forced material absence")
-    if _force("property_missing"):
-        raise CanonicalPreviewError(
-            "CORONA_MATERIAL_PROPERTY_UNSUPPORTED", "Trusted test forced property absence"
-        )
-    materials: dict[str, Any] = {}
-    material_evidence: list[dict[str, Any]] = []
-    for entry in plan["materials"]:
-        material_id = str(entry["materialId"])
-        if material_id in materials:
-            raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Duplicate canonical material")
-        material, class_name = corona.create_corona_physical_material(
-            entry["baseColorRgb"], f"AVZ_CORONA_{material_id}"
-        )
-        if "corona" not in _normalized_name(class_name) or "physical" not in _normalized_name(class_name):
-            raise CanonicalPreviewError("CORONA_MATERIAL_CLASS_NOT_FOUND", "Created material is not Corona Physical")
-        materials[material_id] = material
-        material_evidence.append(
-            {
-                "materialId": material_id,
-                "className": class_name,
-                "canonicalBaseColorRgb": entry["baseColorRgb"],
-                "materialInstanceName": str(material.name),
-            }
-        )
-
-    assignments: list[dict[str, Any]] = []
-    assigned_targets: set[str] = set()
-    for entry in plan["materialAssignments"]:
-        target_id = str(entry["targetId"])
-        material_id = str(entry["materialId"])
-        if target_id in assigned_targets:
-            raise CanonicalPreviewError("CORONA_EXECUTION_PLAN_INVALID", "Duplicate canonical material target")
-        assigned_targets.add(target_id)
-        material = materials.get(material_id)
-        if material is None:
-            raise CanonicalPreviewError(
-                "CORONA_EXECUTION_PLAN_INVALID", "Canonical material assignment cannot resolve"
-            )
-        targets = _canonical_targets(target_id)
-        for target in targets:
-            target.material = material
-        observed = [target.material for target in targets]
-        if any(not _same_material_instance(item, material) for item in observed):
-            raise CanonicalPreviewError("CORONA_MATERIAL_ASSIGNMENT_FAILED", f"Material mismatch on {target_id}")
-        assignments.append(
-            {
-                "targetId": target_id,
-                "materialId": material_id,
-                "materialInstanceName": str(material.name),
-                "className": _class_name(rt.classOf(material)),
-                "sharedMaterialInstance": True,
-            }
-        )
-    return (
-        sorted(material_evidence, key=lambda entry: entry["materialId"]),
-        sorted(assignments, key=lambda entry: entry["targetId"]),
-    )
 
 
 def _resolve_camera(plan: dict[str, Any]) -> dict[str, Any]:
@@ -292,22 +250,24 @@ def _resolve_camera(plan: dict[str, Any]) -> dict[str, Any]:
         raise CanonicalPreviewError("CAMERA_NOT_FOUND", "Canonical camera_living_a is not a camera")
     if _force("camera_semantic_mismatch"):
         raise CanonicalPreviewError("CAMERA_REALIZATION_FAILED", "Trusted test forced camera semantic mismatch")
-    import math
-
     entry = plan["camera"]
-    # Temporary exact in-memory normalization only; the loaded scene is never
-    # saved, so this cannot drift the canonical persisted camera. MAXScript's
-    # Camera.fov is degrees, while entry["fovRadians"] is a genuine radian
-    # value (`2 * atan(sensorWidth / (2 * focalLength))` computed in JS
-    # radians by the adapter, matching build_scene.py's own degrees-based
-    # formula for the persisted camera) — convert on the way in and back out.
-    camera.rotation = rt.EulerAngles(*_look_at_rotation(entry["position"], entry["target"]))
-    camera.pos = _point(entry["position"])
-    camera.fov = math.degrees(float(entry["fovRadians"]))
-    if any(abs(actual - float(expected)) > 0.001 for actual, expected in zip(_vector(camera.pos), entry["position"])):
-        raise CanonicalPreviewError("CAMERA_REALIZATION_FAILED", "Canonical camera position mismatch")
-    if abs(math.radians(float(camera.fov)) - float(entry["fovRadians"])) > 0.000001:
-        raise CanonicalPreviewError("CAMERA_REALIZATION_FAILED", "Canonical camera FOV mismatch")
+    # Observation-only: the persisted camera is never written to. A canonical
+    # semantic mismatch fails closed rather than being silently repaired.
+    observed_position = _vector(camera.pos)
+    if any(not _close(actual, expected) for actual, expected in zip(observed_position, entry["position"])):
+        raise CanonicalPreviewError("CAMERA_REALIZATION_FAILED", "Persisted camera position mismatch")
+    # MAXScript's Camera.fov is degrees; the canonical plan's fovRadians is a
+    # genuine radian value (`2 * atan(sensorWidth / (2 * focalLength))`
+    # computed in JS radians by the adapter). Converting before comparing is
+    # observation, not repair: the persisted camera's real field of view is
+    # unaffected by which unit this runner reads it in.
+    observed_fov_radians = math.radians(float(camera.fov))
+    if not _close(observed_fov_radians, float(entry["fovRadians"]), tolerance=0.000001):
+        raise CanonicalPreviewError("CAMERA_REALIZATION_FAILED", "Persisted camera FOV mismatch")
+    expected_rotation = _look_at_rotation(entry["position"], entry["target"])
+    observed_rotation = _vector(rt.quatToEuler(camera.rotation))
+    if any(not _angle_close(actual, expected) for actual, expected in zip(observed_rotation, expected_rotation)):
+        raise CanonicalPreviewError("CAMERA_REALIZATION_FAILED", "Persisted camera orientation mismatch")
     return {
         "node": camera,
         "evidence": {
@@ -327,6 +287,8 @@ def _finalize_renderer_for_render(plan: dict[str, Any]) -> tuple[str, str | None
     if _force("renderer_missing"):
         raise CanonicalPreviewError("CORONA_NOT_FOUND", "Trusted test forced renderer absence")
     renderer = rt.renderers.production
+    if renderer is None or "corona" not in corona._normalized_name(rt.classOf(renderer)):
+        raise CanonicalPreviewError("CORONA_NOT_FOUND", "Persisted production renderer is not Corona")
     observed_class = _class_name(rt.classOf(renderer))
     plugin_version = corona._observable_plugin_version(renderer)
     corona._set_discovered_property(
@@ -372,9 +334,9 @@ def realize(plan: dict[str, Any], output_path: Path) -> dict[str, Any]:
         time.sleep(300)
     _verify_source_manifest()
     render_state_evidence = _verify_render_state()
+    material_state_evidence = _verify_material_state()
     _require_no_diagnostic_light()
     observed_renderer_class, plugin_version = _finalize_renderer_for_render(plan)
-    material_evidence, assignment_evidence = _realize_materials(plan)
     camera = _resolve_camera(plan)
     _render(camera["node"], output_path, plan["render"])
     return {
@@ -386,8 +348,10 @@ def realize(plan: dict[str, Any], output_path: Path) -> dict[str, Any]:
             "compatibilityMode": corona._runtime_major_version() != 2026,
         },
         "canonicalRenderState": render_state_evidence,
-        "materials": material_evidence,
-        "materialAssignments": assignment_evidence,
+        "canonicalMaterialState": material_state_evidence,
+        "materials": material_state_evidence["materials"],
+        "materialAssignments": material_state_evidence["materialAssignments"],
+        "deduplication": material_state_evidence["deduplication"],
         "camera": camera["evidence"],
         "render": plan["render"],
     }

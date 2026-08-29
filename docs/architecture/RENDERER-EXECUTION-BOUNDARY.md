@@ -371,3 +371,68 @@ explicit SceneSpec v0.3 state saved into a verified editable `.max`.
   distinct native instance even where appearance values coincide. This
   spike's compatibility evidence targets 3ds Max `2025.3`; no 2026
   verification is claimed.
+
+## Spike 8H: canonical Golden Corona preview from rev11 material state
+
+The renderer/material progression across four spikes is now complete and
+each stage remains independently auditable: 8E rendered rev10 with the
+renderer/light already canonical but materials still realized as *temporary*
+Corona Physical Materials (rev10 predates material appearance); 8F proved
+Corona Physical Material realization and property mapping as a standalone
+capability; 8G persisted that capability into `rev_golden_0011`, the first
+canonical Golden revision whose materials are real, saved, native Corona
+Physical Materials; 8H renders that persisted state directly. 8E's own suite
+is untouched and still exercises rev10 with temporary realization — it is
+historical coverage, not superseded.
+
+- `executeCanonicalGoldenCoronaPreviewRev11` requires the source SceneSpec to
+  be exactly `rev_golden_0011` at `sceneSpecVersion: "0.3.0"` and compiles it
+  through `CoronaRendererAdapter.compileCanonicalMaterialAppearance()` (plan
+  v0.2) — never `compile()` (plan v0.1) and never the legacy adapter-owned
+  `roughness: 0.45` default. Rendering remains execution output, not a
+  SceneChangeSet transition: no `rev_golden_0012` is created, no revision is
+  appended, and the loaded scene is never saved.
+- The single most important architectural rule this spike enforces: **the
+  render runner never creates a light or a material and never switches the
+  renderer.** Unlike 8E's `render_canonical_golden_corona_preview.py` (which
+  necessarily realizes temporary `AVZ_CORONA_*` materials because rev10 has
+  no persisted appearance to reuse),
+  `render_canonical_golden_corona_preview_rev11.py` only resolves, observes,
+  and verifies the already-persisted `AVZ_MATERIAL_*` Corona Physical
+  Materials — reusing `verify_canonical_material_state`'s trusted
+  resolution/property-discovery logic rather than a fourth Corona
+  material-property mapper. If the persisted scene only rendered correctly
+  after fresh temporary materials were created, that would mean 8G's
+  persistence was not actually production-usable; this spike's evidence
+  proves otherwise.
+- Before any render call, the fresh DCC process independently proves all
+  three rev11 verification contracts against the staged copy — semantic
+  manifest, canonical render state, and canonical material state — reusing
+  `verify_scene`, `verify_canonical_render_state`, and
+  `verify_canonical_material_state` exactly as Spikes 8D/8G already trust
+  them. It does not rely on 8G's revision-time verification alone.
+  Materialid-based deduplication (same ID shares one native instance,
+  distinct IDs never merge) is re-proven from that same fresh evidence, not
+  re-derived independently.
+- Camera reuse is observation-only: `camera_living_a` is resolved by
+  `AIArchViz.LogicalObjectId` and its persisted position, FOV, and
+  look-at-derived orientation are compared against the canonical plan within
+  tolerance — the runner never assigns `camera.pos`/`camera.rotation`/
+  `camera.fov`. A persisted camera whose semantics differ from the canonical
+  SceneSpec fails closed (`CAMERA_REALIZATION_FAILED`) rather than being
+  normalized and re-checked, which is a deliberate divergence from 8E's own
+  camera handling (8E temporarily normalizes the loaded camera in memory
+  before comparing, since the loaded scene is never saved either way; 8H
+  goes further and never assigns to the camera node at all).
+- `canonical-corona-preview-evidence-v0.2` is a new, separate schema
+  (`evidenceVersion: "0.2.0"`, `revisionId: "rev_golden_0011"`,
+  `sceneSpecVersion: "0.3.0"`); `canonical-corona-preview-evidence-v0.1`
+  (rev10, temporary `AVZ_CORONA_*` realization) is byte-for-byte unchanged
+  and still validates the exact 8E evidence shape. v0.2's material entries
+  require the persisted `AVZ_MATERIAL_*` naming and the `_CoronaPhysicalMtl`
+  class, carry canonical and observed `baseColorRgb`/`roughness`/`metalness`
+  side by side (matching `canonical-material-state-v0.1`'s established
+  normalization: tolerance-checked canonical values, not raw native-read
+  noise), and a top-level `sameIdSharedInstance`/`differentIdDistinctInstances`
+  deduplication proof. This spike's compatibility evidence targets 3ds Max
+  `2025.3`; no 2026 verification is claimed.
