@@ -189,3 +189,69 @@
   `corona-material-appearance-evidence-v0.1` records canonical vs. observed
   `baseColorRgb`/`roughness`/`metalness` per material plus a
   `sameIdSharedInstance`/`differentIdDistinctInstances` deduplication proof.
+
+## Canonical material appearance revision (Spike 8G)
+
+- `scene-change-set-v0.2.schema.json` is a new, separate schema
+  (`schemaVersion: "0.2.0"`); `scene-change-set-v0.1.schema.json` is
+  byte-for-byte unchanged and every existing Golden changeset fixture still
+  validates against it. `validateSceneChangeSet()` dispatches on
+  `schemaVersion`. v0.2 adds exactly one operation,
+  `MigrateMaterialAppearanceContract`: `high` risk, targets the scene
+  identity, requires `parameters.materials` to enumerate every base material
+  exactly once sorted lexicographically by `materialId` with no duplicates
+  and no `baseColorRgb` override, and is rejected if the base is not
+  canonical v0.2, is already v0.3, or any assigned target has a locked
+  material — all before any DCC launch (`MATERIAL_APPEARANCE_SET_UNSORTED`,
+  `MATERIAL_ID_DUPLICATE`, `MATERIAL_APPEARANCE_SET_INCOMPLETE`,
+  `MATERIAL_NOT_FOUND`, `MATERIAL_APPEARANCE_ALREADY_CANONICAL`,
+  `SCENE_SPEC_VERSION_TRANSITION_UNSUPPORTED`, `MATERIAL_LOCKED`).
+- `rev_golden_0011` is the first canonical Golden revision at SceneSpec v0.3;
+  `rev_golden_0001`-`rev_golden_0010` remain v0.2 and byte-identical. Its
+  roughness/metalness values (`material_wall_neutral` `0.62`,
+  `material_floor_neutral` `0.34`, `material_sofa_proxy` `0.78`, all
+  `metalness: 0`) are an explicit, hand-authored design decision, never the
+  8F/8B adapter's `0.45` default. Base colors, material IDs, names, order,
+  and assignments (including the pre-existing rev4 `wall_south` ->
+  `material_floor_neutral` reassignment) are unchanged; the migration
+  produces zero semantic manifest diff (materials live only in SceneSpec's
+  top-level `materials[]`, which the manifest never tracks) and does not
+  disturb the already-canonical `corona`/`preview` render state or
+  `light_living_key_area`.
+- `apply_change_set.py` accepts `revisionPlanVersion` `0.1.0` or `0.2.0` and
+  reuses `render_corona_material_appearance.py`'s discovery/creation/
+  property-mapping functions for the new operation rather than a third
+  independent mapping; it replaces each pre-migration
+  `AVZ_MATERIAL_{materialId}` StandardMaterial with a same-named native
+  Corona Physical Material. A wall's host node is a non-renderable Dummy
+  helper with no real material slot (mirroring `verify_scene.py`'s own
+  wall-validation, which never checks material on a wall host either), so
+  material identity is assigned to the host for display-tree consistency but
+  assigned-and-verified (including the deduplication proof) only on its
+  physical segments, or on the single node directly for non-wall targets.
+  `verify_scene.py`'s native-material check now accepts either
+  StandardMaterial or Corona Physical Material, and its manifest-recovery
+  step stores the tolerance-checked canonical color rather than the raw
+  native reading, since Corona's float32 base-color read-back carries
+  harmless sub-percent noise relative to a StandardMaterial's exact 8-bit
+  `.diffuse` that would otherwise look like a spurious semantic diff on
+  every native-class change.
+- Promotion requires three independent fresh-process verifiers, not two: the
+  existing semantic-manifest verifier, the existing canonical render-state
+  verifier (still sticky once `render.engine`/`mode` are set, so it re-runs
+  on rev11 too), and a new `verify_canonical_material_state.py` validated
+  against `canonical-material-state-v0.1`
+  (`validateCanonicalMaterialStateEvidence`) — its own independent DCC
+  process, separate from the mutation process and the other two verifiers.
+  All evidence is written as tolerance-checked canonical values, not the raw
+  runtime observation, matching `canonical-render-state-v0.1`'s established
+  normalization pattern. `replayRevision()`'s render-state evidence gate
+  covers `MigrateMaterialAppearanceContract` in addition to
+  `SetRenderIntent`/`AddLight`, so replaying a later revision built on a
+  render-configured scene does not drop render-state evidence that was
+  genuinely verified during the live run.
+- MaterialId, never appearance value, is the deduplication key, re-proven
+  independently in the fresh material-state verifier (not only at mutation
+  time): `material_floor_neutral` is shared by two targets (`wall_south` and
+  `surface_floor_main`) and must resolve to one native instance, while every
+  distinct `materialId` must resolve to a distinct native instance.

@@ -2,16 +2,17 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `6b6a48c`
-- Commit: `feat: add canonical material appearance contract`
+- Local `main` HEAD: `a1c9b23`
+- Commit: `feat: migrate golden materials to canonical appearance`
 - Remote tracking state at this snapshot: `origin/main` and local `main` both
-  resolve to `6b6a48c`.
+  resolve to `a1c9b23`.
 
 ## Verified capability boundary
 
 - Deterministic SceneSpec build and SceneChangeSet revision pipeline are in
   place through canonical Corona render-state revisions (rev9 `SetRenderIntent`,
-  rev10 `AddLight`).
+  rev10 `AddLight`) and now the first canonical material-appearance revision
+  (rev11 `MigrateMaterialAppearanceContract`, SceneSpec v0.3).
 - `ReplaceAsset` preserves logical object identity, transform, material, and
   locks while changing immutable `assetDefinitionId` and intrinsic geometry,
   including a controlled `VERIFIED` external `.max` source (Spike 7C).
@@ -28,7 +29,11 @@
   promoted from adapter defaults into SceneSpec v0.3, compiled through a
   dedicated adapter method to Corona execution plan v0.2, and observed on
   the actual installed Corona Physical Material with proven materialId-based
-  (never value-based) deduplication (8F).
+  (never value-based) deduplication (8F); and that capability persisted into
+  the first canonical Golden material-appearance revision, `rev_golden_0011`
+  (SceneSpec v0.3), with all rev1-rev10 preserved byte-identical and three
+  independent fresh-process verifiers (semantic, render-state,
+  `canonical-material-state-v0.1`) required before promotion (8G).
 - DCC execution is default-deny end-to-end: trusted local worker configuration
   must set `allowDccExecution: true`, the call site must separately authorize
   the specific launch, and DCC integration suites additionally require
@@ -93,6 +98,34 @@
   made and no scene was saved. Seven forced-failure cases (Safe Scene,
   renderer, material class, roughness/metalness property unavailable,
   invalid evidence, timeout) all failed closed.
+- Spike 8G added `scene-change-set-v0.2.schema.json` (v0.1 unchanged) and its
+  one operation, `MigrateMaterialAppearanceContract`: a `high`-risk,
+  scene-scoped, explicit-appearance-set migration that requires every base
+  material exactly once (sorted, no duplicates, no `baseColorRgb` override)
+  and rejects a locked material target or a non-v0.2-to-v0.3 transition
+  before any DCC launch. `rev_golden_0011`'s roughness values (wall `0.62`,
+  floor `0.34`, sofa `0.78`, all `metalness: 0`) are hand-picked, not the
+  8F/8B adapter default. `apply_change_set.py` reuses 8F's
+  `render_corona_material_appearance.py` discovery/creation/property
+  functions rather than a third mapping, replacing each pre-migration
+  `AVZ_MATERIAL_{materialId}` StandardMaterial with a same-named Corona
+  Physical Material; `verify_scene.py`'s native-material check now accepts
+  either class, and its manifest-recovery path stores the tolerance-checked
+  canonical color (not the raw Corona float32 reading) so a native-class
+  change alone never produces a spurious semantic diff. The new
+  `verify_canonical_material_state.py` fresh-process verifier is the third
+  required promotion gate; a wall's host is a non-renderable Dummy helper
+  with no real material slot, so both it and the new verifier check/assign
+  material identity only on physical segments (or the single node for
+  non-wall targets), matching `verify_scene.py`'s own established pattern.
+  `replayRevision()`'s render-state evidence gate now also covers
+  `MigrateMaterialAppearanceContract` so replay doesn't drop already-verified
+  render-state evidence for a later revision built on a render-configured
+  scene. Eight forced-failure cases (Safe Scene, renderer missing, material
+  class missing, roughness/metalness property unavailable, deduplication
+  failure, invalid evidence, evidence mismatch) all failed closed with no
+  candidate promoted; rev1-rev10 remain byte-identical, and Spike 8E's own
+  suite still builds/verifies rev10 only and creates no rev11.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

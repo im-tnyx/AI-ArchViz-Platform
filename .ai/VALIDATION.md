@@ -1,5 +1,70 @@
 # Latest Validation Evidence
 
+## Spike 8G canonical material appearance revision (local commit `a1c9b23`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 191/191
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:canonical-material-appearance-revision` (new) — built
+  `rev_golden_0001`-`rev_golden_0010` through the real revision pipeline,
+  then applied `MigrateMaterialAppearanceContract` to produce
+  `rev_golden_0011`: mutation replaced each pre-migration StandardMaterial
+  with a same-named native Corona Physical Material (materialId-based
+  deduplication proven: the pre-existing rev4 `wall_south` ->
+  `material_floor_neutral` assignment shares one native instance with
+  `surface_floor_main`; every other materialId resolved to its own distinct
+  instance); fresh semantic-manifest verification reported zero node/camera
+  changes (14/14 unchanged); fresh canonical render-state verification
+  reported the unchanged Corona preview intent and `light_living_key_area`
+  CoronaLight; a new, independent fresh-process
+  `canonical-material-state-v0.1` verifier re-observed native base
+  color/roughness/metalness within tolerance and re-proved deduplication
+  from scratch. `rev_golden_0008`/`0009`/`0010` artifacts were byte-unchanged
+  after the migration; replay returned all three evidence records without
+  relaunching any DCC process. Eight forced-failure cases (Safe Scene,
+  renderer missing, material class missing, roughness property unavailable,
+  metalness property unavailable, deduplication failure, invalid evidence,
+  evidence mismatch) all failed closed with no candidate promoted.
+- `test:3dsmax:corona-material-appearance`,
+  `test:3dsmax:canonical-golden-corona-preview`,
+  `test:3dsmax:canonical-render-state-revision`,
+  `test:3dsmax:golden-corona-preview`, `test:3dsmax:corona-adapter`,
+  `test:3dsmax:corona-baseline`, `test:3dsmax:revision`,
+  `test:3dsmax:replace-asset`, `test:3dsmax:asset-inspection`,
+  `test:3dsmax:external-asset-ingestion` — all PASS unchanged. In particular,
+  `canonical-golden-corona-preview` (8E) confirms it still builds/verifies
+  `rev_golden_0010` only and creates no `rev_golden_0011`, so it remains
+  unaffected by 8G's new revision.
+
+Three real defects were found and fixed against real 3ds Max evidence during
+this spike (not merely designed around): a wall's host node is a
+non-renderable Dummy with no true material slot, so material identity must
+be assigned/verified only on its physical segments (both the mutation and
+the new verifier now do this, matching `verify_scene.py`'s pre-existing
+wall-validation pattern); Corona's float32 base-color read-back carries
+harmless sub-percent noise against a StandardMaterial's exact 8-bit
+`.diffuse`, which `verify_scene.py`'s manifest-recovery step now resolves by
+storing the tolerance-checked canonical color instead of the raw
+observation; and `replayRevision()`'s render-state evidence gate was
+extended to `MigrateMaterialAppearanceContract` so a later revision's replay
+does not drop render-state evidence that was genuinely verified live. A
+transient environmental issue was also encountered and ruled out: an
+unrelated, must-not-touch interactive `3dsmax.exe` process briefly pegged a
+CPU core during the regression matrix, causing spurious `PROCESS_TIMEOUT`
+failures (the underlying scripts completed successfully, just after the
+180s timeout) across suites unmodified by this spike; a retry once
+conditions cleared passed all ten suites cleanly.
+
+Target 3ds Max 2026 verification was not performed; only 2025.3 compatibility
+mode is claimed. No test-owned 3ds Max process remained after the run; the
+two unrelated interactive `3dsmax.exe` sessions observed (no batch/script
+arguments) were deliberately left untouched throughout.
+
 ## Spike 8F canonical material appearance contract (local commit `6b6a48c`)
 
 Static gates, all PASS:
