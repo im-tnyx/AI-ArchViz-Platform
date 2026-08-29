@@ -19,7 +19,8 @@
     "test:3dsmax:asset-identity": "node dist/asset-identity-integration.js",
     "test:3dsmax:replace-asset": "node dist/replace-asset-integration.js",
     "test:3dsmax:canonical-render-state-revision": "node dist/canonical-render-state-revision-integration.js",
-    "test:3dsmax:canonical-golden-corona-preview": "node dist/canonical-golden-corona-preview-integration.js"
+    "test:3dsmax:canonical-golden-corona-preview": "node dist/canonical-golden-corona-preview-integration.js",
+    "test:3dsmax:corona-material-appearance": "node dist/corona-material-appearance-integration.js"
   },
   "dependencies": {
     "@ai-archviz/scene-spec": "workspace:*",

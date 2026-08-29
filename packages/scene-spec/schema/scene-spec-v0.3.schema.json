@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/scene-spec-v0.3.schema.json",
+  "title": "AI ArchViz SceneSpec v0.3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sceneSpecVersion",
+    "project",
+    "scene",
+    "coordinateSystem",
+    "sources",
+    "levels",
+    "spaces",
+    "geometry",
+    "openings",
+    "assetDefinitions",
+    "assets",
+    "cameras",
+    "render",
+    "revisions",
+    "extensions"
+  ],
+  "properties": {
+    "sceneSpecVersion": { "const": "0.3.0" },
+    "project": { "$ref": "#/$defs/project" },
+    "scene": { "$ref": "#/$defs/scene" },
+    "coordinateSystem": { "$ref": "#/$defs/coordinateSystem" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "levels": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/level" }
+    },
+    "spaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/space" }
+    },
+    "geometry": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/wall" },
+          { "$ref": "#/$defs/surface" }
+        ]
+      }
+    },
+    "openings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/doorOpening" },
+          { "$ref": "#/$defs/windowOpening" }
+        ]
+      }
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/asset" }
+    },
+    "assetDefinitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/assetDefinition" }
+    },
+    "materials": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/material" }
+    },
+    "materialAssignments": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/materialAssignment" }
+    },
+    "lights": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/light" }
+    },
+    "cameras": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/camera" }
+    },
+    "references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/reference" }
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/constraint" }
+    },
+    "render": { "$ref": "#/$defs/renderIntent" },
+    "revisions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/revision" }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Only explicit extension namespace. Extension keys must be vendor-qualified.",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_.-]*$" },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "vector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "type": "number" },
+        { "type": "number" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "positiveVector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "number", "exclusiveMinimum": 0 }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "rotationEuler", "scale"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vector3" },
+        "rotationEuler": { "$ref": "#/$defs/vector3" },
+        "scale": { "$ref": "#/$defs/positiveVector3" }
+      }
+    },
+    "identityTransform": {
+      "const": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    "locks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["geometry", "transform", "material"],
+      "properties": {
+        "geometry": { "type": "boolean" },
+        "transform": { "type": "boolean" },
+        "material": { "type": "boolean" }
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "revisionId", "headRevisionId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "revisionId": { "$ref": "#/$defs/id" },
+        "headRevisionId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linearUnit",
+        "angularUnit",
+        "upAxis",
+        "handedness",
+        "axisConvention",
+        "worldOrigin"
+      ],
+      "properties": {
+        "linearUnit": { "const": "mm" },
+        "angularUnit": { "const": "degree" },
+        "upAxis": { "const": "Z" },
+        "handedness": { "const": "right" },
+        "axisConvention": { "const": "X_east_Y_north_Z_up" },
+        "worldOrigin": { "$ref": "#/$defs/vector3" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "uri", "authority", "confidence", "verified"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["synthetic_fixture", "dwg", "dxf", "pdf", "image", "max"] },
+        "uri": { "type": "string", "minLength": 1 },
+        "authority": { "enum": ["A0", "A1", "A2", "A3", "A4", "A5"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "verified": { "type": "boolean" }
+      }
+    },
+    "level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "elevation", "defaultCeilingHeight"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "elevation": { "type": "number" },
+        "defaultCeilingHeight": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "levelId",
+        "type",
+        "boundary",
+        "boundaryWinding",
+        "floorElevation",
+        "ceilingHeight",
+        "transform"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "levelId": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["living_room", "bedroom", "dining_room", "generic"] },
+        "boundary": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/vector3" }
+        },
+        "boundaryWinding": { "const": "counter_clockwise" },
+        "floorElevation": { "type": "number" },
+        "ceilingHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "transform": { "$ref": "#/$defs/identityTransform" }
+      }
+    },
+    "wall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "levelId",
+        "spaceId",
+        "start",
+        "end",
+        "baseElevation",
+        "height",
+        "thickness",
+        "referenceLine",
+        "thicknessDirection",
+        "transform",
+        "locks"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "wall" },
+        "levelId": { "$ref": "#/$defs/id" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "start": { "$ref": "#/$defs/vector3" },
+        "end": { "$ref": "#/$defs/vector3" },
+        "baseElevation": { "type": "number" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "referenceLine": { "const": "interior_face" },
+        "thicknessDirection": { "const": "exterior_right_of_u" },
+        "transform": { "$ref": "#/$defs/identityTransform" },
+        "locks": { "$ref": "#/$defs/locks" }
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "levelId",
+        "spaceId",
+        "boundary",
+        "elevation",
+        "thickness",
+        "extrusionDirection",
+        "transform",
+        "locks"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["floor", "ceiling"] },
+        "levelId": { "$ref": "#/$defs/id" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "boundary": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/vector3" }
+        },
+        "elevation": { "type": "number" },
+        "thickness": { "type": "number", "minimum": 0 },
+        "extrusionDirection": { "enum": ["none", "up", "down"] },
+        "transform": { "$ref": "#/$defs/transform" },
+        "locks": { "$ref": "#/$defs/locks" }
+      }
+    },
+    "doorOpening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "hostGeometryId",
+        "offset",
+        "width",
+        "sill",
+        "height",
+        "hingeSide",
+        "swingDirection",
+        "transform",
+        "locks"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "door" },
+        "hostGeometryId": { "$ref": "#/$defs/id" },
+        "offset": { "type": "number", "minimum": 0 },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "sill": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "hingeSide": { "enum": ["start_jamb", "end_jamb"] },
+        "swingDirection": { "enum": ["into_room", "out_of_room"] },
+        "transform": { "$ref": "#/$defs/transform" },
+        "locks": { "$ref": "#/$defs/locks" }
+      }
+    },
+    "windowOpening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "hostGeometryId",
+        "offset",
+        "width",
+        "sill",
+        "height",
+        "transform",
+        "locks"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "window" },
+        "hostGeometryId": { "$ref": "#/$defs/id" },
+        "offset": { "type": "number", "minimum": 0 },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "sill": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "transform": { "$ref": "#/$defs/transform" },
+        "locks": { "$ref": "#/$defs/locks" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "assetDefinitionId",
+        "spaceId",
+        "transform",
+        "locks"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "proxy_asset" },
+        "assetDefinitionId": { "$ref": "#/$defs/id" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "hostGeometryId": { "$ref": "#/$defs/id" },
+        "transform": { "$ref": "#/$defs/transform" },
+        "locks": { "$ref": "#/$defs/locks" }
+      }
+    },
+    "assetDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "category",
+        "sourceType",
+        "dimensions",
+        "pivotPolicy",
+        "allowNonUniformScale"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "category": { "enum": ["sofa", "coffee_table", "tv_unit", "generic_proxy"] },
+        "sourceType": { "enum": ["procedural_proxy", "external_max"] },
+        "artifactId": { "$ref": "#/$defs/id" },
+        "dimensions": { "$ref": "#/$defs/positiveVector3" },
+        "pivotPolicy": { "enum": ["floor_center", "back_center_floor"] },
+        "allowNonUniformScale": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "sourceType": { "const": "external_max" } } },
+          "then": {
+            "properties": { "artifactId": {} },
+            "required": ["artifactId"]
+          }
+        },
+        {
+          "if": { "properties": { "sourceType": { "const": "procedural_proxy" } } },
+          "then": {
+            "properties": { "artifactId": {} },
+            "not": { "required": ["artifactId"] }
+          }
+        }
+      ]
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "baseColorRgb", "roughness", "metalness"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseColorRgb": {
+          "type": "array",
+          "prefixItems": [
+            { "type": "number", "minimum": 0, "maximum": 1 },
+            { "type": "number", "minimum": 0, "maximum": 1 },
+            { "type": "number", "minimum": 0, "maximum": 1 }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metalness": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "materialAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "targetId", "materialId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "materialId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "light": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "transform", "intensity"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["point", "directional", "area"] },
+        "transform": { "$ref": "#/$defs/transform" },
+        "intensity": { "type": "number", "minimum": 0 }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "spaceId",
+        "transform",
+        "target",
+        "orientationPolicy",
+        "focalLengthMm",
+        "sensorWidthMm"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "const": "camera" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "transform": { "$ref": "#/$defs/transform" },
+        "target": { "$ref": "#/$defs/vector3" },
+        "orientationPolicy": { "const": "look_at_target" },
+        "focalLengthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "sensorWidthMm": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceId", "role", "applyTo"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "sourceId": { "$ref": "#/$defs/id" },
+        "role": { "enum": ["geometry_authority", "design_reference"] },
+        "applyTo": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/id" }
+        }
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "subjectId", "targetId", "severity"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["inside_boundary", "hosted_by", "no_duplicate_id"] },
+        "subjectId": { "$ref": "#/$defs/id" },
+        "targetId": { "$ref": "#/$defs/id" },
+        "severity": { "enum": ["error", "warning"] }
+      }
+    },
+    "renderIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "mode"],
+      "properties": {
+        "engine": { "enum": ["none", "corona", "vray"] },
+        "mode": { "enum": ["build_only", "preview", "final"] }
+      }
+    },
+    "revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionId", "parentRevisionId", "status", "createdAt"],
+      "properties": {
+        "revisionId": { "$ref": "#/$defs/id" },
+        "parentRevisionId": {
+          "oneOf": [
+            { "$ref": "#/$defs/id" },
+            { "type": "null" }
+          ]
+        },
+        "status": { "const": "committed" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

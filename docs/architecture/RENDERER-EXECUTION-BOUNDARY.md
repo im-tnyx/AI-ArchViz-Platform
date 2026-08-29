@@ -260,3 +260,59 @@ verified rev10 .max (built through the real r2..r10 pipeline)
   mutate canonical or staged artifact bytes; both are hash-verified unchanged
   after the DCC process exits. This spike's compatibility evidence targets
   3ds Max `2025.3`; no 2026 verification is claimed.
+
+## Spike 8F: canonical material appearance contract
+
+Spike 8F promotes the first renderer-independent material *appearance*
+properties — `roughness` and `metalness` — from Corona adapter defaults into
+canonical SceneSpec semantics, without touching any existing Golden revision.
+
+- SceneSpec v0.2 is unchanged and remains valid as-is; `scene-spec-v0.3`
+  is a new, separate schema (`sceneSpecVersion: "0.3.0"`) whose material
+  additionally requires `roughness` and `metalness`, both normalized `0..1`.
+  `roughness` is renderer-neutral micro-surface roughness intent (`0` smooth,
+  `1` rough); `metalness` is renderer-neutral metallic-workflow intent (`0`
+  dielectric, `1` metal). Neither is IOR, specular level, or reflection.
+  There is no automatic v0.2-to-v0.3 migration: a v0.2 material's `roughness:
+  0.45` adapter default was never a canonical design decision, so no v0.3
+  document is ever backfilled with it, and Golden `rev_golden_0001`
+  through `rev_golden_0010` remain v0.2 and untouched.
+- `CoronaRendererAdapter.compile()` is unchanged: a v0.2 SceneSpec still
+  compiles to `corona-execution-plan-v0.1`, whose material realization keeps
+  filling roughness `0.45` and non-metal mode from the legacy
+  `coronaAdapterMaterialDefaults` compatibility constant. A new,
+  separate `compileCanonicalMaterialAppearance()` method accepts only a v0.3
+  SceneSpec and compiles it to `corona-execution-plan-v0.2`, whose material
+  `roughness`/`metalness` always come directly from SceneSpec; that plan's
+  `adapterDefaults` carries no material sub-object at all, so there is no
+  hidden fallback if either canonical value is absent (schema validation
+  rejects the SceneSpec before compilation is ever reached).
+- Material identity for realization and deduplication is always
+  `materialId`, never appearance-value equality: the same `materialId`
+  assigned to multiple targets realizes to one shared native Corona Physical
+  Material instance, while two distinct `materialId`s with byte-identical
+  `baseColorRgb`/`roughness`/`metalness` always realize to two distinct
+  native instances. The dedicated fixture under
+  `tests/fixtures/corona-material-appearance/` proves both directions with
+  four materials (rough and smooth dielectric, one metallic, and one
+  value-duplicate of the rough dielectric under a different ID).
+- The DCC runner (`render_corona_material_appearance.py`) is a capability
+  proof, not a render: it discovers Corona, creates one native Corona
+  Physical Material per canonical material, maps `baseColorRgb` to the
+  discovered base-color property, `roughness` to the discovered roughness
+  property, and `metalness` to whichever native representation the installed
+  Corona Physical Material actually exposes (a scalar metalness property, or
+  an enum metalness mode for exact `0`/`1` values) — never by swapping
+  material classes. A roughness or metalness property that the installed
+  Corona version does not expose at all fails closed with
+  `CORONA_MATERIAL_ROUGHNESS_PROPERTY_UNSUPPORTED` /
+  `CORONA_MATERIAL_METALNESS_PROPERTY_UNSUPPORTED` rather than emulating it.
+  No render call is made, no PNG is produced, and the scene is never saved.
+- `corona-material-appearance-evidence-v0.1` records, per material, the
+  installed native class, canonical intent, and observed
+  `baseColorRgb`/`roughness`/`metalness` side by side (small float
+  tolerances absorb native conversion noise without creating a new
+  machine-dependent SceneSpec revision), plus a `deduplication` proof
+  (`sameIdSharedInstance`, `differentIdDistinctInstances`). It contains no
+  absolute paths. This spike's compatibility evidence targets 3ds Max
+  `2025.3`; no 2026 verification is claimed.

@@ -1,0 +1,510 @@
+{
+  "planVersion": "0.2.0",
+  "engine": "corona",
+  "projectId": "project_corona_material_appearance",
+  "sceneId": "scene_corona_material_appearance",
+  "revisionId": "rev_corona_material_appearance_0001",
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right"
+  },
+  "geometry": {
+    "nodes": [
+      {
+        "logicalId": "asset_appearance_secondary",
+        "nodeName": "AVZ_asset_appearance_secondary",
+        "type": "proxy_asset",
+        "transform": {
+          "position": [
+            1200,
+            2200,
+            0
+          ],
+          "rotationEuler": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "dimensions": [
+          1200,
+          650,
+          380
+        ],
+        "assetDefinitionId": "assetdef_appearance_secondary",
+        "embeddedMetadata": {
+          "AIArchViz.LogicalObjectId": "asset_appearance_secondary",
+          "AIArchViz.ProjectId": "project_corona_material_appearance",
+          "AIArchViz.SceneId": "scene_corona_material_appearance",
+          "AIArchViz.RevisionId": "rev_corona_material_appearance_0001",
+          "AIArchViz.AssetDefinitionId": "assetdef_appearance_secondary"
+        }
+      },
+      {
+        "logicalId": "asset_appearance_subject",
+        "nodeName": "AVZ_asset_appearance_subject",
+        "type": "proxy_asset",
+        "transform": {
+          "position": [
+            3000,
+            2500,
+            0
+          ],
+          "rotationEuler": [
+            0,
+            0,
+            180
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "dimensions": [
+          1800,
+          800,
+          760
+        ],
+        "assetDefinitionId": "assetdef_appearance_subject",
+        "embeddedMetadata": {
+          "AIArchViz.LogicalObjectId": "asset_appearance_subject",
+          "AIArchViz.ProjectId": "project_corona_material_appearance",
+          "AIArchViz.SceneId": "scene_corona_material_appearance",
+          "AIArchViz.RevisionId": "rev_corona_material_appearance_0001",
+          "AIArchViz.AssetDefinitionId": "assetdef_appearance_subject"
+        }
+      },
+      {
+        "logicalId": "opening_appearance_window",
+        "nodeName": "AVZ_opening_appearance_window",
+        "type": "window_opening",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationEuler": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "dimensions": [
+          1200,
+          150,
+          1200
+        ],
+        "hostGeometryId": "wall_appearance_north",
+        "offset": 1800,
+        "sill": 900,
+        "embeddedMetadata": {
+          "AIArchViz.LogicalObjectId": "opening_appearance_window",
+          "AIArchViz.ProjectId": "project_corona_material_appearance",
+          "AIArchViz.SceneId": "scene_corona_material_appearance",
+          "AIArchViz.RevisionId": "rev_corona_material_appearance_0001"
+        }
+      },
+      {
+        "logicalId": "surface_appearance_floor",
+        "nodeName": "AVZ_surface_appearance_floor",
+        "type": "floor",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationEuler": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "dimensions": [
+          6000,
+          4000,
+          0
+        ],
+        "embeddedMetadata": {
+          "AIArchViz.LogicalObjectId": "surface_appearance_floor",
+          "AIArchViz.ProjectId": "project_corona_material_appearance",
+          "AIArchViz.SceneId": "scene_corona_material_appearance",
+          "AIArchViz.RevisionId": "rev_corona_material_appearance_0001"
+        }
+      },
+      {
+        "logicalId": "wall_appearance_north",
+        "nodeName": "AVZ_wall_appearance_north",
+        "type": "wall",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationEuler": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "dimensions": [
+          6000,
+          150,
+          3000
+        ],
+        "start": [
+          6000,
+          4000,
+          0
+        ],
+        "end": [
+          0,
+          4000,
+          0
+        ],
+        "embeddedMetadata": {
+          "AIArchViz.LogicalObjectId": "wall_appearance_north",
+          "AIArchViz.ProjectId": "project_corona_material_appearance",
+          "AIArchViz.SceneId": "scene_corona_material_appearance",
+          "AIArchViz.RevisionId": "rev_corona_material_appearance_0001"
+        }
+      },
+      {
+        "logicalId": "wall_appearance_south",
+        "nodeName": "AVZ_wall_appearance_south",
+        "type": "wall",
+        "transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationEuler": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "dimensions": [
+          6000,
+          150,
+          3000
+        ],
+        "start": [
+          0,
+          0,
+          0
+        ],
+        "end": [
+          6000,
+          0,
+          0
+        ],
+        "embeddedMetadata": {
+          "AIArchViz.LogicalObjectId": "wall_appearance_south",
+          "AIArchViz.ProjectId": "project_corona_material_appearance",
+          "AIArchViz.SceneId": "scene_corona_material_appearance",
+          "AIArchViz.RevisionId": "rev_corona_material_appearance_0001"
+        }
+      }
+    ],
+    "wallSegments": [
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_south_1",
+        "hostLogicalId": "wall_appearance_south",
+        "center": [
+          3000,
+          -75,
+          0
+        ],
+        "dimensions": [
+          6000,
+          150,
+          3000
+        ],
+        "rotationZ": 0
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_1",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          5100,
+          4075,
+          0
+        ],
+        "dimensions": [
+          1800,
+          150,
+          900
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_2",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          5100,
+          4075,
+          900
+        ],
+        "dimensions": [
+          1800,
+          150,
+          1200
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_3",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          5100,
+          4075,
+          2100
+        ],
+        "dimensions": [
+          1800,
+          150,
+          900
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_4",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          3600,
+          4075,
+          0
+        ],
+        "dimensions": [
+          1200,
+          150,
+          900
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_5",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          3600,
+          4075,
+          2100
+        ],
+        "dimensions": [
+          1200,
+          150,
+          900
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_6",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          1500,
+          4075,
+          0
+        ],
+        "dimensions": [
+          3000,
+          150,
+          900
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_7",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          1500,
+          4075,
+          900
+        ],
+        "dimensions": [
+          3000,
+          150,
+          1200
+        ],
+        "rotationZ": 180
+      },
+      {
+        "name": "AVZ_INTERNAL_wall_appearance_north_8",
+        "hostLogicalId": "wall_appearance_north",
+        "center": [
+          1500,
+          4075,
+          2100
+        ],
+        "dimensions": [
+          3000,
+          150,
+          900
+        ],
+        "rotationZ": 180
+      }
+    ],
+    "openingMarkers": [
+      {
+        "logicalId": "opening_appearance_window",
+        "position": [
+          4200,
+          4075,
+          900
+        ]
+      }
+    ]
+  },
+  "materials": [
+    {
+      "materialId": "material_appearance_a_rough",
+      "baseColorRgb": [
+        0.55,
+        0.35,
+        0.2
+      ],
+      "roughness": 0.75,
+      "metalness": 0
+    },
+    {
+      "materialId": "material_appearance_b_smooth",
+      "baseColorRgb": [
+        0.2,
+        0.45,
+        0.65
+      ],
+      "roughness": 0.18,
+      "metalness": 0
+    },
+    {
+      "materialId": "material_appearance_c_metal",
+      "baseColorRgb": [
+        0.82,
+        0.82,
+        0.85
+      ],
+      "roughness": 0.24,
+      "metalness": 1
+    },
+    {
+      "materialId": "material_appearance_d_dup",
+      "baseColorRgb": [
+        0.55,
+        0.35,
+        0.2
+      ],
+      "roughness": 0.75,
+      "metalness": 0
+    }
+  ],
+  "materialAssignments": [
+    {
+      "assignmentId": "assign_appearance_secondary",
+      "targetId": "asset_appearance_secondary",
+      "materialId": "material_appearance_d_dup"
+    },
+    {
+      "assignmentId": "assign_appearance_subject",
+      "targetId": "asset_appearance_subject",
+      "materialId": "material_appearance_c_metal"
+    },
+    {
+      "assignmentId": "assign_appearance_floor",
+      "targetId": "surface_appearance_floor",
+      "materialId": "material_appearance_b_smooth"
+    },
+    {
+      "assignmentId": "assign_appearance_wall_north",
+      "targetId": "wall_appearance_north",
+      "materialId": "material_appearance_a_rough"
+    },
+    {
+      "assignmentId": "assign_appearance_wall_south",
+      "targetId": "wall_appearance_south",
+      "materialId": "material_appearance_a_rough"
+    }
+  ],
+  "lights": [
+    {
+      "logicalId": "light_appearance_area",
+      "type": "area",
+      "position": [
+        3000,
+        1600,
+        2800
+      ],
+      "rotationEuler": [
+        -35,
+        0,
+        0
+      ],
+      "canonicalIntensity": 1.25,
+      "mappedIntensity": 150,
+      "widthMm": 800
+    }
+  ],
+  "camera": {
+    "logicalId": "camera_appearance_main",
+    "position": [
+      3000,
+      -5000,
+      2300
+    ],
+    "target": [
+      3000,
+      1900,
+      1200
+    ],
+    "focalLengthMm": 35,
+    "sensorWidthMm": 36,
+    "fovRadians": 0.9500215125301936
+  },
+  "render": {
+    "mode": "preview",
+    "resolution": {
+      "width": 320,
+      "height": 240
+    },
+    "termination": {
+      "type": "pass_limit",
+      "value": 4
+    }
+  },
+  "adapterDefaults": {
+    "areaLight": {
+      "widthMm": 800,
+      "intensityScale": 120
+    }
+  }
+}

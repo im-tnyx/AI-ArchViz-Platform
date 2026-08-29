@@ -112,7 +112,42 @@ export interface CoronaExecutionPlan {
     termination: { type: "pass_limit"; value: typeof coronaAdapterPassLimit };
   };
   adapterDefaults: {
+    /**
+     * Legacy/v0.2-compatibility realization defaults. SceneSpec v0.2 carries
+     * no material appearance, so plan v0.1 fills roughness/non-metal in from
+     * here. These never apply to a v0.3 canonical-appearance material
+     * (`CoronaExecutionPlanV02`), whose roughness/metalness always come
+     * directly from SceneSpec.
+     */
     material: typeof coronaAdapterMaterialDefaults;
+    areaLight: typeof coronaAdapterAreaLightDefaults;
+  };
+}
+
+export interface CoronaExecutionMaterialV02 extends CoronaExecutionMaterial {
+  roughness: number;
+  metalness: number;
+}
+
+/**
+ * Corona execution plan v0.2: canonical material appearance (Spike 8F). Used
+ * only for a SceneSpec v0.3 source; v0.1 remains the plan produced by
+ * `compile()` for v0.2 SceneSpecs and is unchanged.
+ */
+export interface CoronaExecutionPlanV02 {
+  planVersion: "0.2.0";
+  engine: "corona";
+  projectId: string;
+  sceneId: string;
+  revisionId: string;
+  coordinateSystem: CoronaExecutionPlan["coordinateSystem"];
+  geometry: CoronaExecutionGeometry;
+  materials: CoronaExecutionMaterialV02[];
+  materialAssignments: CoronaExecutionMaterialAssignment[];
+  lights: CoronaExecutionLight[];
+  camera: CoronaExecutionCamera;
+  render: CoronaExecutionPlan["render"];
+  adapterDefaults: {
     areaLight: typeof coronaAdapterAreaLightDefaults;
   };
 }
@@ -163,6 +198,11 @@ interface MaterialInput {
   baseColorRgb: Vector3;
 }
 
+interface MaterialInputV03 extends MaterialInput {
+  roughness: number;
+  metalness: number;
+}
+
 interface MaterialAssignmentInput {
   id: string;
   targetId: string;
@@ -185,6 +225,7 @@ interface LightInput {
 }
 
 interface SceneSpecSubset {
+  sceneSpecVersion?: string;
   project: { id: string };
   scene: { id: string; revisionId: string };
   render: { engine: string; mode: string };
@@ -195,6 +236,10 @@ interface SceneSpecSubset {
   materialAssignments?: MaterialAssignmentInput[];
   lights?: LightInput[];
   cameras: CameraInput[];
+}
+
+interface SceneSpecSubsetV03 extends Omit<SceneSpecSubset, "materials"> {
+  materials?: MaterialInputV03[];
 }
 
 function copyVector(value: Vector3): Vector3 {
@@ -261,11 +306,16 @@ function resolveCamera(
   };
 }
 
-function resolveMaterials(scene: SceneSpecSubset): {
-  materials: CoronaExecutionMaterial[];
-  assignments: CoronaExecutionMaterialAssignment[];
-} {
-  const inputs = scene.materials ?? [];
+/**
+ * Shared material-assignment validation for both plan v0.1 (`MaterialInput`)
+ * and plan v0.2 (`MaterialInputV03`) sources. Identity is always `materialId`;
+ * this never compares appearance values, so distinct IDs with identical
+ * appearance stay distinct (see `resolveMaterialsV03`'s deduplication proof).
+ */
+function resolveMaterialAssignments<M extends MaterialInput>(
+  scene: Pick<SceneSpecSubset, "geometry" | "openings" | "assets" | "materialAssignments">,
+  inputs: readonly M[],
+): { assignments: CoronaExecutionMaterialAssignment[]; usedMaterialIds: Set<string> } {
   assertUniqueIds(inputs, "MATERIAL_ID_DUPLICATE");
   const byId = new Map(inputs.map((material) => [material.id, material]));
   const targetCounts = new Map<string, number>();
@@ -304,14 +354,7 @@ function resolveMaterials(scene: SceneSpecSubset): {
     assignedTargets.add(assignment.targetId);
   }
 
-  const usedMaterialIds = new Set(assignments.map((assignment) => assignment.materialId));
   return {
-    materials: sortedById(inputs)
-      .filter((material) => usedMaterialIds.has(material.id))
-      .map((material) => ({
-        materialId: material.id,
-        baseColorRgb: copyVector(material.baseColorRgb),
-      })),
     assignments: [...assignments]
       .sort((left, right) => left.targetId.localeCompare(right.targetId))
       .map((assignment) => ({
@@ -319,6 +362,44 @@ function resolveMaterials(scene: SceneSpecSubset): {
         targetId: assignment.targetId,
         materialId: assignment.materialId,
       })),
+    usedMaterialIds: new Set(assignments.map((assignment) => assignment.materialId)),
+  };
+}
+
+function resolveMaterials(scene: SceneSpecSubset): {
+  materials: CoronaExecutionMaterial[];
+  assignments: CoronaExecutionMaterialAssignment[];
+} {
+  const inputs = scene.materials ?? [];
+  const { assignments, usedMaterialIds } = resolveMaterialAssignments(scene, inputs);
+  return {
+    materials: sortedById(inputs)
+      .filter((material) => usedMaterialIds.has(material.id))
+      .map((material) => ({
+        materialId: material.id,
+        baseColorRgb: copyVector(material.baseColorRgb),
+      })),
+    assignments,
+  };
+}
+
+/** Canonical roughness/metalness come only from SceneSpec v0.3; no adapter default applies. */
+function resolveMaterialsV03(scene: SceneSpecSubsetV03): {
+  materials: CoronaExecutionMaterialV02[];
+  assignments: CoronaExecutionMaterialAssignment[];
+} {
+  const inputs = scene.materials ?? [];
+  const { assignments, usedMaterialIds } = resolveMaterialAssignments(scene, inputs);
+  return {
+    materials: sortedById(inputs)
+      .filter((material) => usedMaterialIds.has(material.id))
+      .map((material) => ({
+        materialId: material.id,
+        baseColorRgb: copyVector(material.baseColorRgb),
+        roughness: material.roughness,
+        metalness: material.metalness,
+      })),
+    assignments,
   };
 }
 
@@ -391,6 +472,65 @@ export class CoronaRendererAdapter implements RendererAdapter<CoronaExecutionPla
       },
       adapterDefaults: {
         material: coronaAdapterMaterialDefaults,
+        areaLight: coronaAdapterAreaLightDefaults,
+      },
+    };
+  }
+
+  /**
+   * Compiles a SceneSpec v0.3 canonical material-appearance source into plan
+   * v0.2. Deliberately separate from `compile`: it accepts only v0.3 and its
+   * material roughness/metalness always come from SceneSpec, never an
+   * adapter default (Technical Spike 8F).
+   */
+  compileCanonicalMaterialAppearance(
+    sceneSpec: SceneSpec,
+    renderJob: unknown,
+  ): CoronaExecutionPlanV02 {
+    const sceneValidation = validateSceneSpec(sceneSpec);
+    if (!sceneValidation.ok) {
+      fail("SCENE_SPEC_INVALID", JSON.stringify(sceneValidation.errors));
+    }
+    const scene = sceneValidation.value as unknown as SceneSpecSubsetV03;
+    if (scene.sceneSpecVersion !== "0.3.0") {
+      fail("SCENE_SPEC_INVALID", "Canonical material appearance requires a SceneSpec v0.3 source");
+    }
+    const jobValidation = validateRenderJobV02(renderJob);
+    if (!jobValidation.ok) {
+      fail("RENDER_JOB_INVALID", JSON.stringify(jobValidation.errors));
+    }
+    const job = jobValidation.value as Record<string, unknown>;
+    validateSemanticIntent(scene, job);
+    const camera = resolveCamera(scene, job);
+    const materialResolution = resolveMaterialsV03(scene);
+    const lights = resolveLights(scene);
+    const buildPlan = compileGoldenBuildPlan(sceneSpec);
+
+    return {
+      planVersion: "0.2.0",
+      engine: "corona",
+      projectId: scene.project.id,
+      sceneId: scene.scene.id,
+      revisionId: scene.scene.revisionId,
+      coordinateSystem: structuredClone(buildPlan.coordinateSystem),
+      geometry: {
+        nodes: buildPlan.nodes.map(
+          ({ materialId: _materialId, materialBaseColorRgb: _materialBaseColorRgb, ...node }) =>
+            structuredClone(node),
+        ),
+        wallSegments: structuredClone(buildPlan.wallSegments),
+        openingMarkers: structuredClone(buildPlan.openingMarkers),
+      },
+      materials: materialResolution.materials,
+      materialAssignments: materialResolution.assignments,
+      lights,
+      camera,
+      render: {
+        mode: "preview",
+        resolution: coronaAdapterResolution,
+        termination: { type: "pass_limit", value: coronaAdapterPassLimit },
+      },
+      adapterDefaults: {
         areaLight: coronaAdapterAreaLightDefaults,
       },
     };

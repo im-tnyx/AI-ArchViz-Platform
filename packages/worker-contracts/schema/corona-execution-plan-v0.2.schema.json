@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/corona-execution-plan-v0.2.schema.json",
+  "title": "Trusted Corona execution plan v0.2 (canonical material appearance)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["planVersion", "engine", "projectId", "sceneId", "revisionId", "coordinateSystem", "geometry", "materials", "materialAssignments", "lights", "camera", "render", "adapterDefaults"],
+  "properties": {
+    "planVersion": { "const": "0.2.0" },
+    "engine": { "const": "corona" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["linearUnit", "angularUnit", "upAxis", "handedness"],
+      "properties": {
+        "linearUnit": { "const": "mm" },
+        "angularUnit": { "const": "degree" },
+        "upAxis": { "const": "Z" },
+        "handedness": { "const": "right" }
+      }
+    },
+    "geometry": { "$ref": "#/$defs/geometry" },
+    "materials": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/material" } },
+    "materialAssignments": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/assignment" } },
+    "lights": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/light" } },
+    "camera": { "$ref": "#/$defs/camera" },
+    "render": { "$ref": "#/$defs/render" },
+    "adapterDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["areaLight"],
+      "properties": {
+        "areaLight": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["widthMm", "intensityScale"],
+          "properties": { "widthMm": { "const": 800 }, "intensityScale": { "const": 120 } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "vector3": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 3, "maxItems": 3 },
+    "positiveVector3": { "type": "array", "prefixItems": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "number", "exclusiveMinimum": 0 }, { "type": "number", "exclusiveMinimum": 0 }], "items": false, "minItems": 3, "maxItems": 3 },
+    "transform": {
+      "type": "object", "additionalProperties": false, "required": ["position", "rotationEuler", "scale"],
+      "properties": { "position": { "$ref": "#/$defs/vector3" }, "rotationEuler": { "$ref": "#/$defs/vector3" }, "scale": { "$ref": "#/$defs/positiveVector3" } }
+    },
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["AIArchViz.LogicalObjectId", "AIArchViz.ProjectId", "AIArchViz.SceneId", "AIArchViz.RevisionId"],
+      "properties": {
+        "AIArchViz.LogicalObjectId": { "$ref": "#/$defs/id" }, "AIArchViz.ProjectId": { "$ref": "#/$defs/id" }, "AIArchViz.SceneId": { "$ref": "#/$defs/id" }, "AIArchViz.RevisionId": { "$ref": "#/$defs/id" }, "AIArchViz.AssetDefinitionId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["logicalId", "nodeName", "type", "transform", "dimensions", "embeddedMetadata"],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" }, "nodeName": { "type": "string", "pattern": "^AVZ_[A-Za-z0-9_]+$", "maxLength": 180 },
+        "type": { "enum": ["wall", "floor", "ceiling", "door_opening", "window_opening", "proxy_asset"] },
+        "transform": { "$ref": "#/$defs/transform" }, "dimensions": { "$ref": "#/$defs/vector3" }, "embeddedMetadata": { "$ref": "#/$defs/metadata" },
+        "hostGeometryId": { "$ref": "#/$defs/id" }, "start": { "$ref": "#/$defs/vector3" }, "end": { "$ref": "#/$defs/vector3" }, "offset": { "type": "number" }, "sill": { "type": "number" }, "assetDefinitionId": { "$ref": "#/$defs/id" },
+        "locks": { "type": "object", "additionalProperties": false, "properties": { "geometry": { "const": true }, "transform": { "const": true }, "material": { "const": true } } }
+      }
+    },
+    "wallSegment": {
+      "type": "object", "additionalProperties": false, "required": ["name", "hostLogicalId", "center", "dimensions", "rotationZ"],
+      "properties": { "name": { "type": "string", "pattern": "^AVZ_INTERNAL_[A-Za-z0-9_]+$", "maxLength": 200 }, "hostLogicalId": { "$ref": "#/$defs/id" }, "center": { "$ref": "#/$defs/vector3" }, "dimensions": { "$ref": "#/$defs/positiveVector3" }, "rotationZ": { "type": "number" } }
+    },
+    "openingMarker": {
+      "type": "object", "additionalProperties": false, "required": ["logicalId", "position"],
+      "properties": { "logicalId": { "$ref": "#/$defs/id" }, "position": { "$ref": "#/$defs/vector3" } }
+    },
+    "geometry": {
+      "type": "object", "additionalProperties": false, "required": ["nodes", "wallSegments", "openingMarkers"],
+      "properties": { "nodes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/node" } }, "wallSegments": { "type": "array", "items": { "$ref": "#/$defs/wallSegment" } }, "openingMarkers": { "type": "array", "items": { "$ref": "#/$defs/openingMarker" } } }
+    },
+    "rgb": { "type": "array", "prefixItems": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }], "items": false, "minItems": 3, "maxItems": 3 },
+    "material": {
+      "type": "object", "additionalProperties": false, "required": ["materialId", "baseColorRgb", "roughness", "metalness"],
+      "properties": {
+        "materialId": { "$ref": "#/$defs/id" },
+        "baseColorRgb": { "$ref": "#/$defs/rgb" },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metalness": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "assignment": { "type": "object", "additionalProperties": false, "required": ["assignmentId", "targetId", "materialId"], "properties": { "assignmentId": { "$ref": "#/$defs/id" }, "targetId": { "$ref": "#/$defs/id" }, "materialId": { "$ref": "#/$defs/id" } } },
+    "light": { "type": "object", "additionalProperties": false, "required": ["logicalId", "type", "position", "rotationEuler", "canonicalIntensity", "mappedIntensity", "widthMm"], "properties": { "logicalId": { "$ref": "#/$defs/id" }, "type": { "const": "area" }, "position": { "$ref": "#/$defs/vector3" }, "rotationEuler": { "$ref": "#/$defs/vector3" }, "canonicalIntensity": { "type": "number", "minimum": 0 }, "mappedIntensity": { "type": "number", "minimum": 0 }, "widthMm": { "const": 800 } } },
+    "camera": { "type": "object", "additionalProperties": false, "required": ["logicalId", "position", "target", "focalLengthMm", "sensorWidthMm", "fovRadians"], "properties": { "logicalId": { "$ref": "#/$defs/id" }, "position": { "$ref": "#/$defs/vector3" }, "target": { "$ref": "#/$defs/vector3" }, "focalLengthMm": { "type": "number", "exclusiveMinimum": 0 }, "sensorWidthMm": { "type": "number", "exclusiveMinimum": 0 }, "fovRadians": { "type": "number", "exclusiveMinimum": 0, "maximum": 3.141592653589793 } } },
+    "render": { "type": "object", "additionalProperties": false, "required": ["mode", "resolution", "termination"], "properties": { "mode": { "const": "preview" }, "resolution": { "type": "object", "additionalProperties": false, "required": ["width", "height"], "properties": { "width": { "const": 320 }, "height": { "const": 240 } } }, "termination": { "type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": { "type": { "const": "pass_limit" }, "value": { "const": 4 } } } } }
+  }
+}

@@ -2,6 +2,7 @@ export * from "./asset-trust.js";
 export * from "./build-plan.js";
 export * from "./canonical-golden-corona-preview-execution.js";
 export * from "./config.js";
+export * from "./corona-material-appearance-execution.js";
 export * from "./corona-renderer-policy.js";
 export * from "./dcc-batch.js";
 export * from "./dcc-environment.js";

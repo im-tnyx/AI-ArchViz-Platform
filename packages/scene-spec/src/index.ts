@@ -16,14 +16,35 @@ export type ValidationResult<T> =
 export type SceneSpec = Record<string, unknown>;
 export type SceneChangeSet = Record<string, unknown>;
 
+/**
+ * Narrow, version-aware material types. These do not attempt a full typed
+ * SceneSpec migration; they exist only so callers that care about material
+ * appearance (the Corona adapter) can type it without `Record<string, unknown>`.
+ */
+export interface MaterialV02 {
+  id: string;
+  name: string;
+  baseColorRgb: [number, number, number];
+}
+
+export interface MaterialV03 extends MaterialV02 {
+  roughness: number;
+  metalness: number;
+}
+
 const schemaV01Url = new URL("../schema/scene-spec-v0.1.schema.json", import.meta.url);
 const schemaV02Url = new URL("../schema/scene-spec-v0.2.schema.json", import.meta.url);
+const schemaV03Url = new URL("../schema/scene-spec-v0.3.schema.json", import.meta.url);
 const changeSetSchemaUrl = new URL("../schema/scene-change-set-v0.1.schema.json", import.meta.url);
 const sceneSpecV01Schema = JSON.parse(readFileSync(schemaV01Url, "utf8")) as Record<
   string,
   unknown
 >;
 const sceneSpecSchema = JSON.parse(readFileSync(schemaV02Url, "utf8")) as Record<string, unknown>;
+const sceneSpecV03Schema = JSON.parse(readFileSync(schemaV03Url, "utf8")) as Record<
+  string,
+  unknown
+>;
 const sceneChangeSetSchema = JSON.parse(readFileSync(changeSetSchemaUrl, "utf8")) as Record<
   string,
   unknown
@@ -38,6 +59,7 @@ addFormatsModule.default.default(ajv);
 
 const validateV01 = ajv.compile(sceneSpecV01Schema) as ValidateFunction<SceneSpec>;
 const validateV02 = ajv.compile(sceneSpecSchema) as ValidateFunction<SceneSpec>;
+const validateV03 = ajv.compile(sceneSpecV03Schema) as ValidateFunction<SceneSpec>;
 const validateChangeSet = ajv.compile(sceneChangeSetSchema) as ValidateFunction<SceneChangeSet>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
@@ -60,9 +82,10 @@ export function validateSceneSpec(value: unknown): ValidationResult<SceneSpec> {
     value && typeof value === "object" && !Array.isArray(value)
       ? (value as { sceneSpecVersion?: unknown }).sceneSpecVersion
       : undefined;
-  const validate = version === "0.1.0" ? validateV01 : validateV02;
-  if (validate(value) && (version === "0.1.0" || version === "0.2.0")) {
-    if (version === "0.2.0") {
+  const validate =
+    version === "0.1.0" ? validateV01 : version === "0.3.0" ? validateV03 : validateV02;
+  if (validate(value) && (version === "0.1.0" || version === "0.2.0" || version === "0.3.0")) {
+    if (version === "0.2.0" || version === "0.3.0") {
       const identityErrors = validateAssetIdentity(value);
       if (identityErrors.length > 0) return { ok: false, errors: identityErrors };
     }
@@ -125,4 +148,4 @@ export function validateSceneChangeSet(value: unknown): ValidationResult<SceneCh
   return { ok: false, errors: normalizeErrors(validateChangeSet.errors) };
 }
 
-export { sceneChangeSetSchema, sceneSpecSchema };
+export { sceneChangeSetSchema, sceneSpecSchema, sceneSpecV03Schema };

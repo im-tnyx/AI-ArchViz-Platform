@@ -1,0 +1,199 @@
+{
+  "sceneSpecVersion": "0.3.0",
+  "project": { "id": "project_corona_material_appearance", "name": "Corona Material Appearance Fixture" },
+  "scene": {
+    "id": "scene_corona_material_appearance",
+    "revisionId": "rev_corona_material_appearance_0001",
+    "headRevisionId": "rev_corona_material_appearance_0001"
+  },
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right",
+    "axisConvention": "X_east_Y_north_Z_up",
+    "worldOrigin": [0, 0, 0]
+  },
+  "sources": [
+    {
+      "id": "source_appearance_fixture",
+      "type": "synthetic_fixture",
+      "uri": "fixture://corona-material-appearance/0.1.0",
+      "authority": "A5",
+      "confidence": 1,
+      "verified": true
+    }
+  ],
+  "levels": [
+    { "id": "level_ground", "name": "Ground", "elevation": 0, "defaultCeilingHeight": 3000 }
+  ],
+  "spaces": [
+    {
+      "id": "space_appearance_room",
+      "levelId": "level_ground",
+      "type": "generic",
+      "boundary": [[0, 0, 0], [6000, 0, 0], [6000, 4000, 0], [0, 4000, 0]],
+      "boundaryWinding": "counter_clockwise",
+      "floorElevation": 0,
+      "ceilingHeight": 3000,
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] }
+    }
+  ],
+  "geometry": [
+    {
+      "id": "wall_appearance_south",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_appearance_room",
+      "start": [0, 0, 0],
+      "end": [6000, 0, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "wall_appearance_north",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_appearance_room",
+      "start": [6000, 4000, 0],
+      "end": [0, 4000, 0],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "surface_appearance_floor",
+      "type": "floor",
+      "levelId": "level_ground",
+      "spaceId": "space_appearance_room",
+      "boundary": [[0, 0, 0], [6000, 0, 0], [6000, 4000, 0], [0, 4000, 0]],
+      "elevation": 0,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening_appearance_window",
+      "type": "window",
+      "hostGeometryId": "wall_appearance_north",
+      "offset": 1800,
+      "width": 1200,
+      "sill": 900,
+      "height": 1200,
+      "transform": { "position": [0, 0, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "assetDefinitions": [
+    {
+      "id": "assetdef_appearance_subject",
+      "version": "1",
+      "category": "sofa",
+      "sourceType": "procedural_proxy",
+      "dimensions": [1800, 800, 760],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    },
+    {
+      "id": "assetdef_appearance_secondary",
+      "version": "1",
+      "category": "coffee_table",
+      "sourceType": "procedural_proxy",
+      "dimensions": [1200, 650, 380],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_appearance_subject",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_appearance_subject",
+      "spaceId": "space_appearance_room",
+      "transform": { "position": [3000, 2500, 0], "rotationEuler": [0, 0, 180], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    },
+    {
+      "id": "asset_appearance_secondary",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_appearance_secondary",
+      "spaceId": "space_appearance_room",
+      "transform": { "position": [1200, 2200, 0], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "locks": { "geometry": false, "transform": false, "material": false }
+    }
+  ],
+  "materials": [
+    {
+      "id": "material_appearance_a_rough",
+      "name": "Appearance Rough Dielectric A",
+      "baseColorRgb": [0.55, 0.35, 0.2],
+      "roughness": 0.75,
+      "metalness": 0
+    },
+    {
+      "id": "material_appearance_b_smooth",
+      "name": "Appearance Smooth Dielectric B",
+      "baseColorRgb": [0.2, 0.45, 0.65],
+      "roughness": 0.18,
+      "metalness": 0
+    },
+    {
+      "id": "material_appearance_c_metal",
+      "name": "Appearance Metallic C",
+      "baseColorRgb": [0.82, 0.82, 0.85],
+      "roughness": 0.24,
+      "metalness": 1
+    },
+    {
+      "id": "material_appearance_d_dup",
+      "name": "Appearance Rough Dielectric D (value duplicate of A, distinct id)",
+      "baseColorRgb": [0.55, 0.35, 0.2],
+      "roughness": 0.75,
+      "metalness": 0
+    }
+  ],
+  "materialAssignments": [
+    { "id": "assign_appearance_wall_south", "targetId": "wall_appearance_south", "materialId": "material_appearance_a_rough" },
+    { "id": "assign_appearance_wall_north", "targetId": "wall_appearance_north", "materialId": "material_appearance_a_rough" },
+    { "id": "assign_appearance_floor", "targetId": "surface_appearance_floor", "materialId": "material_appearance_b_smooth" },
+    { "id": "assign_appearance_subject", "targetId": "asset_appearance_subject", "materialId": "material_appearance_c_metal" },
+    { "id": "assign_appearance_secondary", "targetId": "asset_appearance_secondary", "materialId": "material_appearance_d_dup" }
+  ],
+  "lights": [
+    {
+      "id": "light_appearance_area",
+      "type": "area",
+      "transform": { "position": [3000, 1600, 2800], "rotationEuler": [-35, 0, 0], "scale": [1, 1, 1] },
+      "intensity": 1.25
+    }
+  ],
+  "cameras": [
+    {
+      "id": "camera_appearance_main",
+      "type": "camera",
+      "spaceId": "space_appearance_room",
+      "transform": { "position": [3000, -5000, 2300], "rotationEuler": [0, 0, 0], "scale": [1, 1, 1] },
+      "target": [3000, 1900, 1200],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 35,
+      "sensorWidthMm": 36
+    }
+  ],
+  "render": { "engine": "corona", "mode": "preview" },
+  "revisions": [
+    { "revisionId": "rev_corona_material_appearance_0001", "parentRevisionId": null, "status": "committed", "createdAt": "2026-08-29T00:00:00Z" }
+  ],
+  "extensions": {}
+}

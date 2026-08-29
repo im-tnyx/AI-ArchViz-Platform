@@ -56,6 +56,8 @@ export type GoldenCoronaPreviewPlan = Record<string, unknown>;
 export type GoldenCoronaPreviewEvidence = Record<string, unknown>;
 export type CanonicalRenderStateEvidence = Record<string, unknown>;
 export type CanonicalCoronaPreviewEvidence = Record<string, unknown>;
+export type CoronaExecutionPlanV02 = Record<string, unknown>;
+export type CoronaMaterialAppearanceEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -88,6 +90,10 @@ export const goldenCoronaPreviewEvidenceSchema = readSchema(
 export const canonicalRenderStateSchema = readSchema("canonical-render-state-v0.1.schema.json");
 export const canonicalCoronaPreviewEvidenceSchema = readSchema(
   "canonical-corona-preview-evidence-v0.1.schema.json",
+);
+export const coronaExecutionPlanV02Schema = readSchema("corona-execution-plan-v0.2.schema.json");
+export const coronaMaterialAppearanceEvidenceSchema = readSchema(
+  "corona-material-appearance-evidence-v0.1.schema.json",
 );
 
 const ajv = new Ajv2020({
@@ -135,6 +141,12 @@ const canonicalRenderStateValidator = ajv.compile(
 const canonicalCoronaPreviewEvidenceValidator = ajv.compile(
   canonicalCoronaPreviewEvidenceSchema,
 ) as ValidateFunction<CanonicalCoronaPreviewEvidence>;
+const coronaExecutionPlanV02Validator = ajv.compile(
+  coronaExecutionPlanV02Schema,
+) as ValidateFunction<CoronaExecutionPlanV02>;
+const coronaMaterialAppearanceEvidenceValidator = ajv.compile(
+  coronaMaterialAppearanceEvidenceSchema,
+) as ValidateFunction<CoronaMaterialAppearanceEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -226,6 +238,18 @@ export function validateCanonicalCoronaPreviewEvidence(
   value: unknown,
 ): ValidationResult<CanonicalCoronaPreviewEvidence> {
   return runValidation(canonicalCoronaPreviewEvidenceValidator, value);
+}
+
+export function validateCoronaExecutionPlanV02(
+  value: unknown,
+): ValidationResult<CoronaExecutionPlanV02> {
+  return runValidation(coronaExecutionPlanV02Validator, value);
+}
+
+export function validateCoronaMaterialAppearanceEvidence(
+  value: unknown,
+): ValidationResult<CoronaMaterialAppearanceEvidence> {
+  return runValidation(coronaMaterialAppearanceEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {
