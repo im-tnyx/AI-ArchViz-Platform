@@ -1,5 +1,44 @@
 # Latest Validation Evidence
 
+## Spike 8E canonical Golden Corona preview (local commit `79d6d24`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 160/160
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:canonical-golden-corona-preview` (new) — built canonical rev10
+  through the real r2..r10 revision pipeline; compiled the plan through the
+  normal `CoronaRendererAdapter.compile()` (no diagnostic profile: plan has
+  no `profileId`/`intentSource`/`temporaryLight`); staged the verified
+  artifact with a pre-launch raw-hash check; re-verified the fresh semantic
+  manifest and canonical render-state before any renderer/material work;
+  confirmed no obsolete `preview_key_area`/`AVZ_PREVIEW_CORONA_KEY`
+  diagnostic light was present; reused the persisted `light_living_key_area`
+  CoronaLight, renderer, and `camera_living_a` without creating, switching,
+  or repositioning any of them on disk; realized canonical materials as
+  temporary `_CoronaPhysicalMtl` instances with proven same-ID-to-same-
+  instance deduplication; rendered a valid 320x240 four-pass PNG; produced
+  `canonical-corona-preview-evidence-v0.1` evidence with
+  `intentSource: "canonical_scene_spec"`; and proved canonical/staged rev10
+  raw hashes unchanged, no `rev_golden_0011` created, and r10 replay
+  unaffected afterward. Sixteen forced-failure cases (staged-hash tamper,
+  manifest mismatch, four canonical-render-state mismatches, obsolete
+  diagnostic light, camera missing/ambiguous/semantic-mismatch, material
+  class/property missing, renderer missing, Safe Scene, invalid PNG, timeout)
+  all failed closed with no PASS evidence and no owned process left running.
+- `test:3dsmax:canonical-render-state-revision`, `test:3dsmax:corona-adapter`,
+  `test:3dsmax:corona-baseline`, `test:3dsmax:golden-corona-preview`,
+  `test:3dsmax:revision`, `test:3dsmax:replace-asset`,
+  `test:3dsmax:asset-inspection`, `test:3dsmax:external-asset-ingestion` — all
+  PASS unchanged (post-8D environment-hardening regressions remain green).
+
+Target 3ds Max 2026 verification was not performed; only 2025.3 compatibility
+mode is claimed.
+
 ## Post-8D hardening (local commit `9dd86cf`)
 
 Static gates, all PASS:

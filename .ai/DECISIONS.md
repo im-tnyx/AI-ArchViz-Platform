@@ -33,3 +33,8 @@ Operational decisions currently in force:
   `process.env` fallback. A new vendor key is added only after a required
   regression proves it necessary (see `VRAY_FOR_3DSMAX2025_MAIN` in
   [VALIDATION.md](VALIDATION.md)), never as a wildcard prefix.
+- Rendering an already-canonical SceneSpec revision is execution output, not
+  a SceneChangeSet transition. It must reuse the persisted renderer, lights,
+  and camera as-is rather than recreating or switching them, must never save
+  the opened scene, and must leave the canonical and staged artifact bytes
+  hash-unchanged (Spike 8E).

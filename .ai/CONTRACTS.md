@@ -117,3 +117,32 @@
   `SceneSpec` + render job into a `CoronaExecutionPlan`; the DCC-side runner
   (`render_corona_adapter.py`) only realizes that already-validated plan and
   never evaluates generated code.
+
+## Canonical Golden Corona preview (Spike 8E)
+
+- `canonical-golden-corona-preview-execution.ts` renders an already-canonical
+  revision (currently `rev_golden_0010`) through the *normal*
+  `CoronaRendererAdapter.compile()` — never `compileDiagnosticPreview()` or
+  `goldenLivingCoronaPreviewProfile` (those remain 8C-only historical
+  coverage). The compiled plan's `geometry` field is used only to validate
+  the plan; the DCC runner opens the staged `.max` directly and never rebuilds
+  geometry from it.
+- The runner reuses the persisted renderer, canonical light(s), and camera
+  exactly as already realized in the `.max` — it never assigns/switches the
+  renderer, never creates or deletes a light, and only applies temporary
+  in-memory camera normalization (never saved). An already-non-Corona
+  persisted renderer, a missing/duplicate canonical light, or an obsolete
+  diagnostic light (`preview_key_area` / `AVZ_PREVIEW_CORONA_KEY`) fails
+  closed before any render call.
+- `canonical-corona-preview-evidence-v0.1`
+  (`validateCanonicalCoronaPreviewEvidence`) records
+  `intentSource: "canonical_scene_spec"` (never `trusted_diagnostic_profile`),
+  the rev10 identity, SceneSpec/canonical/staged artifact hashes, a
+  deterministic request hash bound only to those hashes plus
+  revision/camera/render policy (no absolute paths, PID, timestamp, or PNG
+  hash), and the reused canonical light(s) sorted by `logicalId` via the
+  shared `corona-renderer-policy.ts`.
+- Rendering an already-canonical revision is execution output, not a
+  SceneChangeSet transition: it must not create a new revision, change head
+  revision, or mutate the canonical or staged artifact bytes. Both are raw-
+  hash-verified unchanged after every run, success or failure.

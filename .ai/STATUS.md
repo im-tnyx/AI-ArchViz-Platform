@@ -2,10 +2,10 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `9dd86cf`
-- Commit: `fix: harden render state and dcc environment`
+- Local `main` HEAD: `79d6d24`
+- Commit: `feat: render canonical golden scene with corona`
 - Remote tracking state at this snapshot: `origin/main` and local `main` both
-  resolve to `9dd86cf`.
+  resolve to `79d6d24`.
 
 ## Verified capability boundary
 
@@ -20,8 +20,10 @@
   now extends to a fresh canonical render-state verification pass.
 - Corona is integrated end-to-end: renderer/material/light discovery and
   realization (8A), a pure `SceneSpec -> CoronaExecutionPlan` adapter (8B), a
-  non-canonical Golden preview render (8C), and canonical render-state
-  revisions with CoronaLight evidence (8D).
+  non-canonical Golden preview render (8C), canonical render-state revisions
+  with CoronaLight evidence (8D), and a canonical Corona preview rendered
+  from the already-canonical rev10 revision through the normal adapter,
+  reusing the persisted renderer/light/camera without mutation (8E).
 - DCC execution is default-deny end-to-end: trusted local worker configuration
   must set `allowDccExecution: true`, the call site must separately authorize
   the specific launch, and DCC integration suites additionally require
@@ -41,8 +43,9 @@
 - SceneSpec is the canonical software-independent contract.
 - Real editable 3D scenes, not generated images, are the source of truth.
 - No new renderer, AI provider integration, or new spike begins without
-  explicit scope authorization. Technical Spike 8E is authorized to start only
-  when the user explicitly asks for it (see [NEXT_TASK.md](NEXT_TASK.md)).
+  explicit scope authorization. The next candidate spike is authorized to
+  start only when the user explicitly asks for it (see
+  [NEXT_TASK.md](NEXT_TASK.md)).
 
 ## Locally validated worktree milestone
 
@@ -59,6 +62,16 @@
   compatible with the installed 3ds Max 2025.3 + Corona toolchain, and
   regression-proved that `VRAY_FOR_3DSMAX2025_MAIN` (only; not `_PLUGINS`) is
   required because Corona shares Chaos's V-Ray USD/DR startup component.
+- Spike 8E rendered the first preview whose renderer and light intent are
+  both already-canonical rev10 SceneSpec state: it built rev10 through the
+  real r2..r10 revision pipeline, staged the verified artifact, re-verified
+  its semantic manifest and canonical render-state fresh, reused the
+  persisted CoronaLight/renderer/camera without mutation, realized canonical
+  materials as temporary `CoronaPhysicalMtl` with proven deduplication, and
+  rendered 320x240 at a four-pass limit without saving or creating rev11.
+  Sixteen forced-failure cases (hash tamper, manifest/render-state mismatch,
+  obsolete diagnostic light, camera, material, renderer, Safe Scene, PNG,
+  timeout) all failed closed with no PASS evidence.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and
