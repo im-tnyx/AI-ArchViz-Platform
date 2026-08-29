@@ -656,6 +656,25 @@ Material changes must not unexpectedly modify unrelated objects that share a DCC
 
 Canonical material identity and DCC material instances must therefore remain separate concepts.
 
+### Technical Spike 8G canonical material appearance migration
+
+`SceneChangeSet` v0.2 adds one `high`-risk, scene-scoped operation,
+`MigrateMaterialAppearanceContract`, that promotes a SceneSpec v0.2 scene to
+v0.3 by attaching an explicit, hand-authored `roughness`/`metalness` pair to
+every existing material. It targets the scene identity, not an individual
+object; it must enumerate every base material exactly once, sorted
+lexicographically by `materialId`, and must not carry a `baseColorRgb`
+override — base color, material identity, and material assignments are
+preserved unchanged. The operation is rejected outright if any assigned
+target has a locked material, or if the base SceneSpec is not already
+canonical v0.2, or if it is already v0.3. `SceneChangeSet` v0.1 is untouched;
+existing `AssignMaterial`/lock fixtures continue to validate against it.
+Realizing the migration replaces each named `AVZ_MATERIAL_{materialId}`
+StandardMaterial with a native Corona Physical Material of the same name,
+proves materialId-based (never value-based) deduplication in a fresh DCC
+process, and is validated by the independent `canonical-material-state-v0.1`
+evidence contract before promotion.
+
 ---
 
 ## 19. Light Operations

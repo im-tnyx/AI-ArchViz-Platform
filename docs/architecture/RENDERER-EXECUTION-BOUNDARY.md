@@ -316,3 +316,58 @@ canonical SceneSpec semantics, without touching any existing Golden revision.
   (`sameIdSharedInstance`, `differentIdDistinctInstances`). It contains no
   absolute paths. This spike's compatibility evidence targets 3ds Max
   `2025.3`; no 2026 verification is claimed.
+
+## Spike 8G: canonical material appearance revision for the Golden scene
+
+8F proved that Corona Physical Material realization and property mapping
+work as a standalone capability; 8G persists that capability into the first
+canonical Golden revision, `rev_golden_0011`, whose material appearance is
+explicit SceneSpec v0.3 state saved into a verified editable `.max`.
+
+- `rev_golden_0011`'s `MigrateMaterialAppearanceContract` values are
+  hand-picked, not the 8F/8B adapter default: `material_wall_neutral`
+  roughness `0.62`, `material_floor_neutral` roughness `0.34`,
+  `material_sofa_proxy` roughness `0.78`, all `metalness: 0`. The old
+  adapter-owned `0.45` roughness default is never auto-promoted into a
+  canonical revision.
+- `rev_golden_0001` through `rev_golden_0010` remain byte-identical and
+  SceneSpec v0.2; only `rev_golden_0011` is v0.3. The migration changes zero
+  nodes, cameras, base colors, material IDs, names, order, or assignments,
+  so the semantic manifest diff between rev10 and rev11 is empty (`changed:
+  []`, all 14 managed items `unchanged`) — material appearance lives only in
+  SceneSpec's top-level `materials[]`, which the manifest never tracks. The
+  already-canonical render state (`corona`/`preview` plus
+  `light_living_key_area`) and its evidence are re-verified, not altered.
+- `apply_change_set.py` accepts `revisionPlanVersion` `0.1.0` or `0.2.0` and
+  adds one new scene-scoped operation branch that reuses
+  `render_corona_material_appearance.py`'s discovery, creation, and
+  property-mapping functions rather than a third independent mapping. It
+  replaces each pre-migration `AVZ_MATERIAL_{materialId}` StandardMaterial
+  with a same-named native Corona Physical Material, requires the
+  production renderer to already be Corona (set by the persisted rev9
+  intent), and fails closed with the same 8F error codes
+  (`CORONA_MATERIAL_CLASS_NOT_FOUND`,
+  `CORONA_MATERIAL_ROUGHNESS_PROPERTY_UNSUPPORTED`,
+  `CORONA_MATERIAL_METALNESS_PROPERTY_UNSUPPORTED`) rather than inventing new
+  ones. `verify_scene.py`'s native-material check is broadened
+  backward-compatibly to accept either StandardMaterial (rev1–rev10) or
+  Corona Physical Material (rev11+); no rev1–rev10 behavior changes.
+- Promotion requires three independent verifiers to pass, not two: the
+  existing fresh semantic-manifest verifier, the existing fresh canonical
+  render-state verifier (still sticky once `render.engine`/`mode` are set,
+  so it re-runs and must still observe the unchanged light), and a new fresh
+  canonical material-state verifier (`verify_canonical_material_state.py`,
+  its own independent DCC process, separate from the mutation process and
+  from the other two verifiers) validated against
+  `canonical-material-state-v0.1`. Every verifier's evidence is written as
+  the tolerance-checked canonical values, not the raw runtime observation,
+  matching the normalization pattern `canonical-render-state-v0.1` already
+  established.
+- MaterialId, never appearance value, is the deduplication key, re-proven in
+  the fresh material-state verifier process (not only at mutation time):
+  `material_floor_neutral` is shared by two targets (`wall_south` and
+  `surface_floor_main`, a pre-existing rev4 assignment) and must resolve to
+  one native instance, while every distinct `materialId` must resolve to a
+  distinct native instance even where appearance values coincide. This
+  spike's compatibility evidence targets 3ds Max `2025.3`; no 2026
+  verification is claimed.

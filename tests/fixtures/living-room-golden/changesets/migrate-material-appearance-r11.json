@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "0.2.0",
+  "changeSetId": "chg_migrate_material_appearance_r11",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0010",
+  "targetRevisionId": "rev_golden_0011",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Migrate the canonical living-room golden materials to explicit SceneSpec v0.3 appearance.",
+  "riskLevel": "high",
+  "operations": [
+    {
+      "operationId": "op_migrate_material_appearance_r11",
+      "type": "MigrateMaterialAppearanceContract",
+      "targetId": "scene_golden_living_001",
+      "reason": "Promote canonical material appearance into explicit, hand-picked SceneSpec v0.3 state.",
+      "riskLevel": "high",
+      "parameters": {
+        "targetSceneSpecVersion": "0.3.0",
+        "materials": [
+          {
+            "materialId": "material_floor_neutral",
+            "roughness": 0.34,
+            "metalness": 0
+          },
+          {
+            "materialId": "material_sofa_proxy",
+            "roughness": 0.78,
+            "metalness": 0
+          },
+          {
+            "materialId": "material_wall_neutral",
+            "roughness": 0.62,
+            "metalness": 0
+          }
+        ]
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["scene_golden_living_001"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-29T06:00:00Z"
+  }
+}

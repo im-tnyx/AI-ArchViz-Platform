@@ -38,6 +38,9 @@ export interface JobWorkspace {
   expectedRenderStatePath: string;
   renderStatePath: string;
   renderStateResultPath: string;
+  expectedMaterialStatePath: string;
+  materialStatePath: string;
+  materialStateResultPath: string;
   revisionPlanPath: string;
   mutationResultPath: string;
 }
@@ -83,6 +86,9 @@ export function createJobWorkspace(workspaceRoot: string, jobId: string): JobWor
     expectedRenderStatePath: join(input, "expected-render-state.json"),
     renderStatePath: join(verification, "canonical-render-state.json"),
     renderStateResultPath: join(logs, "render-state-result.json"),
+    expectedMaterialStatePath: join(input, "expected-material-state.json"),
+    materialStatePath: join(verification, "canonical-material-state.json"),
+    materialStateResultPath: join(logs, "material-state-result.json"),
     revisionPlanPath: join(logs, "revision-plan.json"),
     mutationResultPath: join(logs, "mutation-result.json"),
   };

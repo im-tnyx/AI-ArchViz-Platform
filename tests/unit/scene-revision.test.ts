@@ -4,6 +4,8 @@ import { validateSceneChangeSet, validateSceneSpec } from "@ai-archviz/scene-spe
 import { describe, expect, it } from "vitest";
 import {
   assertGoldenRevisionDiff,
+  assertRevisionDiff,
+  canonicalMaterialStateExpectation,
   canonicalRenderStateExpectation,
   diffSemanticManifests,
   evaluateLedger,
@@ -344,5 +346,285 @@ describe("Technical Spike 8D canonical render-state revisions", () => {
         intensity: 1.25,
       },
     ]);
+  });
+});
+
+describe("Technical Spike 8G canonical material appearance revisions", () => {
+  function migrationChangeSet(): Record<string, unknown> {
+    return fixture("changesets/migrate-material-appearance-r11.json");
+  }
+
+  it("accepts the SceneChangeSet v0.2 migration contract and rejects v0.1 mixing it in", () => {
+    expect(validateSceneChangeSet(migrationChangeSet())).toMatchObject({ ok: true });
+    const asV01 = migrationChangeSet();
+    asV01.schemaVersion = "0.1.0";
+    expect(validateSceneChangeSet(asV01)).toMatchObject({ ok: false });
+  });
+
+  it("computes exactly the committed rev11 SceneSpec and revisionPlanVersion 0.2.0", () => {
+    const result = planSceneRevision(
+      fixture("revisions/rev_golden_0010/scene-spec.json"),
+      migrationChangeSet(),
+    );
+    const expected = fixture("revisions/rev_golden_0011/scene-spec.json");
+    expect(validateSceneSpec(expected)).toMatchObject({ ok: true });
+    expect(result.targetSceneSpec).toEqual(expected);
+    expect(result.plan.revisionPlanVersion).toBe("0.2.0");
+    expect(result.plan.operation).toEqual({
+      operationId: "op_migrate_material_appearance_r11",
+      type: "MigrateMaterialAppearanceContract",
+      targetId: "scene_golden_living_001",
+      targetSceneSpecVersion: "0.3.0",
+      materials: [
+        {
+          materialId: "material_floor_neutral",
+          baseColorRgb: [0.66, 0.64, 0.6],
+          roughness: 0.34,
+          metalness: 0,
+        },
+        {
+          materialId: "material_sofa_proxy",
+          baseColorRgb: [0.72, 0.62, 0.5],
+          roughness: 0.78,
+          metalness: 0,
+        },
+        {
+          materialId: "material_wall_neutral",
+          baseColorRgb: [0.78, 0.74, 0.68],
+          roughness: 0.62,
+          metalness: 0,
+        },
+      ],
+      materialAssignments: [
+        { targetId: "wall_south", materialId: "material_floor_neutral" },
+        { targetId: "wall_east", materialId: "material_wall_neutral" },
+        { targetId: "wall_north", materialId: "material_wall_neutral" },
+        { targetId: "wall_west", materialId: "material_wall_neutral" },
+        { targetId: "surface_floor_main", materialId: "material_floor_neutral" },
+        { targetId: "asset_living_sofa_main", materialId: "material_sofa_proxy" },
+      ],
+    });
+  });
+
+  it("does not upgrade unrelated revisionPlanVersion for non-migration operations", () => {
+    const result = planSceneRevision(
+      fixture("revisions/rev_golden_0009/scene-spec.json"),
+      fixture("changesets/add-key-area-light-r10.json"),
+    );
+    expect(result.plan.revisionPlanVersion).toBe("0.1.0");
+  });
+
+  it("blocks a stale base revision and a nonexistent scene target", () => {
+    const stale = migrationChangeSet();
+    stale.baseRevisionId = "rev_golden_0009";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), stale),
+      ),
+    ).toBe("STALE_REVISION");
+
+    const wrongTarget = migrationChangeSet() as { operations: Array<{ targetId: string }> };
+    const operation = wrongTarget.operations[0];
+    if (!operation) throw new Error("Migration operation missing");
+    operation.targetId = "scene_wrong_target";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), wrongTarget),
+      ),
+    ).toBe("TARGET_NOT_FOUND");
+  });
+
+  it("blocks re-migrating an already-canonical v0.3 base", () => {
+    const reMigrate = migrationChangeSet() as {
+      baseRevisionId: string;
+      targetRevisionId: string;
+    };
+    reMigrate.baseRevisionId = "rev_golden_0011";
+    reMigrate.targetRevisionId = "rev_golden_0012";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0011/scene-spec.json"), reMigrate),
+      ),
+    ).toBe("MATERIAL_APPEARANCE_ALREADY_CANONICAL");
+  });
+
+  it("rejects a non-canonical target SceneSpec version at the schema layer", () => {
+    const wrongTargetVersion = migrationChangeSet() as {
+      operations: Array<{ parameters: { targetSceneSpecVersion: string } }>;
+    };
+    const operation = wrongTargetVersion.operations[0];
+    if (!operation) throw new Error("Migration operation missing");
+    operation.parameters.targetSceneSpecVersion = "0.4.0";
+    expect(validateSceneChangeSet(wrongTargetVersion)).toMatchObject({ ok: false });
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), wrongTargetVersion),
+      ),
+    ).toBe("SCHEMA_INVALID");
+  });
+
+  it("blocks an unsorted, a duplicate, and an incomplete material appearance set", () => {
+    const unsorted = migrationChangeSet() as {
+      operations: Array<{ parameters: { materials: Array<{ materialId: string }> } }>;
+    };
+    const unsortedOperation = unsorted.operations[0];
+    if (!unsortedOperation) throw new Error("Migration operation missing");
+    unsortedOperation.parameters.materials.reverse();
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), unsorted),
+      ),
+    ).toBe("MATERIAL_APPEARANCE_SET_UNSORTED");
+
+    const duplicate = migrationChangeSet() as {
+      operations: Array<{ parameters: { materials: Array<{ materialId: string }> } }>;
+    };
+    const duplicateOperation = duplicate.operations[0];
+    if (!duplicateOperation) throw new Error("Migration operation missing");
+    duplicateOperation.parameters.materials[1] = {
+      ...duplicateOperation.parameters.materials[0],
+    } as { materialId: string };
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), duplicate),
+      ),
+    ).toBe("MATERIAL_ID_DUPLICATE");
+
+    const incomplete = migrationChangeSet() as {
+      operations: Array<{ parameters: { materials: unknown[] } }>;
+    };
+    const incompleteOperation = incomplete.operations[0];
+    if (!incompleteOperation) throw new Error("Migration operation missing");
+    incompleteOperation.parameters.materials = incompleteOperation.parameters.materials.slice(1);
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), incomplete),
+      ),
+    ).toBe("MATERIAL_APPEARANCE_SET_INCOMPLETE");
+  });
+
+  it("blocks an unknown materialId and a locked material target", () => {
+    const unknownId = migrationChangeSet() as {
+      operations: Array<{ parameters: { materials: Array<{ materialId: string }> } }>;
+    };
+    const unknownOperation = unknownId.operations[0];
+    if (!unknownOperation) throw new Error("Migration operation missing");
+    unknownOperation.parameters.materials[0] = {
+      ...unknownOperation.parameters.materials[0],
+      materialId: "material_absent",
+    } as { materialId: string };
+    unknownOperation.parameters.materials.sort((left, right) =>
+      left.materialId.localeCompare(right.materialId),
+    );
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0010/scene-spec.json"), unknownId),
+      ),
+    ).toBe("MATERIAL_NOT_FOUND");
+
+    const scene = fixture("revisions/rev_golden_0010/scene-spec.json") as {
+      geometry: Array<{ id: string; locks?: { material?: boolean } }>;
+    };
+    const wallSouth = scene.geometry.find((entry) => entry.id === "wall_south");
+    if (!wallSouth) throw new Error("wall_south geometry missing");
+    wallSouth.locks = { ...(wallSouth.locks ?? {}), material: true };
+    expect(errorCode(() => planSceneRevision(scene, migrationChangeSet()))).toBe("MATERIAL_LOCKED");
+  });
+
+  it("produces a null expectation for a non-canonical scene and the exact rev11 evidence oracle for the canonical one", () => {
+    expect(
+      canonicalMaterialStateExpectation(fixture("revisions/rev_golden_0010/scene-spec.json")),
+    ).toBe(null);
+    const expected = canonicalMaterialStateExpectation(
+      fixture("revisions/rev_golden_0011/scene-spec.json"),
+    );
+    expect(expected).toEqual({
+      materialStateVersion: "0.1.0",
+      projectId: "project_golden_living_001",
+      sceneId: "scene_golden_living_001",
+      revisionId: "rev_golden_0011",
+      sceneSpecVersion: "0.3.0",
+      materials: [
+        {
+          materialId: "material_floor_neutral",
+          actualClass: "_CoronaPhysicalMtl",
+          canonicalBaseColorRgb: [0.66, 0.64, 0.6],
+          observedBaseColorRgb: [0.66, 0.64, 0.6],
+          canonicalRoughness: 0.34,
+          observedRoughness: 0.34,
+          canonicalMetalness: 0,
+          observedMetalness: 0,
+          materialInstanceName: "AVZ_MATERIAL_material_floor_neutral",
+        },
+        {
+          materialId: "material_sofa_proxy",
+          actualClass: "_CoronaPhysicalMtl",
+          canonicalBaseColorRgb: [0.72, 0.62, 0.5],
+          observedBaseColorRgb: [0.72, 0.62, 0.5],
+          canonicalRoughness: 0.78,
+          observedRoughness: 0.78,
+          canonicalMetalness: 0,
+          observedMetalness: 0,
+          materialInstanceName: "AVZ_MATERIAL_material_sofa_proxy",
+        },
+        {
+          materialId: "material_wall_neutral",
+          actualClass: "_CoronaPhysicalMtl",
+          canonicalBaseColorRgb: [0.78, 0.74, 0.68],
+          observedBaseColorRgb: [0.78, 0.74, 0.68],
+          canonicalRoughness: 0.62,
+          observedRoughness: 0.62,
+          canonicalMetalness: 0,
+          observedMetalness: 0,
+          materialInstanceName: "AVZ_MATERIAL_material_wall_neutral",
+        },
+      ],
+      materialAssignments: [
+        {
+          targetId: "asset_living_sofa_main",
+          materialId: "material_sofa_proxy",
+          materialInstanceName: "AVZ_MATERIAL_material_sofa_proxy",
+        },
+        {
+          targetId: "surface_floor_main",
+          materialId: "material_floor_neutral",
+          materialInstanceName: "AVZ_MATERIAL_material_floor_neutral",
+        },
+        {
+          targetId: "wall_east",
+          materialId: "material_wall_neutral",
+          materialInstanceName: "AVZ_MATERIAL_material_wall_neutral",
+        },
+        {
+          targetId: "wall_north",
+          materialId: "material_wall_neutral",
+          materialInstanceName: "AVZ_MATERIAL_material_wall_neutral",
+        },
+        {
+          targetId: "wall_south",
+          materialId: "material_floor_neutral",
+          materialInstanceName: "AVZ_MATERIAL_material_floor_neutral",
+        },
+        {
+          targetId: "wall_west",
+          materialId: "material_wall_neutral",
+          materialInstanceName: "AVZ_MATERIAL_material_wall_neutral",
+        },
+      ],
+      deduplication: { sameIdSharedInstance: true, differentIdDistinctInstances: true },
+      status: "PASS",
+    });
+  });
+
+  it("reports zero semantic node changes between rev10 and rev11 (materials are untracked by the manifest)", () => {
+    const diff = diffSemanticManifests(
+      fixture("revisions/rev_golden_0010/expected-scene-manifest.json"),
+      fixture("revisions/rev_golden_0011/expected-scene-manifest.json"),
+    );
+    expect(() => assertRevisionDiff(diff, migrationChangeSet() as never)).not.toThrow();
+    expect(diff.changed).toEqual([]);
+    expect(diff.added).toEqual([]);
+    expect(diff.removed).toEqual([]);
+    expect(diff.unchanged).toHaveLength(14);
   });
 });

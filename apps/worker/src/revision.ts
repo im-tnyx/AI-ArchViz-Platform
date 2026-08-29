@@ -8,8 +8,10 @@ import {
   validateSceneSpec,
 } from "@ai-archviz/scene-spec";
 import {
+  type CanonicalMaterialStateEvidence,
   type JobEnvelope,
   semanticJsonHash,
+  validateCanonicalMaterialStateEvidence,
   validateCanonicalRenderStateEvidence,
   validateExecutionReport,
   validateJobEnvelope,
@@ -120,6 +122,16 @@ interface AddLightOperation {
   };
 }
 
+interface MigrateMaterialAppearanceContractOperation {
+  operationId: string;
+  type: "MigrateMaterialAppearanceContract";
+  targetId: string;
+  parameters: {
+    targetSceneSpecVersion: "0.3.0";
+    materials: Array<{ materialId: string; roughness: number; metalness: number }>;
+  };
+}
+
 type LockPropertyPath = "geometry" | "transform" | "material";
 type PropertyLockOperation = LockPropertyOperation | UnlockPropertyOperation;
 
@@ -130,10 +142,11 @@ type SupportedOperation =
   | PropertyLockOperation
   | ReplaceAssetOperation
   | SetRenderIntentOperation
-  | AddLightOperation;
+  | AddLightOperation
+  | MigrateMaterialAppearanceContractOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
-  schemaVersion: "0.1.0";
+  schemaVersion: "0.1.0" | "0.2.0";
   changeSetId: string;
   projectId: string;
   sceneId: string;
@@ -144,6 +157,7 @@ interface ChangeSetContract extends SceneChangeSet {
 }
 
 interface SceneDocument extends Record<string, unknown> {
+  sceneSpecVersion: string;
   project: { id: string };
   scene: { id: string; revisionId: string; headRevisionId: string };
   spaces: Array<{
@@ -188,7 +202,13 @@ interface SceneDocument extends Record<string, unknown> {
     locks: { geometry: boolean; transform: boolean; material: boolean };
   }>;
   cameras: Array<{ id: string }>;
-  materials: Array<{ id: string; baseColorRgb: Vector3 }>;
+  materials: Array<{
+    id: string;
+    name: string;
+    baseColorRgb: Vector3;
+    roughness?: number;
+    metalness?: number;
+  }>;
   materialAssignments: Array<{ id: string; targetId: string; materialId: string }>;
   revisions: Array<Record<string, unknown>>;
   render: { engine: "none" | "corona" | "vray"; mode: "build_only" | "preview" | "final" };
@@ -280,8 +300,22 @@ interface AddLightMutation {
   };
 }
 
+interface MigrateMaterialAppearanceMutation {
+  operationId: string;
+  type: "MigrateMaterialAppearanceContract";
+  targetId: string;
+  targetSceneSpecVersion: "0.3.0";
+  materials: Array<{
+    materialId: string;
+    baseColorRgb: Vector3;
+    roughness: number;
+    metalness: number;
+  }>;
+  materialAssignments: Array<{ targetId: string; materialId: string }>;
+}
+
 export interface RevisionMutationPlan {
-  revisionPlanVersion: "0.1.0";
+  revisionPlanVersion: "0.1.0" | "0.2.0";
   changeSetId: string;
   projectId: string;
   sceneId: string;
@@ -294,7 +328,8 @@ export interface RevisionMutationPlan {
     | LockMutation
     | ReplaceAssetMutation
     | SetRenderIntentMutation
-    | AddLightMutation;
+    | AddLightMutation
+    | MigrateMaterialAppearanceMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -350,6 +385,8 @@ export interface RevisionResult {
   verificationProcess: ControlledProcessResult | null;
   renderStateVerificationProcess: ControlledProcessResult | null;
   renderStateEvidence: CanonicalRenderStateEvidence | null;
+  materialStateVerificationProcess: ControlledProcessResult | null;
+  materialStateEvidence: CanonicalMaterialStateEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   report: RevisionExecutionReport | null;
@@ -498,12 +535,13 @@ export function planSceneRevision(
           "ReplaceAsset",
           "SetRenderIntent",
           "AddLight",
+          "MigrateMaterialAppearanceContract",
         ].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, and AddLight only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, AddLight, and MigrateMaterialAppearanceContract only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -547,7 +585,8 @@ export function planSceneRevision(
     | LockMutation
     | ReplaceAssetMutation
     | SetRenderIntentMutation
-    | AddLightMutation;
+    | AddLightMutation
+    | MigrateMaterialAppearanceMutation;
   if (operation?.type === "SetRenderIntent") {
     if (operation.targetId !== base.scene.id) {
       throw new RevisionValidationError(
@@ -618,6 +657,116 @@ export function planSceneRevision(
       renderEngine: "corona",
       renderMode: "preview",
       light: structuredClone(light),
+    };
+  } else if (operation?.type === "MigrateMaterialAppearanceContract") {
+    if (operation.targetId !== base.scene.id) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Scene target ${operation.targetId} was not found`,
+      );
+    }
+    if (base.sceneSpecVersion === "0.3.0") {
+      throw new RevisionValidationError(
+        "MATERIAL_APPEARANCE_ALREADY_CANONICAL",
+        "Base SceneSpec is already v0.3 canonical material appearance",
+      );
+    }
+    if (
+      base.sceneSpecVersion !== "0.2.0" ||
+      operation.parameters.targetSceneSpecVersion !== "0.3.0"
+    ) {
+      throw new RevisionValidationError(
+        "SCENE_SPEC_VERSION_TRANSITION_UNSUPPORTED",
+        "Only an explicit v0.2 -> v0.3 material appearance transition is supported",
+      );
+    }
+    const parameterMaterials = operation.parameters.materials;
+    const parameterIds = parameterMaterials.map((entry) => entry.materialId);
+    const sortedParameterIds = [...parameterIds].sort((left, right) => left.localeCompare(right));
+    if (parameterIds.join(" ") !== sortedParameterIds.join(" ")) {
+      throw new RevisionValidationError(
+        "MATERIAL_APPEARANCE_SET_UNSORTED",
+        "Migration materials must be sorted lexicographically by materialId",
+      );
+    }
+    const seenParameterIds = new Set<string>();
+    for (const id of parameterIds) {
+      if (seenParameterIds.has(id)) {
+        throw new RevisionValidationError(
+          "MATERIAL_ID_DUPLICATE",
+          `Migration parameters reference materialId ${id} more than once`,
+        );
+      }
+      seenParameterIds.add(id);
+    }
+    const baseMaterialIds = base.materials.map((material) => material.id);
+    const baseMaterialIdSet = new Set(baseMaterialIds);
+    for (const id of parameterIds) {
+      if (!baseMaterialIdSet.has(id)) {
+        throw new RevisionValidationError(
+          "MATERIAL_NOT_FOUND",
+          `Migration references unknown materialId ${id}`,
+        );
+      }
+    }
+    for (const id of baseMaterialIds) {
+      if (!seenParameterIds.has(id)) {
+        throw new RevisionValidationError(
+          "MATERIAL_APPEARANCE_SET_INCOMPLETE",
+          `Migration is missing an explicit appearance value for materialId ${id}`,
+        );
+      }
+    }
+    const lockTargets = lockableTargets(base);
+    for (const assignment of base.materialAssignments) {
+      const lockTarget = lockTargets.find((entry) => entry.id === assignment.targetId);
+      if (lockTarget?.locks.material) {
+        throw new RevisionValidationError(
+          "MATERIAL_LOCKED",
+          `Target ${assignment.targetId} has a locked material and cannot be migrated`,
+        );
+      }
+    }
+    const appearanceById = new Map(
+      parameterMaterials.map((entry) => [entry.materialId, entry] as const),
+    );
+    for (const material of targetSceneSpec.materials) {
+      const appearance = appearanceById.get(material.id);
+      if (!appearance) {
+        throw new RevisionValidationError(
+          "MATERIAL_APPEARANCE_SET_INCOMPLETE",
+          `Migration is missing an explicit appearance value for materialId ${material.id}`,
+        );
+      }
+      material.roughness = appearance.roughness;
+      material.metalness = appearance.metalness;
+    }
+    targetSceneSpec.sceneSpecVersion = "0.3.0";
+    mutation = {
+      operationId: operation.operationId,
+      type: "MigrateMaterialAppearanceContract",
+      targetId: operation.targetId,
+      targetSceneSpecVersion: "0.3.0",
+      materials: sortedParameterIds.map((materialId) => {
+        const baseMaterial = base.materials.find((material) => material.id === materialId);
+        const appearance = appearanceById.get(materialId);
+        if (!baseMaterial || !appearance) {
+          throw new RevisionValidationError(
+            "MATERIAL_NOT_FOUND",
+            `Migration references unknown materialId ${materialId}`,
+          );
+        }
+        return {
+          materialId,
+          baseColorRgb: structuredClone(baseMaterial.baseColorRgb),
+          roughness: appearance.roughness,
+          metalness: appearance.metalness,
+        };
+      }),
+      materialAssignments: base.materialAssignments.map((assignment) => ({
+        targetId: assignment.targetId,
+        materialId: assignment.materialId,
+      })),
     };
   } else if (operation?.type === "MoveObject") {
     const matches = base.assets.filter((asset) => asset.id === operation.targetId);
@@ -901,7 +1050,8 @@ export function planSceneRevision(
     changeSet,
     targetSceneSpec,
     plan: {
-      revisionPlanVersion: "0.1.0",
+      revisionPlanVersion:
+        mutation.type === "MigrateMaterialAppearanceContract" ? "0.2.0" : "0.1.0",
       changeSetId: changeSet.changeSetId,
       projectId: changeSet.projectId,
       sceneId: changeSet.sceneId,
@@ -1223,7 +1373,15 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
     }
     return;
   }
-  if (operation?.type === "SetRenderIntent" || operation?.type === "AddLight") {
+  if (
+    operation?.type === "SetRenderIntent" ||
+    operation?.type === "AddLight" ||
+    operation?.type === "MigrateMaterialAppearanceContract"
+  ) {
+    // Material appearance (roughness/metalness) lives on SceneSpec's top-level
+    // `materials` array, not on any per-node manifest entry, so this migration
+    // produces zero semantic node/camera diff, exactly like SetRenderIntent
+    // and AddLight before it.
     if (
       diff.revision.before !== changeSet.baseRevisionId ||
       diff.revision.after !== changeSet.targetRevisionId ||
@@ -1376,6 +1534,58 @@ export function canonicalRenderStateExpectation(
   };
 }
 
+/**
+ * Sticky like `canonicalRenderStateExpectation`: once a revision reaches
+ * SceneSpec v0.3, every later revision built on it is expected to keep
+ * passing canonical material-state verification, not just the revision that
+ * performed the migration.
+ */
+export function canonicalMaterialStateExpectation(
+  scene: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const value = scene as unknown as SceneDocument;
+  if (value.sceneSpecVersion !== "0.3.0") return null;
+  const materials = [...value.materials].sort((left, right) => left.id.localeCompare(right.id));
+  const assignments = [...value.materialAssignments].sort((left, right) =>
+    left.targetId.localeCompare(right.targetId),
+  );
+  return {
+    materialStateVersion: "0.1.0",
+    projectId: value.project.id,
+    sceneId: value.scene.id,
+    revisionId: value.scene.revisionId,
+    sceneSpecVersion: "0.3.0",
+    materials: materials.map((material) => {
+      const roughness = material.roughness;
+      const metalness = material.metalness;
+      if (roughness === undefined || metalness === undefined) {
+        throw new RevisionValidationError(
+          "MATERIAL_APPEARANCE_SET_INCOMPLETE",
+          `SceneSpec v0.3 material ${material.id} is missing canonical appearance`,
+        );
+      }
+      return {
+        materialId: material.id,
+        actualClass: "_CoronaPhysicalMtl",
+        canonicalBaseColorRgb: [...material.baseColorRgb],
+        observedBaseColorRgb: [...material.baseColorRgb],
+        canonicalRoughness: roughness,
+        observedRoughness: roughness,
+        canonicalMetalness: metalness,
+        observedMetalness: metalness,
+        materialInstanceName: `AVZ_MATERIAL_${material.id}`,
+      };
+    }),
+    materialAssignments: assignments.map((assignment) => ({
+      targetId: assignment.targetId,
+      materialId: assignment.materialId,
+      materialInstanceName: `AVZ_MATERIAL_${assignment.materialId}`,
+    })),
+    deduplication: { sameIdSharedInstance: true, differentIdDistinctInstances: true },
+    status: "PASS",
+  };
+}
+
 function findVerifiedBaseArtifact(
   config: WorkerConfig,
   identity: { projectId: string; sceneId: string; revisionId: string },
@@ -1467,6 +1677,8 @@ function noExecution(
     verificationProcess: null,
     renderStateVerificationProcess: null,
     renderStateEvidence: null,
+    materialStateVerificationProcess: null,
+    materialStateEvidence: null,
     comparison: null,
     semanticDiff: null,
     report: null,
@@ -1496,6 +1708,8 @@ interface RevisionContext {
   verificationProcess: ControlledProcessResult | null;
   renderStateVerificationProcess: ControlledProcessResult | null;
   renderStateEvidence: CanonicalRenderStateEvidence | null;
+  materialStateVerificationProcess: ControlledProcessResult | null;
+  materialStateEvidence: CanonicalMaterialStateEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   baseArtifactPath: string;
@@ -1559,6 +1773,8 @@ function resultFor(context: RevisionContext, report: RevisionExecutionReport): R
     verificationProcess: context.verificationProcess,
     renderStateVerificationProcess: context.renderStateVerificationProcess,
     renderStateEvidence: context.renderStateEvidence,
+    materialStateVerificationProcess: context.materialStateVerificationProcess,
+    materialStateEvidence: context.materialStateEvidence,
     comparison: context.comparison,
     semanticDiff: context.semanticDiff,
     report,
@@ -1649,6 +1865,7 @@ export async function applySceneChangeSet(
     changeSet: ChangeSetContract;
     plan: RevisionMutationPlan;
     expectedRenderState: Record<string, unknown> | null;
+    expectedMaterialState: Record<string, unknown> | null;
     baseArtifactPath: string;
     baseArtifactHash: string;
   };
@@ -1745,6 +1962,7 @@ export async function applySceneChangeSet(
       changeSet: planned.changeSet,
       plan: planned.plan,
       expectedRenderState: canonicalRenderStateExpectation(targetScene),
+      expectedMaterialState: canonicalMaterialStateExpectation(targetScene),
       baseArtifactPath: verifiedBase.artifactPath,
       baseArtifactHash: verifiedBase.artifactHash,
     };
@@ -1839,6 +2057,8 @@ export async function applySceneChangeSet(
       verificationProcess: null,
       renderStateVerificationProcess: null,
       renderStateEvidence: null,
+      materialStateVerificationProcess: null,
+      materialStateEvidence: null,
       comparison: null,
       semanticDiff: null,
       baseArtifactPath: prepared.baseArtifactPath,
@@ -1848,6 +2068,9 @@ export async function applySceneChangeSet(
     writeDeterministicJson(workspace.sceneSpecPath, prepared.baseScene);
     writeDeterministicJson(workspace.targetSceneSpecPath, prepared.targetScene);
     writeDeterministicJson(workspace.expectedManifestPath, prepared.expectedManifest);
+    if (prepared.expectedMaterialState) {
+      writeDeterministicJson(workspace.expectedMaterialStatePath, prepared.expectedMaterialState);
+    }
     if (prepared.expectedRenderState) {
       writeDeterministicJson(workspace.expectedRenderStatePath, prepared.expectedRenderState);
     }
@@ -1896,7 +2119,11 @@ export async function applySceneChangeSet(
           AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
           AI_ARCHVIZ_REVISION_PLAN_PATH: workspace.revisionPlanPath,
           AI_ARCHVIZ_MUTATION_RESULT_PATH: workspace.mutationResultPath,
-          ...(prepared.expectedRenderState ? { AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1" } : {}),
+          AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE:
+            process.env.AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE,
+          ...(prepared.expectedRenderState || prepared.expectedMaterialState
+            ? { AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1" }
+            : {}),
         },
       }),
       outputEncoding: "utf16le",
@@ -2067,6 +2294,95 @@ export async function applySceneChangeSet(
       }
       context.renderStateEvidence = renderStateEvidence;
     }
+    if (prepared.expectedMaterialState) {
+      context.materialStateVerificationProcess = await runControlledProcess({
+        executable: context.dcc.batchExecutablePath,
+        args: threeDsMaxBatchArguments(
+          resolve(config.repositoryRoot, "tools/3ds-max/python/verify_canonical_material_state.py"),
+        ),
+        cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
+        timeoutMs,
+        env: buildDccChildEnvironment({
+          overrides: {
+            AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+            AI_ARCHVIZ_EXPECTED_MATERIAL_STATE_PATH: workspace.expectedMaterialStatePath,
+            AI_ARCHVIZ_MATERIAL_STATE_PATH: workspace.materialStatePath,
+            AI_ARCHVIZ_MATERIAL_STATE_RESULT_PATH: workspace.materialStateResultPath,
+            AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE:
+              process.env.AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE,
+            AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
+          },
+        }),
+        outputEncoding: "utf16le",
+      });
+      if (context.materialStateVerificationProcess.errorCode) {
+        return failRevision(
+          config,
+          context,
+          context.materialStateVerificationProcess.errorCode,
+          "Fresh canonical material-state verification process failed",
+          context.materialStateVerificationProcess.errorCode === "PROCESS_TIMEOUT",
+          true,
+        );
+      }
+      if (!existsSync(workspace.materialStatePath)) {
+        const materialStateResult = existsSync(workspace.materialStateResultPath)
+          ? (readJson(workspace.materialStateResultPath) as {
+              status?: unknown;
+              errorCode?: unknown;
+              message?: unknown;
+            })
+          : null;
+        return failRevision(
+          config,
+          context,
+          typeof materialStateResult?.errorCode === "string"
+            ? materialStateResult.errorCode
+            : "MATERIAL_STATE_VERIFICATION_FAILED",
+          typeof materialStateResult?.message === "string"
+            ? materialStateResult.message
+            : "Canonical material-state evidence is missing",
+          false,
+          true,
+        );
+      }
+      if (!existsSync(workspace.materialStateResultPath)) {
+        return failRevision(
+          config,
+          context,
+          "MATERIAL_STATE_VERIFICATION_FAILED",
+          "Canonical material-state verification result is missing",
+          false,
+          true,
+        );
+      }
+      const materialStateEvidence = readJson(workspace.materialStatePath) as Record<
+        string,
+        unknown
+      >;
+      const materialStateValidation = validateCanonicalMaterialStateEvidence(materialStateEvidence);
+      if (!materialStateValidation.ok) {
+        return failRevision(
+          config,
+          context,
+          "MATERIAL_STATE_EVIDENCE_INVALID",
+          JSON.stringify(materialStateValidation.errors),
+          false,
+          true,
+        );
+      }
+      if (!isDeepStrictEqual(materialStateEvidence, prepared.expectedMaterialState)) {
+        return failRevision(
+          config,
+          context,
+          "MATERIAL_STATE_MISMATCH",
+          `Expected ${JSON.stringify(prepared.expectedMaterialState)}, received ${JSON.stringify(materialStateEvidence)}`,
+          false,
+          true,
+        );
+      }
+      context.materialStateEvidence = materialStateEvidence;
+    }
     if (rawFileHash(prepared.baseArtifactPath) !== prepared.baseArtifactHash) {
       return failRevision(
         config,
@@ -2171,7 +2487,8 @@ function replayRevision(
   let renderStateEvidence: CanonicalRenderStateEvidence | null = null;
   if (
     changeSet.operations[0]?.type === "SetRenderIntent" ||
-    changeSet.operations[0]?.type === "AddLight"
+    changeSet.operations[0]?.type === "AddLight" ||
+    changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract"
   ) {
     const renderStatePath = resolve(dirname(manifestPath), "canonical-render-state.json");
     if (!existsSync(renderStatePath)) {
@@ -2191,6 +2508,26 @@ function replayRevision(
     }
     renderStateEvidence = candidateEvidence;
   }
+  let materialStateEvidence: CanonicalMaterialStateEvidence | null = null;
+  if (changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract") {
+    const materialStatePath = resolve(dirname(manifestPath), "canonical-material-state.json");
+    if (!existsSync(materialStatePath)) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Canonical material-state replay evidence missing"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    const candidateMaterialEvidence = readJson(materialStatePath) as Record<string, unknown>;
+    if (!validateCanonicalMaterialStateEvidence(candidateMaterialEvidence).ok) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Canonical material-state replay evidence invalid"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    materialStateEvidence = candidateMaterialEvidence;
+  }
   return {
     workerVersion: "0.1.0",
     status: "SUCCESS",
@@ -2203,6 +2540,8 @@ function replayRevision(
     verificationProcess: null,
     renderStateVerificationProcess: null,
     renderStateEvidence,
+    materialStateVerificationProcess: null,
+    materialStateEvidence,
     comparison: null,
     semanticDiff,
     report,

@@ -8,7 +8,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# 3ds Max's Python ExecuteFile does not always prepend the script directory;
+# trusted helper modules must resolve from this repository-owned directory.
+sys.path.insert(0, os.path.dirname(__file__))
+
 from pymxs import runtime as rt
+
+import render_corona_material_appearance as material_appearance
 
 
 VERIFY_VERSION = "0.1.0"
@@ -97,8 +103,15 @@ def _check_rotation(errors: list[str], label: str, expected: list[float], actual
         errors.append(f"{label}: expected {expected}, actual {actual}")
 
 
+def _is_corona_physical_material(material: Any) -> bool:
+    class_name = str(rt.classOf(material)).lower()
+    return "corona" in class_name and "physical" in class_name
+
+
 def _normalized_material_color(material: Any) -> list[float] | None:
     try:
+        if _is_corona_physical_material(material):
+            return material_appearance._read_base_color(material)
         color = material.diffuse
         return [float(color.r) / 255.0, float(color.g) / 255.0, float(color.b) / 255.0]
     except Exception:
@@ -133,8 +146,12 @@ def _validate_material(
     if material is None:
         errors.append(f"{entry['logicalId']}: MATERIAL_ASSIGNMENT_MISMATCH no native material")
         return
-    if "standard" not in str(rt.classOf(material)).lower():
-        errors.append(f"{entry['logicalId']}: MATERIAL_TYPE_MISMATCH native is not StandardMaterial")
+    class_name = str(rt.classOf(material)).lower()
+    if "standard" not in class_name and not _is_corona_physical_material(material):
+        errors.append(
+            f"{entry['logicalId']}: MATERIAL_TYPE_MISMATCH native is not StandardMaterial or "
+            "Corona Physical Material"
+        )
         return
     if str(material.name) != f"AVZ_MATERIAL_{expected_id}":
         errors.append(
@@ -156,7 +173,14 @@ def _validate_material(
     )
     if recover_manifest_state:
         entry["materialId"] = node_id
-        entry["materialBaseColorRgb"] = actual_color
+        # Recover the tolerance-checked canonical color, not the raw native
+        # reading: a Corona Physical Material's internal float32
+        # representation reads back with harmless sub-percent noise relative
+        # to a StandardMaterial's exact 8-bit-quantized `.diffuse` (e.g.
+        # 0.7200000239 instead of 0.72), which would otherwise appear as a
+        # spurious semantic manifest diff on every native-class change even
+        # though nothing about the canonical color actually changed.
+        entry["materialBaseColorRgb"] = expected_color
 
 
 def _validate_metadata(node: Any, entry: dict[str, Any], errors: list[str]) -> None:

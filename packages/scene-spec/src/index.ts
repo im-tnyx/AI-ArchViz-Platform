@@ -36,6 +36,10 @@ const schemaV01Url = new URL("../schema/scene-spec-v0.1.schema.json", import.met
 const schemaV02Url = new URL("../schema/scene-spec-v0.2.schema.json", import.meta.url);
 const schemaV03Url = new URL("../schema/scene-spec-v0.3.schema.json", import.meta.url);
 const changeSetSchemaUrl = new URL("../schema/scene-change-set-v0.1.schema.json", import.meta.url);
+const changeSetV02SchemaUrl = new URL(
+  "../schema/scene-change-set-v0.2.schema.json",
+  import.meta.url,
+);
 const sceneSpecV01Schema = JSON.parse(readFileSync(schemaV01Url, "utf8")) as Record<
   string,
   unknown
@@ -46,6 +50,10 @@ const sceneSpecV03Schema = JSON.parse(readFileSync(schemaV03Url, "utf8")) as Rec
   unknown
 >;
 const sceneChangeSetSchema = JSON.parse(readFileSync(changeSetSchemaUrl, "utf8")) as Record<
+  string,
+  unknown
+>;
+const sceneChangeSetV02Schema = JSON.parse(readFileSync(changeSetV02SchemaUrl, "utf8")) as Record<
   string,
   unknown
 >;
@@ -61,6 +69,9 @@ const validateV01 = ajv.compile(sceneSpecV01Schema) as ValidateFunction<SceneSpe
 const validateV02 = ajv.compile(sceneSpecSchema) as ValidateFunction<SceneSpec>;
 const validateV03 = ajv.compile(sceneSpecV03Schema) as ValidateFunction<SceneSpec>;
 const validateChangeSet = ajv.compile(sceneChangeSetSchema) as ValidateFunction<SceneChangeSet>;
+const validateChangeSetV02 = ajv.compile(
+  sceneChangeSetV02Schema,
+) as ValidateFunction<SceneChangeSet>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -142,10 +153,15 @@ function validateAssetIdentity(value: SceneSpec): ContractValidationError[] {
 }
 
 export function validateSceneChangeSet(value: unknown): ValidationResult<SceneChangeSet> {
-  if (validateChangeSet(value)) {
+  const version =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as { schemaVersion?: unknown }).schemaVersion
+      : undefined;
+  const validate = version === "0.2.0" ? validateChangeSetV02 : validateChangeSet;
+  if (validate(value) && (version === "0.1.0" || version === "0.2.0")) {
     return { ok: true, value };
   }
-  return { ok: false, errors: normalizeErrors(validateChangeSet.errors) };
+  return { ok: false, errors: normalizeErrors(validate.errors) };
 }
 
-export { sceneChangeSetSchema, sceneSpecSchema, sceneSpecV03Schema };
+export { sceneChangeSetSchema, sceneChangeSetV02Schema, sceneSpecSchema, sceneSpecV03Schema };

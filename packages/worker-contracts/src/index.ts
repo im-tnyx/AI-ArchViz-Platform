@@ -58,6 +58,7 @@ export type CanonicalRenderStateEvidence = Record<string, unknown>;
 export type CanonicalCoronaPreviewEvidence = Record<string, unknown>;
 export type CoronaExecutionPlanV02 = Record<string, unknown>;
 export type CoronaMaterialAppearanceEvidence = Record<string, unknown>;
+export type CanonicalMaterialStateEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -95,6 +96,7 @@ export const coronaExecutionPlanV02Schema = readSchema("corona-execution-plan-v0
 export const coronaMaterialAppearanceEvidenceSchema = readSchema(
   "corona-material-appearance-evidence-v0.1.schema.json",
 );
+export const canonicalMaterialStateSchema = readSchema("canonical-material-state-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -147,6 +149,9 @@ const coronaExecutionPlanV02Validator = ajv.compile(
 const coronaMaterialAppearanceEvidenceValidator = ajv.compile(
   coronaMaterialAppearanceEvidenceSchema,
 ) as ValidateFunction<CoronaMaterialAppearanceEvidence>;
+const canonicalMaterialStateValidator = ajv.compile(
+  canonicalMaterialStateSchema,
+) as ValidateFunction<CanonicalMaterialStateEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -250,6 +255,12 @@ export function validateCoronaMaterialAppearanceEvidence(
   value: unknown,
 ): ValidationResult<CoronaMaterialAppearanceEvidence> {
   return runValidation(coronaMaterialAppearanceEvidenceValidator, value);
+}
+
+export function validateCanonicalMaterialStateEvidence(
+  value: unknown,
+): ValidationResult<CanonicalMaterialStateEvidence> {
+  return runValidation(canonicalMaterialStateValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

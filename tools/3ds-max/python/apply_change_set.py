@@ -15,10 +15,12 @@ sys.path.insert(0, os.path.dirname(__file__))
 from pymxs import runtime as rt
 
 import render_corona_baseline as corona
+import render_corona_material_appearance as material_appearance
 import verify_scene
 
 
 REVISION_RUNNER_VERSION = "0.1.0"
+SUPPORTED_REVISION_PLAN_VERSIONS = {"0.1.0", "0.2.0"}
 LOCK_USER_PROPERTIES = {
     "geometry": "AIArchViz.LockGeometry",
     "transform": "AIArchViz.LockTransform",
@@ -213,7 +215,7 @@ def apply_revision() -> dict[str, Any]:
     plan_path = _required_path("AI_ARCHVIZ_REVISION_PLAN_PATH")
     result_path = _required_path("AI_ARCHVIZ_MUTATION_RESULT_PATH")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    if plan.get("revisionPlanVersion") != REVISION_RUNNER_VERSION:
+    if plan.get("revisionPlanVersion") not in SUPPORTED_REVISION_PLAN_VERSIONS:
         raise MutationError("REVISION_PLAN_UNSUPPORTED", "Unsupported revision plan version")
     operation = plan.get("operation")
     if not isinstance(operation, dict) or operation.get("type") not in {
@@ -225,10 +227,12 @@ def apply_revision() -> dict[str, Any]:
         "ReplaceAsset",
         "SetRenderIntent",
         "AddLight",
+        "MigrateMaterialAppearanceContract",
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
-            "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, and AddLight only",
+            "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, "
+            "ReplaceAsset, SetRenderIntent, AddLight, and MigrateMaterialAppearanceContract only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
@@ -267,9 +271,10 @@ def apply_revision() -> dict[str, Any]:
     if duplicates:
         raise MutationError("DUPLICATE_LOGICAL_ID", f"Duplicate managed logical IDs: {duplicates}")
 
+    scene_scoped_operations = {"SetRenderIntent", "AddLight", "MigrateMaterialAppearanceContract"}
     target_id = str(operation["targetId"])
     target = None
-    if operation["type"] not in {"SetRenderIntent", "AddLight"}:
+    if operation["type"] not in scene_scoped_operations:
         targets = logical_nodes.get(target_id, [])
         if not targets:
             raise MutationError("TARGET_NOT_FOUND", f"Target {target_id} was not found")
@@ -277,7 +282,7 @@ def apply_revision() -> dict[str, Any]:
             raise MutationError("DUPLICATE_LOGICAL_ID", f"Target {target_id} is not unique")
         target = targets[0]
     if target_id != str(plan["sceneId"]):
-        if operation["type"] in {"SetRenderIntent", "AddLight"}:
+        if operation["type"] in scene_scoped_operations:
             raise MutationError("TARGET_NOT_FOUND", f"Scene target {target_id} was not found")
     rebuilt_host_id: str | None = None
     deleted_segment_count = 0
@@ -290,6 +295,7 @@ def apply_revision() -> dict[str, Any]:
     replaced_asset_definition_id: str | None = None
     render_intent_configured = False
     added_light_id: str | None = None
+    migrated_material_count: int | None = None
     if operation["type"] == "SetRenderIntent":
         if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "corona_missing":
             raise MutationError("CORONA_NOT_FOUND", "Trusted test forced Corona absence")
@@ -357,6 +363,145 @@ def apply_revision() -> dict[str, Any]:
         rt.setUserProp(light, LIGHT_USER_PROPERTIES["mappedIntensity"], str(float(light_spec["intensity"]) * corona.INTENSITY_SCALE))
         rt.setUserProp(light, LIGHT_USER_PROPERTIES["widthMm"], str(float(corona.AREA_LIGHT_WIDTH_MM)))
         added_light_id = light_id
+    elif operation["type"] == "MigrateMaterialAppearanceContract":
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE") == "renderer_missing":
+            raise MutationError("CORONA_NOT_FOUND", "Trusted test forced renderer absence")
+        production = getattr(rt.renderers, "production", None)
+        if production is None or "corona" not in corona._normalized_name(rt.classOf(production)):
+            raise MutationError("RENDERER_NOT_CONFIGURED", "Production renderer is not Corona")
+        materials_spec = operation.get("materials")
+        assignments_spec = operation.get("materialAssignments")
+        if (
+            not isinstance(materials_spec, list)
+            or not materials_spec
+            or not isinstance(assignments_spec, list)
+            or not assignments_spec
+        ):
+            raise MutationError(
+                "REVISION_PLAN_INVALID", "MigrateMaterialAppearanceContract plan is incomplete"
+            )
+        all_nodes = list(rt.objects)
+        native_appearance_materials: dict[str, Any] = {}
+        for material_spec in materials_spec:
+            material_id = str(material_spec["materialId"])
+            expected_name = f"AVZ_MATERIAL_{material_id}"
+            # Confirms the pre-migration native material is the trusted
+            # StandardMaterial this SceneSpec revision expects, using the
+            # same lookup AssignMaterial already relies on, before it is
+            # replaced by a canonical Corona Physical Material below.
+            _find_existing_material(
+                {"id": material_id, "baseColorRgb": material_spec["baseColorRgb"]}, all_nodes
+            )
+            try:
+                appearance_material = material_appearance._create_appearance_material(
+                    [float(channel) for channel in material_spec["baseColorRgb"]],
+                    float(material_spec["roughness"]),
+                    float(material_spec["metalness"]),
+                    expected_name,
+                )
+            except material_appearance.MaterialAppearanceError as error:
+                raise MutationError(error.code, str(error)) from error
+            observed_roughness = float(
+                material_appearance._read_property(
+                    appearance_material,
+                    ("baseroughness", "roughness"),
+                    ("rough",),
+                    "CORONA_MATERIAL_ROUGHNESS_PROPERTY_UNSUPPORTED",
+                )
+            )
+            observed_metalness = material_appearance._read_metalness(appearance_material)
+            observed_base_color = material_appearance._read_base_color(appearance_material)
+            expected_color = [float(channel) for channel in material_spec["baseColorRgb"]]
+            if (
+                not material_appearance._close(observed_roughness, float(material_spec["roughness"]))
+                or not material_appearance._close(observed_metalness, float(material_spec["metalness"]))
+                or any(
+                    not material_appearance._close(observed, canonical)
+                    for observed, canonical in zip(observed_base_color, expected_color)
+                )
+            ):
+                raise MutationError(
+                    "CORONA_MATERIAL_PROPERTY_UNSUPPORTED",
+                    f"Realized appearance does not match canonical intent for {material_id}",
+                )
+            native_appearance_materials[material_id] = appearance_material
+
+        by_material_id: dict[str, list[Any]] = {}
+        for assignment in assignments_spec:
+            assignment_target_id = str(assignment["targetId"])
+            assignment_material_id = str(assignment["materialId"])
+            new_material = native_appearance_materials.get(assignment_material_id)
+            if new_material is None:
+                raise MutationError(
+                    "REVISION_PLAN_INVALID",
+                    f"MigrateMaterialAppearanceContract assignment references unknown material "
+                    f"{assignment_material_id}",
+                )
+            host_nodes = [
+                node
+                for node in all_nodes
+                if _user_prop(node, "AIArchViz.LogicalObjectId") == assignment_target_id
+            ]
+            segment_nodes = [
+                node
+                for node in all_nodes
+                if _user_prop(node, "AIArchViz.HostLogicalId") == assignment_target_id
+            ]
+            if not host_nodes and not segment_nodes:
+                raise MutationError(
+                    "MATERIAL_ASSIGNMENT_MISMATCH",
+                    f"MigrateMaterialAppearanceContract assignment target {assignment_target_id} "
+                    "was not found",
+                )
+            # A wall host is a non-renderable Dummy helper with no real
+            # material slot (verify_scene.py never validates material on a
+            # wall host either, only on its physical segments); assign it for
+            # display-tree consistency but do not attempt to verify the
+            # instance identity of a property it does not meaningfully carry.
+            # Non-wall targets have no segments, so their single physical
+            # node is both assigned and verified directly.
+            verifiable_nodes = segment_nodes if segment_nodes else host_nodes
+            for node in host_nodes + segment_nodes:
+                if _user_prop(node, "AIArchViz.MaterialId") != assignment_material_id:
+                    raise MutationError(
+                        "MATERIAL_ASSIGNMENT_MISMATCH",
+                        f"Node under {assignment_target_id} does not carry canonical material ID "
+                        f"{assignment_material_id}",
+                    )
+                node.material = new_material
+            for node in verifiable_nodes:
+                if not material_appearance._same_material_instance(node.material, new_material):
+                    raise MutationError(
+                        "CORONA_MATERIAL_ASSIGNMENT_FAILED",
+                        f"Material mismatch on {assignment_target_id}",
+                    )
+                by_material_id.setdefault(assignment_material_id, []).append(node.material)
+
+        # materialId-based deduplication proof: every physical node sharing
+        # one canonical materialId must resolve to a single native instance,
+        # and distinct materialIds must never collapse into a shared instance
+        # even when their realized appearance values are identical.
+        for material_id, instances in by_material_id.items():
+            if any(
+                not material_appearance._same_material_instance(instances[0], other)
+                for other in instances[1:]
+            ):
+                raise MutationError(
+                    "CORONA_MATERIAL_ASSIGNMENT_FAILED",
+                    f"Material {material_id} did not realize to a single shared native instance",
+                )
+        appearance_material_ids = list(native_appearance_materials.keys())
+        for left_index, left_id in enumerate(appearance_material_ids):
+            for right_id in appearance_material_ids[left_index + 1 :]:
+                if material_appearance._same_material_instance(
+                    native_appearance_materials[left_id], native_appearance_materials[right_id]
+                ):
+                    raise MutationError(
+                        "CORONA_MATERIAL_ASSIGNMENT_FAILED",
+                        f"Distinct materials {left_id} and {right_id} were merged into one native "
+                        "instance",
+                    )
+        migrated_material_count = len(native_appearance_materials)
     elif operation["type"] == "MoveObject":
         transform = operation["transform"]
         target.pos = _point(transform["position"])
@@ -615,7 +760,7 @@ def apply_revision() -> dict[str, Any]:
     if not candidate_path.exists() or candidate_path.stat().st_size <= 0:
         raise MutationError("CANDIDATE_MISSING", "Revised candidate is missing after save")
     result = {
-        "revisionRunnerVersion": REVISION_RUNNER_VERSION,
+        "revisionRunnerVersion": plan["revisionPlanVersion"],
         "status": "SUCCESS",
         "changeSetId": plan["changeSetId"],
         "baseRevisionId": plan["baseRevisionId"],
@@ -632,6 +777,7 @@ def apply_revision() -> dict[str, Any]:
         "replacedAssetDefinitionId": replaced_asset_definition_id,
         "renderIntentConfigured": render_intent_configured,
         "addedLightId": added_light_id,
+        "migratedMaterialCount": migrated_material_count,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,
