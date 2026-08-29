@@ -217,3 +217,46 @@ saves renderer-modified `.max` state. Rev8 and rev9 artifacts remain hash-
 preserved, and replay uses the verified evidence without a second DCC mutation.
 This spike's compatibility evidence targets 3ds Max `2025.3`; no 2026
 verification is claimed.
+
+## Spike 8E: canonical Golden Corona preview from rev10
+
+Where 8C rendered a non-canonical diagnostic preview of the pre-canonical
+rev8 scene (temporary light, diagnostic compiler, `render.engine: none`
+source), and 8D turned renderer/light intent into canonical rev9/rev10
+revision state without rendering, 8E renders the first preview whose
+renderer and light intent are both already-canonical rev10 SceneSpec state:
+
+```text
+verified rev10 .max (built through the real r2..r10 pipeline)
+  + rev10 SceneSpec + render-job-v0.2(camera_living_a)
+  -> normal CoronaRendererAdapter.compile() (no diagnostic profile)
+  -> worker-owned staged copy, exact raw-hash check
+  -> fresh Safe-Scene 3ds Max Batch process
+  -> full manifest re-verification, then canonical render-state re-verification
+  -> obsolete-diagnostic-light absence check
+  -> persisted canonical CoronaLight reused, never recreated
+  -> temporary Corona materials realized onto canonical assignment targets
+  -> persisted camera_living_a and persisted Corona renderer reused, not switched
+  -> 320 x 240 / four-pass preview PNG + portable evidence
+  -> process exit without save
+```
+
+- The compiled plan is the same `corona-execution-plan-v0.1` shape 8B/8D
+  already use; its `geometry` field is produced for validation only and is
+  never used to rebuild the opened scene, which is loaded directly from the
+  staged rev10 `.max` via a documented non-interactive load call.
+- The runner never assigns or reconfigures the renderer (`renderers.production`
+  is only observed and pass-limited); an already-non-Corona persisted renderer
+  fails closed rather than falling back.
+- `canonical-corona-preview-evidence-v0.1` records `intentSource:
+  "canonical_scene_spec"` (never `trusted_diagnostic_profile`), the rev10
+  identity, SceneSpec/canonical/staged artifact hashes, a deterministic
+  request hash derived only from those hashes plus revision/camera/render
+  policy (no absolute paths, PID, timestamp, or PNG hash), the reused
+  canonical light(s) sorted by `logicalId`, temporary material realizations
+  with proven same-ID-to-same-instance deduplication, the reused camera, and
+  output integrity. It contains no absolute paths.
+- Rendering rev10 does not create `rev_golden_0011`, change head revision, or
+  mutate canonical or staged artifact bytes; both are hash-verified unchanged
+  after the DCC process exits. This spike's compatibility evidence targets
+  3ds Max `2025.3`; no 2026 verification is claimed.

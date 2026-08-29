@@ -16,6 +16,7 @@ describe("DCC child environment", () => {
         RANDOM_PRIVATE_TOKEN: "must_not_leak",
         CHAOS_API_TOKEN: "must_not_leak",
         AI_ARCHVIZ_UNTRUSTED_PARENT_VALUE: "must_not_leak",
+        AI_ARCHVIZ_PRIVATE_SENTINEL: "must_not_leak",
       },
       overrides: {
         AI_ARCHVIZ_CANDIDATE_PATH: "candidate.max",
@@ -38,6 +39,7 @@ describe("DCC child environment", () => {
       "RANDOM_PRIVATE_TOKEN",
       "CHAOS_API_TOKEN",
       "AI_ARCHVIZ_UNTRUSTED_PARENT_VALUE",
+      "AI_ARCHVIZ_PRIVATE_SENTINEL",
     ]) {
       expect(childEnvironment).not.toHaveProperty(secretKey);
     }

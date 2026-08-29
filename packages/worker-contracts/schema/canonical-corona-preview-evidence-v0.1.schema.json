@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/canonical-corona-preview-evidence-v0.1.schema.json",
+  "title": "Canonical Golden Corona preview evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "intentSource", "projectId", "sceneId", "revisionId", "sceneSpecHash", "canonicalArtifactHash", "stagedArtifactHash", "requestHash", "renderer", "dcc", "canonicalLights", "materials", "materialAssignments", "camera", "render", "output", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "intentSource": { "const": "canonical_scene_spec" },
+    "projectId": { "const": "project_golden_living_001" },
+    "sceneId": { "const": "scene_golden_living_001" },
+    "revisionId": { "const": "rev_golden_0010" },
+    "sceneSpecHash": { "$ref": "#/$defs/hash" },
+    "canonicalArtifactHash": { "$ref": "#/$defs/hash" },
+    "stagedArtifactHash": { "$ref": "#/$defs/hash" },
+    "requestHash": { "$ref": "#/$defs/hash" },
+    "renderer": {
+      "type": "object", "additionalProperties": false, "required": ["engine", "className", "version"],
+      "properties": { "engine": { "const": "corona" }, "className": { "type": "string", "minLength": 1, "maxLength": 256 }, "version": { "type": ["string", "null"], "maxLength": 256 } }
+    },
+    "dcc": {
+      "type": "object", "additionalProperties": false, "required": ["product", "version", "compatibilityMode"],
+      "properties": { "product": { "const": "3ds_max" }, "version": { "type": "string", "minLength": 1, "maxLength": 256 }, "compatibilityMode": { "type": "boolean" } }
+    },
+    "canonicalLights": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/light" } },
+    "materials": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/material" } },
+    "materialAssignments": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/assignment" } },
+    "camera": { "$ref": "#/$defs/camera" },
+    "render": { "$ref": "#/$defs/render" },
+    "output": { "$ref": "#/$defs/output" },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "rgb": { "type": "array", "prefixItems": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }, { "type": "number", "minimum": 0, "maximum": 1 }], "items": false, "minItems": 3, "maxItems": 3 },
+    "vector3": { "type": "array", "prefixItems": [{ "type": "number" }, { "type": "number" }, { "type": "number" }], "items": false, "minItems": 3, "maxItems": 3 },
+    "light": {
+      "type": "object", "additionalProperties": false,
+      "required": ["logicalId", "type", "actualClass", "position", "rotationEuler", "canonicalIntensity", "mappedIntensity", "widthMm"],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "type": { "const": "area" },
+        "actualClass": { "const": "CoronaLight" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "rotationEuler": { "$ref": "#/$defs/vector3" },
+        "canonicalIntensity": { "type": "number", "minimum": 0 },
+        "mappedIntensity": { "type": "number", "minimum": 0 },
+        "widthMm": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "material": { "type": "object", "additionalProperties": false, "required": ["materialId", "className", "canonicalBaseColorRgb", "materialInstanceName"], "properties": { "materialId": { "$ref": "#/$defs/id" }, "className": { "type": "string", "minLength": 1, "maxLength": 256 }, "canonicalBaseColorRgb": { "$ref": "#/$defs/rgb" }, "materialInstanceName": { "type": "string", "pattern": "^AVZ_CORONA_[A-Za-z0-9_]+$", "maxLength": 180 } } },
+    "assignment": { "type": "object", "additionalProperties": false, "required": ["targetId", "materialId", "materialInstanceName", "className", "sharedMaterialInstance"], "properties": { "targetId": { "$ref": "#/$defs/id" }, "materialId": { "$ref": "#/$defs/id" }, "materialInstanceName": { "type": "string", "pattern": "^AVZ_CORONA_[A-Za-z0-9_]+$", "maxLength": 180 }, "className": { "type": "string", "minLength": 1, "maxLength": 256 }, "sharedMaterialInstance": { "const": true } } },
+    "camera": { "type": "object", "additionalProperties": false, "required": ["logicalId", "className", "position", "target", "focalLengthMm", "sensorWidthMm", "fovRadians", "lookAtTarget"], "properties": { "logicalId": { "const": "camera_living_a" }, "className": { "type": "string", "minLength": 1, "maxLength": 256 }, "position": { "$ref": "#/$defs/vector3" }, "target": { "$ref": "#/$defs/vector3" }, "focalLengthMm": { "type": "number", "exclusiveMinimum": 0 }, "sensorWidthMm": { "type": "number", "exclusiveMinimum": 0 }, "fovRadians": { "type": "number", "exclusiveMinimum": 0, "maximum": 3.141592653589793 }, "lookAtTarget": { "const": true } } },
+    "render": { "type": "object", "additionalProperties": false, "required": ["mode", "resolution", "termination"], "properties": { "mode": { "const": "preview" }, "resolution": { "type": "object", "additionalProperties": false, "required": ["width", "height"], "properties": { "width": { "const": 320 }, "height": { "const": 240 } } }, "termination": { "type": "object", "additionalProperties": false, "required": ["type", "value"], "properties": { "type": { "const": "pass_limit" }, "value": { "const": 4 } } } } },
+    "output": { "type": "object", "additionalProperties": false, "required": ["format", "byteLength", "sha256"], "properties": { "format": { "const": "png" }, "byteLength": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } } }
+  }
+}
