@@ -2,17 +2,19 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `a1c9b23`
-- Commit: `feat: migrate golden materials to canonical appearance`
+- Local `main` HEAD: `553cb38`
+- Commit: `feat: render golden scene from canonical material state`
 - Remote tracking state at this snapshot: `origin/main` and local `main` both
-  resolve to `a1c9b23`.
+  resolve to `553cb38`.
 
 ## Verified capability boundary
 
 - Deterministic SceneSpec build and SceneChangeSet revision pipeline are in
   place through canonical Corona render-state revisions (rev9 `SetRenderIntent`,
-  rev10 `AddLight`) and now the first canonical material-appearance revision
-  (rev11 `MigrateMaterialAppearanceContract`, SceneSpec v0.3).
+  rev10 `AddLight`) and the first canonical material-appearance revision
+  (rev11 `MigrateMaterialAppearanceContract`, SceneSpec v0.3). rev11 has now
+  also been rendered as a canonical preview that reuses every persisted
+  renderer-facing element as-is (8H) rather than realizing anything fresh.
 - `ReplaceAsset` preserves logical object identity, transform, material, and
   locks while changing immutable `assetDefinitionId` and intrinsic geometry,
   including a controlled `VERIFIED` external `.max` source (Spike 7C).
@@ -33,7 +35,11 @@
   the first canonical Golden material-appearance revision, `rev_golden_0011`
   (SceneSpec v0.3), with all rev1-rev10 preserved byte-identical and three
   independent fresh-process verifiers (semantic, render-state,
-  `canonical-material-state-v0.1`) required before promotion (8G).
+  `canonical-material-state-v0.1`) required before promotion (8G); and that
+  persisted rev11 state has now been rendered directly — renderer, light,
+  materials, and camera all resolved/observed/reused from the verified
+  `.max`, with none created — proving 8G's persistence is actually
+  production-usable rather than only revision-time-verifiable (8H).
 - DCC execution is default-deny end-to-end: trusted local worker configuration
   must set `allowDccExecution: true`, the call site must separately authorize
   the specific launch, and DCC integration suites additionally require
@@ -126,6 +132,31 @@
   failure, invalid evidence, evidence mismatch) all failed closed with no
   candidate promoted; rev1-rev10 remain byte-identical, and Spike 8E's own
   suite still builds/verifies rev10 only and creates no rev11.
+- Spike 8H rendered the first Golden preview whose renderer, light,
+  material, and camera intent are ALL already-canonical, already-persisted
+  rev11 state: it compiled through `compileCanonicalMaterialAppearance()`
+  (plan v0.2, never the legacy adapter default), independently re-proved all
+  three rev11 verification contracts (semantic, canonical render-state,
+  canonical material-state) fresh against a staged copy before rendering,
+  and resolved/observed/reused the persisted Corona renderer, CoronaLight,
+  native `AVZ_MATERIAL_*` Corona Physical Materials, and `camera_living_a`
+  without creating, switching, or mutating any of them — the render runner
+  never calls anything equivalent to `create_corona_physical_material()`.
+  Camera reuse is strictly observation-only (position/FOV/orientation
+  compared within tolerance, never assigned). A new
+  `canonical-corona-preview-evidence-v0.2` schema (rev11,
+  `sceneSpecVersion: "0.3.0"`, persisted naming/class, per-material
+  canonical-vs-observed appearance, deduplication proof) sits alongside the
+  untouched v0.1 (rev10, temporary realization); no rev12 was created and
+  the loaded scene was never saved. Fifteen forced-failure cases (hash,
+  manifest, render-state, material-state, diagnostic-light, camera,
+  renderer, Safe Scene, PNG, timeout) all failed closed. Building this
+  observation-only camera check also surfaced and fixed a latent unit bug in
+  8E's own runner (`Camera.fov` is degrees in MAXScript; the adapter's
+  `fovRadians` is a genuine radian value, so 8E was silently assigning a
+  ~1.3° FOV to its temporary in-memory camera instead of the intended ~74°)
+  — 8E's suite still passes and still renders rev10 with temporary
+  realization; it was not repointed to rev11.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

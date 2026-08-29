@@ -1,5 +1,72 @@
 # Latest Validation Evidence
 
+## Spike 8H canonical Golden Corona preview from rev11 material state (local commit `553cb38`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 210/210
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:canonical-golden-corona-preview-rev11` (new) — built
+  `rev_golden_0001`-`rev_golden_0011` through the real revision pipeline
+  (base + r2..r11, including 8G's `MigrateMaterialAppearanceContract`);
+  compiled the staged rev11 SceneSpec through
+  `compileCanonicalMaterialAppearance()` to plan v0.2 (wall/floor/sofa
+  roughness `0.62`/`0.34`/`0.78`, all `metalness: 0`, matching 8G's
+  hand-picked values exactly, no adapter default); a fresh Safe-Scene process
+  independently re-verified the staged copy against all three rev11
+  contracts (semantic manifest, canonical render state, canonical material
+  state) before ever calling render; resolved the persisted production
+  Corona renderer, the persisted `light_living_key_area` CoronaLight, and
+  all three persisted `AVZ_MATERIAL_*` Corona Physical Materials purely by
+  observation (no creation, no reassignment); confirmed
+  `material_floor_neutral` (shared by `wall_south` and `surface_floor_main`)
+  resolved to one native instance and every distinct materialId resolved to
+  a distinct instance; observed `camera_living_a`'s persisted
+  position/FOV/orientation matched the canonical plan within tolerance
+  without ever assigning to the camera; rendered a valid 320x240 four-pass
+  PNG; produced `canonical-corona-preview-evidence-v0.2` with
+  `sceneSpecVersion: "0.3.0"` and no `AVZ_CORONA_*` naming anywhere in the
+  evidence; and proved canonical/staged rev11 raw hashes unchanged, no
+  `rev_golden_0012` created, and rev11 replay unaffected afterward. Fifteen
+  forced-failure cases (staged-hash tamper, manifest mismatch, four
+  canonical-render-state mismatches, four canonical-material-state
+  mismatches, obsolete diagnostic light, camera missing/ambiguous/semantic-
+  mismatch, renderer missing, Safe Scene, invalid PNG, timeout) all failed
+  closed with no PASS evidence and no owned process left running.
+- `test:3dsmax:canonical-material-appearance-revision`,
+  `test:3dsmax:corona-material-appearance`,
+  `test:3dsmax:canonical-golden-corona-preview`,
+  `test:3dsmax:canonical-render-state-revision`,
+  `test:3dsmax:golden-corona-preview`, `test:3dsmax:corona-adapter`,
+  `test:3dsmax:corona-baseline`, `test:3dsmax:revision`,
+  `test:3dsmax:replace-asset`, `test:3dsmax:asset-inspection`,
+  `test:3dsmax:external-asset-ingestion` — all PASS. In particular,
+  `canonical-golden-corona-preview` (8E) still builds/verifies `rev_golden_0010`
+  only, still realizes temporary materials, and creates no `rev_golden_0011`,
+  so it remains historical coverage rather than being superseded.
+
+One real defect was found and fixed against real 3ds Max evidence, in code
+this spike did not otherwise need to touch: 8H's observation-only camera
+check (position/FOV/orientation compared against the canonical plan without
+ever assigning to the camera) surfaced that 3ds Max's `Camera.fov` MAXScript
+property is in degrees while the adapter's `fovRadians` is a genuine radian
+value — Spike 8E's own runner had been assigning the radian number directly
+into the degrees-based property, silently pointing its temporary in-memory
+camera at a ~1.3° field of view instead of the intended ~74°. This was never
+caught previously because 8E never saves the scene or visually inspects the
+render (only format/dimensions are checked). Fixed in
+`render_canonical_golden_corona_preview.py` by converting on write and on
+read-back; 8E's own regression suite re-ran and passed unchanged afterward.
+
+Target 3ds Max 2026 verification was not performed; only 2025.3 compatibility
+mode is claimed. No test-owned 3ds Max process remained after the run; two
+unrelated interactive `3dsmax.exe` sessions (no batch/script arguments) were
+observed at one point during this session and deliberately left untouched.
+
 ## Spike 8G canonical material appearance revision (local commit `a1c9b23`)
 
 Static gates, all PASS:

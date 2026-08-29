@@ -255,3 +255,51 @@
   time): `material_floor_neutral` is shared by two targets (`wall_south` and
   `surface_floor_main`) and must resolve to one native instance, while every
   distinct `materialId` must resolve to a distinct native instance.
+
+## Canonical Golden Corona preview from rev11 (Spike 8H)
+
+- `executeCanonicalGoldenCoronaPreviewRev11` (a new, separate execution
+  module from 8E's `executeCanonicalGoldenCoronaPreview`, which is
+  untouched) requires the source SceneSpec to be exactly `rev_golden_0011`
+  at `sceneSpecVersion: "0.3.0"` and compiles it only through
+  `compileCanonicalMaterialAppearance()` (plan v0.2). Rendering remains
+  execution output, not a SceneChangeSet transition: no `rev_golden_0012` is
+  ever created and the loaded scene is never saved.
+- The render runner (`render_canonical_golden_corona_preview_rev11.py`)
+  never creates a light or a material and never switches the renderer. It
+  resolves and observes the already-persisted renderer, `light_living_key_area`
+  CoronaLight, and `AVZ_MATERIAL_*` Corona Physical Materials by reusing
+  `verify_scene`, `verify_canonical_render_state`, and
+  `verify_canonical_material_state` — the same three fresh-process verifiers
+  8G already trusts — rather than a fourth independent Corona
+  material-property mapper. All three verification contracts (semantic
+  manifest, canonical render state, canonical material state) must pass
+  fresh against the staged artifact before any render call; 8G's
+  revision-time verification is never relied upon alone.
+- Camera reuse is strictly observation-only: `camera_living_a` is resolved
+  by `AIArchViz.LogicalObjectId` and its persisted position, FOV
+  (`math.radians(camera.fov)`, since MAXScript's `Camera.fov` is degrees
+  while the canonical plan's `fovRadians` is a genuine radian value), and
+  look-at-derived orientation are compared against the canonical plan within
+  tolerance. The runner never assigns to `camera.pos`/`camera.rotation`/
+  `camera.fov`; a persisted camera whose semantics differ from the canonical
+  SceneSpec fails closed (`CAMERA_REALIZATION_FAILED`) rather than being
+  normalized and re-checked. This degrees/radians distinction also applied
+  to 8E's own camera handling (which normalizes the camera in memory before
+  comparing); 8E's `_resolve_camera()` was fixed to convert on write and on
+  read-back, since it had been silently assigning a ~1.3° FOV to its
+  temporary in-memory camera instead of the intended ~74° (never caught
+  because that scene is never saved or visually inspected).
+- `canonical-corona-preview-evidence-v0.2` is a new, separate schema
+  (`evidenceVersion: "0.2.0"`, `revisionId: "rev_golden_0011"`,
+  `sceneSpecVersion: "0.3.0"`); `canonical-corona-preview-evidence-v0.1`
+  (rev10, temporary `AVZ_CORONA_*` realization, Spike 8E) is byte-for-byte
+  unchanged. v0.2's material entries require the persisted `AVZ_MATERIAL_*`
+  naming and the `_CoronaPhysicalMtl` class, carry canonical and observed
+  `baseColorRgb`/`roughness`/`metalness` side by side (the same
+  tolerance-checked-canonical-value normalization as
+  `canonical-material-state-v0.1`), and a top-level
+  `sameIdSharedInstance`/`differentIdDistinctInstances` deduplication proof.
+  If the persisted scene had only rendered correctly after fresh temporary
+  materials were created, that would have meant 8G's persistence was not
+  actually production-usable; this spike's evidence proves it is.
