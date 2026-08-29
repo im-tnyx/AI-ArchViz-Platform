@@ -2,10 +2,10 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `79d6d24`
-- Commit: `feat: render canonical golden scene with corona`
+- Local `main` HEAD: `6b6a48c`
+- Commit: `feat: add canonical material appearance contract`
 - Remote tracking state at this snapshot: `origin/main` and local `main` both
-  resolve to `79d6d24`.
+  resolve to `6b6a48c`.
 
 ## Verified capability boundary
 
@@ -21,9 +21,14 @@
 - Corona is integrated end-to-end: renderer/material/light discovery and
   realization (8A), a pure `SceneSpec -> CoronaExecutionPlan` adapter (8B), a
   non-canonical Golden preview render (8C), canonical render-state revisions
-  with CoronaLight evidence (8D), and a canonical Corona preview rendered
-  from the already-canonical rev10 revision through the normal adapter,
-  reusing the persisted renderer/light/camera without mutation (8E).
+  with CoronaLight evidence (8D), a canonical Corona preview rendered from
+  the already-canonical rev10 revision through the normal adapter, reusing
+  the persisted renderer/light/camera without mutation (8E), and a canonical,
+  renderer-neutral material *appearance* contract (`roughness`/`metalness`)
+  promoted from adapter defaults into SceneSpec v0.3, compiled through a
+  dedicated adapter method to Corona execution plan v0.2, and observed on
+  the actual installed Corona Physical Material with proven materialId-based
+  (never value-based) deduplication (8F).
 - DCC execution is default-deny end-to-end: trusted local worker configuration
   must set `allowDccExecution: true`, the call site must separately authorize
   the specific launch, and DCC integration suites additionally require
@@ -72,6 +77,22 @@
   Sixteen forced-failure cases (hash tamper, manifest/render-state mismatch,
   obsolete diagnostic light, camera, material, renderer, Safe Scene, PNG,
   timeout) all failed closed with no PASS evidence.
+- Spike 8F added `scene-spec-v0.3.schema.json` (v0.2 unchanged, no automatic
+  migration, Golden rev1-rev10 untouched) and
+  `corona-execution-plan-v0.2.schema.json` (v0.1 unchanged). A new
+  `CoronaRendererAdapter.compileCanonicalMaterialAppearance()` method compiles
+  v0.3 material `roughness`/`metalness` straight into plan v0.2 with no
+  adapter-injected fallback; `compile()` itself is untouched for v0.2 sources.
+  A dedicated fixture with four materials (two dielectrics, one metal, one
+  value-duplicate of a dielectric under a different ID) proved the pure
+  plan-compile oracle deep-equals a frozen expected plan, and a fresh
+  Safe-Scene DCC process realized real Corona Physical Materials, observed
+  their actual native roughness/metalness/base-color, and proved
+  materialId-based deduplication in both directions (same ID shares one
+  native instance; different IDs never merge by value). No render call was
+  made and no scene was saved. Seven forced-failure cases (Safe Scene,
+  renderer, material class, roughness/metalness property unavailable,
+  invalid evidence, timeout) all failed closed.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

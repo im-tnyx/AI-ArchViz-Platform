@@ -146,3 +146,46 @@
   SceneChangeSet transition: it must not create a new revision, change head
   revision, or mutate the canonical or staged artifact bytes. Both are raw-
   hash-verified unchanged after every run, success or failure.
+
+## Canonical material appearance (Spike 8F)
+
+- `scene-spec-v0.3.schema.json` is a new, separate schema
+  (`sceneSpecVersion: "0.3.0"`); `scene-spec-v0.2.schema.json` is byte-for-byte
+  unchanged and Golden `rev_golden_0001`-`rev_golden_0010` remain v0.2.
+  `validateSceneSpec()` dispatches on `sceneSpecVersion` (`"0.1.0"` /
+  `"0.2.0"` / `"0.3.0"`); there is no automatic v0.2-to-v0.3 migration and no
+  fallback if a v0.3 material omits `roughness` or `metalness` — it is a
+  schema failure.
+- v0.3 material `roughness` and `metalness` are renderer-neutral, normalized
+  `0..1`: `roughness` is micro-surface roughness intent (`0` smooth, `1`
+  rough), `metalness` is metallic-workflow intent (`0` dielectric, `1`
+  metal). Neither is IOR, specular level, or reflection. `baseColorRgb` is
+  unchanged from v0.2.
+- `corona-execution-plan-v0.2.schema.json` is a new, separate schema
+  (`planVersion: "0.2.0"`); `corona-execution-plan-v0.1.schema.json` is
+  unchanged and still produced by `compile()` for a v0.2 SceneSpec, filling
+  material appearance from the legacy `coronaAdapterMaterialDefaults`
+  compatibility constant (roughness `0.45`, non-metal). A separate
+  `CoronaRendererAdapter.compileCanonicalMaterialAppearance()` method accepts
+  only a v0.3 SceneSpec and compiles it to plan v0.2, whose `materials`
+  entries carry canonical `roughness`/`metalness` directly from SceneSpec and
+  whose `adapterDefaults` has no `material` sub-object at all (no fallback is
+  possible even in principle).
+- Material identity for realization and deduplication is always
+  `materialId`, never appearance-value equality (`resolveMaterialAssignments`
+  in `corona-renderer-adapter.ts`, shared by both plan v0.1 and v0.2
+  material resolution): the same `materialId` on multiple targets realizes
+  to one shared native Corona Physical Material instance; two distinct
+  `materialId`s with byte-identical appearance always realize to two
+  distinct native instances.
+- The DCC runner (`render_corona_material_appearance.py`) is a capability
+  proof only — no render call, no scene save. It maps `roughness` to the
+  discovered Corona roughness property and `metalness` to whichever native
+  representation the installed Corona Physical Material actually exposes (a
+  scalar property, or an enum mode for exact `0`/`1`); an installation
+  exposing neither fails closed with
+  `CORONA_MATERIAL_ROUGHNESS_PROPERTY_UNSUPPORTED` /
+  `CORONA_MATERIAL_METALNESS_PROPERTY_UNSUPPORTED` rather than emulating it.
+  `corona-material-appearance-evidence-v0.1` records canonical vs. observed
+  `baseColorRgb`/`roughness`/`metalness` per material plus a
+  `sameIdSharedInstance`/`differentIdDistinctInstances` deduplication proof.

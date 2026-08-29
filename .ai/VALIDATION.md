@@ -1,5 +1,47 @@
 # Latest Validation Evidence
 
+## Spike 8F canonical material appearance contract (local commit `6b6a48c`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 181/181
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:corona-material-appearance` (new) — pure plan oracle: the
+  dedicated `tests/fixtures/corona-material-appearance/scene-spec-v0.3.json`
+  fixture compiled through `compileCanonicalMaterialAppearance()` deep-equals
+  the frozen `expected-corona-plan-v0.2.json` with no DCC; plan v0.2 carries
+  no legacy material adapter default. DCC: a fresh Safe-Scene process
+  discovered Corona, realized four native Corona Physical Materials (rough
+  dielectric, smooth dielectric, metal, and a value-duplicate of the rough
+  dielectric under a distinct ID), and observed native
+  `baseColorRgb`/`roughness`/`metalness` matching canonical intent within
+  tolerance for every material, including the metallic material's
+  `metalness=1`. Deduplication proof PASS in both directions: the rough
+  dielectric materialId used on two wall targets realized to one shared
+  native instance, while the value-duplicate materialId (identical
+  appearance, different ID) realized to a distinct native instance. No
+  render call was made; no scene was saved. Seven forced-failure cases
+  (Safe Scene, renderer missing, material class missing, roughness property
+  unavailable, metalness property unavailable, invalid evidence, timeout)
+  all failed closed with no PASS evidence.
+- `test:3dsmax:canonical-golden-corona-preview`,
+  `test:3dsmax:canonical-render-state-revision`,
+  `test:3dsmax:golden-corona-preview`, `test:3dsmax:corona-adapter`,
+  `test:3dsmax:corona-baseline`, `test:3dsmax:revision`,
+  `test:3dsmax:replace-asset`, `test:3dsmax:asset-inspection`,
+  `test:3dsmax:external-asset-ingestion` — all PASS unchanged (8B-8E and
+  core DCC regressions unaffected by the `resolveMaterials`/adapter refactor
+  or the new SceneSpec v0.3 / plan v0.2 schemas).
+
+Target 3ds Max 2026 verification was not performed; only 2025.3 compatibility
+mode is claimed. No test-owned 3ds Max process remained after the run; one
+unrelated pre-existing interactive `3dsmax.exe` session (no batch/script
+arguments) was observed and deliberately left untouched.
+
 ## Spike 8E canonical Golden Corona preview (local commit `79d6d24`)
 
 Static gates, all PASS:

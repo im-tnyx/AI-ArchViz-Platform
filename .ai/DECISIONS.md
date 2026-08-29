@@ -38,3 +38,15 @@ Operational decisions currently in force:
   and camera as-is rather than recreating or switching them, must never save
   the opened scene, and must leave the canonical and staged artifact bytes
   hash-unchanged (Spike 8E).
+- A contract version is never mutated in place: SceneSpec v0.3 and Corona
+  execution plan v0.2 are new, separate schemas alongside the unchanged v0.2
+  / v0.1 ones, dispatched by an explicit version field. An older adapter
+  realization default (e.g. plan v0.1's roughness `0.45`/non-metal) is never
+  automatically promoted into a newer canonical contract as if it had been a
+  design decision; only an explicit new canonical value, chosen per material,
+  may become canonical (Spike 8F).
+- Renderer material identity is always the canonical `materialId`, never
+  appearance-value equality. The same ID realizes to one shared native
+  material instance across every target that uses it; two different IDs
+  never merge into one instance merely because their appearance values are
+  identical (Spike 8F).
