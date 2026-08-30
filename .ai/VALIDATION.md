@@ -31,7 +31,7 @@ DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
   PNG; produced `canonical-corona-preview-evidence-v0.2` with
   `sceneSpecVersion: "0.3.0"` and no `AVZ_CORONA_*` naming anywhere in the
   evidence; and proved canonical/staged rev11 raw hashes unchanged, no
-  `rev_golden_0012` created, and rev11 replay unaffected afterward. Fifteen
+  `rev_golden_0012` created, and rev11 replay unaffected afterward. 18
   forced-failure cases (staged-hash tamper, manifest mismatch, four
   canonical-render-state mismatches, four canonical-material-state
   mismatches, obsolete diagnostic light, camera missing/ambiguous/semantic-

@@ -148,7 +148,7 @@
   `sceneSpecVersion: "0.3.0"`, persisted naming/class, per-material
   canonical-vs-observed appearance, deduplication proof) sits alongside the
   untouched v0.1 (rev10, temporary realization); no rev12 was created and
-  the loaded scene was never saved. Fifteen forced-failure cases (hash,
+  the loaded scene was never saved. 18 forced-failure cases (hash,
   manifest, render-state, material-state, diagnostic-light, camera,
   renderer, Safe Scene, PNG, timeout) all failed closed. Building this
   observation-only camera check also surfaced and fixed a latent unit bug in
