@@ -2,10 +2,10 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `553cb38`
-- Commit: `feat: render golden scene from canonical material state`
-- Remote tracking state at this snapshot: `origin/main` and local `main` both
-  resolve to `553cb38`.
+- Local `main` HEAD: `1792183`
+- Commit: `feat: add canonical camera revision`
+- Remote tracking state at this snapshot: local `main` is ahead of
+  `origin/main` pending this session's push.
 
 ## Verified capability boundary
 
@@ -39,7 +39,14 @@
   persisted rev11 state has now been rendered directly — renderer, light,
   materials, and camera all resolved/observed/reused from the verified
   `.max`, with none created — proving 8G's persistence is actually
-  production-usable rather than only revision-time-verifiable (8H).
+  production-usable rather than only revision-time-verifiable (8H); and the
+  first deterministic camera revision, `rev_golden_0012`
+  (`camera_living_a` focal length 24mm -> 28mm only; position, target,
+  sensor width, and orientation policy unchanged), has been added on top of
+  rev11, gated by four independent fresh-process verifiers including a new
+  `canonical-camera-state-v0.1` contract, with rotation always
+  worker-derived from position/target rather than trusted from the
+  ChangeSet (8I).
 - DCC execution is default-deny end-to-end: trusted local worker configuration
   must set `allowDccExecution: true`, the call site must separately authorize
   the specific launch, and DCC integration suites additionally require
@@ -157,6 +164,24 @@
   ~1.3° FOV to its temporary in-memory camera instead of the intended ~74°)
   — 8E's suite still passes and still renders rev10 with temporary
   realization; it was not repointed to rev11.
+- Spike 8I added `scene-change-set-v0.3.schema.json` (v0.1/v0.2 unchanged)
+  and its one operation, `SetCamera`: an absolute desired-camera-state
+  mutation that targets an existing camera logical ID, never accepts
+  `rotationEuler` from the ChangeSet (rotation is always derived from
+  position/target via the new shared `camera-policy.ts` /
+  `camera_policy.py` modules), and is rejected before any DCC launch for a
+  coincident position/target, a non-positive focal length or sensor width,
+  a missing/ambiguous camera, or a desired state identical to the current
+  one. `rev_golden_0012` changes only `camera_living_a.focalLengthMm`
+  (24mm -> 28mm); `camera_living_b`/`camera_living_c` and every other
+  managed entry are unchanged, and rev1-rev11 remain byte-identical.
+  Promotion requires four independent fresh-process verifiers (semantic,
+  canonical render-state, canonical material-state, and the new canonical
+  camera-state), the last of which re-derives the OBSERVED camera target
+  from physical position/orientation/distance rather than trusting stored
+  target metadata, and deliberately re-proves the exact degrees/radians
+  boundary that caused the 8H defect (a forced regression hook still fails
+  closed with `CAMERA_FOV_MISMATCH`). No render was produced in this spike.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

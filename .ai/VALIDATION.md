@@ -1,5 +1,93 @@
 # Latest Validation Evidence
 
+## Spike 8I canonical camera revision (local commit `1792183`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 231/231
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:canonical-camera-revision` (new) — built `rev_golden_0001`-
+  `rev_golden_0011` through the real revision pipeline, then applied
+  `SetCamera` (position/target/sensor width/orientation policy unchanged,
+  `focalLengthMm` 24 -> 28) to produce `rev_golden_0012`: mutation resolved
+  `camera_living_a` by `AIArchViz.LogicalObjectId`, required its actual
+  class to be `Freecamera`, wrote position/derived rotation/target
+  distance/FOV in that order (FOV written in degrees via
+  `camera_policy.fov_degrees`, never the raw radian value), and updated only
+  the worker-owned camera metadata; the camera object's own identity was
+  never deleted or recreated. Fresh semantic-manifest verification reported
+  exactly one changed entry (`camera_living_a`: `focalLengthMm` and the
+  full-precision recomputed `transform.rotationEuler`), 13 unchanged, 0
+  added, 0 removed. Fresh canonical render-state and canonical
+  material-state verification both reported the unchanged Corona
+  `preview` intent, `light_living_key_area`, and all three v0.3 materials.
+  The new `verify_canonical_camera_state.py` independently re-observed all
+  three canonical cameras (sorted by `logicalId`): `camera_living_a`'s
+  position, look-at-derived orientation, and FOV (~65.47deg / ~1.1427rad)
+  matched the canonical plan within tolerance, its OBSERVED target was
+  reconstructed from physical position/orientation/canonical target
+  distance (never a raw `node.targetDistance` read, which is unreliable for
+  a Freecamera) and matched canonical intent, and `camera_living_b`/
+  `camera_living_c` were confirmed byte-for-byte unchanged from rev11.
+  `rev_golden_0011` was byte-unchanged after the r12 mutation; replay
+  returned all four evidence records (semantic, render-state,
+  material-state, camera-state) without relaunching any DCC process; no
+  `rev_golden_0013` was created. Compiling `rev_golden_0012` through
+  `CoronaRendererAdapter.compileCanonicalMaterialAppearance()` confirmed the
+  camera A plan entry carries `focalLengthMm: 28` and
+  `fovRadians≈1.1426749596672536` with no legacy 24mm value anywhere in the
+  serialized plan. Eleven forced-failure cases (camera missing, camera wrong
+  class, position/rotation/target-distance/FOV write failure, Safe Scene,
+  a simulated FOV degrees-as-radians regression, an orientation mismatch, a
+  target mismatch, and invalid camera-state evidence) all failed closed
+  with no candidate promoted.
+- `test:3dsmax:canonical-golden-corona-preview-rev11`,
+  `test:3dsmax:canonical-material-appearance-revision`,
+  `test:3dsmax:corona-material-appearance`,
+  `test:3dsmax:canonical-golden-corona-preview`,
+  `test:3dsmax:canonical-render-state-revision`,
+  `test:3dsmax:golden-corona-preview`, `test:3dsmax:corona-adapter`,
+  `test:3dsmax:corona-baseline`, `test:3dsmax:revision`,
+  `test:3dsmax:replace-asset`, `test:3dsmax:asset-inspection`,
+  `test:3dsmax:external-asset-ingestion` — all PASS unchanged. In
+  particular, `canonical-golden-corona-preview-rev11` (8H) still
+  builds/verifies `rev_golden_0011` at 24mm only, still performs
+  observation-only camera reuse, and creates no `rev_golden_0012`, so it
+  remains unaffected by 8I's new revision.
+
+Two real defects were found and fixed against real 3ds Max evidence during
+this spike: `Freecamera.targetDistance` is settable via pymxs (used since
+Spike 1B) but not reliably readable back for that class, so
+`verify_canonical_camera_state.py` never reads it — it reconstructs the
+observed target from the genuinely-observable position/orientation combined
+with the already-known canonical target distance instead. Separately, JS
+`Math.hypot()` and Python `math.hypot()` compute the same distance with
+different internal scaling and disagreed at the ~13th significant digit,
+which failed the exact cross-process `targetDistanceMm` evidence comparison
+for two of the three cameras; both languages' `targetDistanceMm`/
+`target_distance_mm` now round to 6 decimal places, eliminating the
+discrepancy without any loss of meaningful precision.
+
+One accepted, non-bug precision nuance: rev11's original hand-authored
+`camera_living_a.transform.rotationEuler` is rounded to ~6 significant
+figures, while the new deterministic `deriveLookAtRotationEuler` computed
+from the same unchanged position/target produces full float precision. This
+makes the rev11 -> rev12 semantic diff report both `focalLengthMm` and
+`transform.rotationEuler` as changed, even though the physical orientation
+is unchanged; this is accepted (not fixed by touching the forbidden rev11
+fixture) and is explicitly permitted by `assertRevisionDiff`'s `SetCamera`
+branch.
+
+Target 3ds Max 2026 verification was not performed; only 2025.3
+compatibility mode is claimed. No test-owned 3ds Max process remained after
+the run; two unrelated interactive `3dsmax.exe` sessions (no batch/script
+arguments) were observed during this session and deliberately left
+untouched.
+
 ## Spike 8H canonical Golden Corona preview from rev11 material state (local commit `553cb38`)
 
 Static gates, all PASS:

@@ -303,3 +303,93 @@
   If the persisted scene had only rendered correctly after fresh temporary
   materials were created, that would have meant 8G's persistence was not
   actually production-usable; this spike's evidence proves it is.
+
+## Canonical camera revision (Spike 8I)
+
+- `scene-change-set-v0.3.schema.json` is a new, separate schema
+  (`schemaVersion: "0.3.0"`); v0.1 and v0.2 are byte-for-byte unchanged and
+  every existing Golden changeset fixture still validates against its own
+  version. `validateSceneChangeSet()` dispatches on `schemaVersion` and
+  fails a recognized-but-unsupported version explicitly rather than falling
+  back to any validator. v0.3 adds exactly one operation, `SetCamera`: an
+  absolute-desired-state mutation whose `parameters` are exactly
+  `position`, `target`, `orientationPolicy` (`const: "look_at_target"`),
+  `focalLengthMm`, and `sensorWidthMm` — `additionalProperties: false`
+  deliberately forbids `rotationEuler` or any other field from the
+  ChangeSet. There is no camera lock model; camera locks are out of scope
+  for this spike.
+- `apps/worker/src/camera-policy.ts` and `tools/3ds-max/python/
+  camera_policy.py` are the single, deliberately mirrored source for all
+  camera math: `deriveCameraFovRadians`/`fov_radians` and
+  `deriveCameraFovDegrees`/`fov_degrees` (`fovRadians = 2 *
+  atan(sensorWidthMm / (2 * focalLengthMm))`), `deriveLookAtRotationEuler`/
+  `look_at_rotation_euler` (canonical atan2-based look-at convention,
+  `pitch = atan2(dz, hypot(dx,dy))`, `yaw = (atan2(dy,dx) + 270) mod 360`),
+  and `targetDistanceMm`/`target_distance_mm` (rounded to 6 decimal places
+  because JS and Python `hypot()` disagree at the ~13th significant digit,
+  which is enough to fail an exact cross-process evidence comparison though
+  far below any meaningful millimeter-scale precision). 3ds Max's
+  MAXScript `Camera.fov` is degrees, never a genuine radian value — the
+  exact Spike 8H boundary defect — and every DCC-side read or write through
+  this module converts explicitly; there is no third, independent copy of
+  this math anywhere in the codebase.
+- The revision engine never accepts a camera's rotation from the
+  ChangeSet: `SetCamera`'s mutation branch in `revision.ts` always derives
+  `transform.rotationEuler` via `deriveLookAtRotationEuler(position,
+  target)`, resolves the target camera by logical ID only (`CAMERA_NOT_FOUND`
+  / `CAMERA_ID_AMBIGUOUS` on zero or multiple matches), and rejects a
+  coincident `position`/`target` (`CAMERA_POSITION_TARGET_INVALID`) and a
+  desired state that exactly equals the current semantic camera state
+  (`CAMERA_STATE_UNCHANGED`) before any DCC launch. `focalLengthMm > 0` and
+  `sensorWidthMm > 0` are enforced by the v0.3 schema itself, not
+  re-validated in the mutation branch.
+- `rev_golden_0012` changes only `camera_living_a.focalLengthMm` (24mm ->
+  28mm); position, target, sensor width, orientation policy, and every
+  other managed entry (including `camera_living_b`/`camera_living_c`) are
+  unchanged, and rev1-rev11 remain byte-identical. `assertRevisionDiff`'s
+  `SetCamera` branch permits `focalLengthMm` and `transform.rotationEuler`
+  as the only fields allowed to change (the latter because rev11's
+  hand-rounded rotation and the newly re-derived full-precision rotation
+  differ below the 7th decimal, a physically meaningless but honest
+  artifact — not suppressed, and not a reason to touch the immutable rev11
+  fixture), always with exactly 13 unchanged entries and no additions or
+  removals. `revisionPlanVersion` is `"0.3.0"` only for `SetCamera`;
+  `"0.1.0"`/`"0.2.0"` plans for other operation types are unaffected.
+- `apply_change_set.py`'s DCC mutation flow for `SetCamera` opens the
+  verified rev11 source, resolves `camera_living_a` by
+  `AIArchViz.LogicalObjectId`, requires its actual class to already be a
+  camera, then writes `position`, the derived `rotation`, `targetDistance`,
+  and `fov` (via `camera_policy.fov_degrees`) in that order, each write
+  independently forceable-to-fail for regression testing
+  (`CAMERA_REALIZATION_FAILED`); the camera node itself is mutated in
+  place and never deleted, recreated, renamed, or reassigned a different
+  `LogicalObjectId`.
+- Promotion requires four independent fresh-process verifiers, not three:
+  the existing semantic-manifest, canonical render-state, and canonical
+  material-state verifiers, plus a new `verify_canonical_camera_state.py`
+  validated against `canonical-camera-state-v0.1`
+  (`validateCanonicalCameraStateEvidence`). Unlike its two render/material
+  siblings, `canonicalCameraStateExpectation()` is deliberately NOT
+  scene-state-"sticky" (cameras exist unconditionally from rev1 with no
+  natural SceneSpec flag to key stickiness off); it is gated purely by
+  `mutation.type === "SetCamera"` at the `applySceneChangeSet` and
+  `replayRevision()` call sites. The render-state and material-state
+  replay gates were both extended to also cover `SetCamera`, since rev12
+  remains a corona/preview, v0.3 scene regardless of which operation
+  produced it.
+- The camera-state verifier checks all three canonical cameras (sorted by
+  `logicalId`), not only the one being mutated, and re-derives the
+  OBSERVED target from physical `node.pos`/`node.rotation` combined with
+  the already-known canonical target distance via `camera_policy
+  .implied_target()` — it never reads `node.targetDistance` back, which is
+  settable but not reliably readable for a `Freecamera`. Its evidence
+  carries tolerance-checked canonical values, matching the
+  `canonical-render-state-v0.1` / `canonical-material-state-v0.1`
+  normalization pattern. Three regression hooks specifically re-prove the
+  8H degrees/radians boundary and related physical-consistency failures:
+  `fov_regression` (treats the raw degrees FOV as if already radians) ->
+  `CAMERA_FOV_MISMATCH`, `orientation_mismatch` -> `CAMERA_ORIENTATION_MISMATCH`,
+  and `target_mismatch` -> `CAMERA_TARGET_MISMATCH`.
+- No render is produced by this spike; rendering `rev_golden_0012` from its
+  canonical camera state is out of scope (a plausible future Spike 8J, not
+  authorized).
