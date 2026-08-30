@@ -747,6 +747,27 @@ Camera changes should preserve architectural geometry.
 
 AI camera critique may propose camera changes but must not silently move room objects to improve composition.
 
+### Technical Spike 8I canonical camera revision
+
+The operation actually implemented is `SetCamera`, not the `UpdateCamera`
+sketch above: an absolute-desired-state operation whose parameters are
+exactly `position`, `target`, `orientationPolicy` (currently only
+`look_at_target`), `focalLengthMm`, and `sensorWidthMm`. It deliberately
+does **not** accept `rotationEuler` or a `verticalCorrection` flag —
+rotation is always derived deterministically from `position`/`target` by
+the worker (the same look-at convention already proven by the Golden fixture
+and the 8H observation-only camera check), so there is never a second,
+competing orientation authority. A request whose desired state already
+matches the canonical camera is rejected pre-DCC
+(`CAMERA_STATE_UNCHANGED`), as is `position === target`
+(`CAMERA_POSITION_TARGET_INVALID`); the target camera is resolved by logical
+ID only (`CAMERA_NOT_FOUND` / `CAMERA_ID_AMBIGUOUS`), never by name. This
+operation lives in `scene-change-set-v0.3.schema.json`
+(`schemaVersion: "0.3.0"`); v0.1 and v0.2 are byte-for-byte unchanged and
+reject `SetCamera` outright. There is no camera lock model yet — locking a
+camera's transform/target/lens is future scope, not reused from
+geometry/transform locks on unrelated object types.
+
 ---
 
 ## 21. Lock Operations

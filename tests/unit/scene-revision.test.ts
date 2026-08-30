@@ -2,9 +2,11 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { validateSceneChangeSet, validateSceneSpec } from "@ai-archviz/scene-spec";
 import { describe, expect, it } from "vitest";
+import { CoronaRendererAdapter } from "../../apps/worker/src/corona-renderer-adapter.js";
 import {
   assertGoldenRevisionDiff,
   assertRevisionDiff,
+  canonicalCameraStateExpectation,
   canonicalMaterialStateExpectation,
   canonicalRenderStateExpectation,
   diffSemanticManifests,
@@ -626,5 +628,225 @@ describe("Technical Spike 8G canonical material appearance revisions", () => {
     expect(diff.added).toEqual([]);
     expect(diff.removed).toEqual([]);
     expect(diff.unchanged).toHaveLength(14);
+  });
+});
+
+describe("Technical Spike 8I canonical camera revisions", () => {
+  function cameraChangeSet(): Record<string, unknown> {
+    return fixture("changesets/set-camera-r12.json");
+  }
+
+  it("accepts the SceneChangeSet v0.3 SetCamera contract and rejects it under v0.1/v0.2", () => {
+    expect(validateSceneChangeSet(cameraChangeSet())).toMatchObject({ ok: true });
+    const asV01 = cameraChangeSet();
+    asV01.schemaVersion = "0.1.0";
+    expect(validateSceneChangeSet(asV01)).toMatchObject({ ok: false });
+    const asV02 = cameraChangeSet();
+    asV02.schemaVersion = "0.2.0";
+    expect(validateSceneChangeSet(asV02)).toMatchObject({ ok: false });
+  });
+
+  it("rejects an unsupported SceneChangeSet version outright", () => {
+    const unsupported = cameraChangeSet();
+    unsupported.schemaVersion = "0.4.0";
+    expect(validateSceneChangeSet(unsupported)).toMatchObject({ ok: false });
+  });
+
+  it("preserves the single-operation invariant for v0.3", () => {
+    const composite = cameraChangeSet() as { operations: unknown[] };
+    composite.operations.push(...composite.operations);
+    expect(validateSceneChangeSet(composite)).toMatchObject({ ok: false });
+  });
+
+  it("rejects rotationEuler supplied in SetCamera parameters (rotation is always derived)", () => {
+    const withRotation = cameraChangeSet() as {
+      operations: Array<{ parameters: Record<string, unknown> }>;
+    };
+    const operation = withRotation.operations[0];
+    if (!operation) throw new Error("SetCamera operation missing");
+    operation.parameters.rotationEuler = [0, 0, 0];
+    expect(validateSceneChangeSet(withRotation)).toMatchObject({ ok: false });
+  });
+
+  it("computes exactly the committed rev12 SceneSpec and revisionPlanVersion 0.3.0", () => {
+    const rev11Scene = fixture("revisions/rev_golden_0011/scene-spec.json");
+    const sourceOrder = structuredClone(rev11Scene);
+    const result = planSceneRevision(rev11Scene, cameraChangeSet());
+    const expected = fixture("revisions/rev_golden_0012/scene-spec.json");
+    expect(validateSceneSpec(expected)).toMatchObject({ ok: true });
+    expect(result.targetSceneSpec).toEqual(expected);
+    expect(result.plan.revisionPlanVersion).toBe("0.3.0");
+    // The pure transition never mutates its base-scene input.
+    expect(rev11Scene).toEqual(sourceOrder);
+    expect(result.plan.operation).toEqual({
+      operationId: "op_set_camera_r12",
+      type: "SetCamera",
+      targetId: "camera_living_a",
+      position: [1200, 3800, 1500],
+      target: [3000, 200, 1300],
+      orientationPolicy: "look_at_target",
+      derivedRotationEuler: [-2.8447103878693705, 0, 206.56505117707798],
+      focalLengthMm: 28,
+      sensorWidthMm: 36,
+      fovRadians: 1.1426749596672536,
+      fovDegrees: 65.4704525442152,
+    });
+  });
+
+  it("does not upgrade revisionPlanVersion for unrelated operations", () => {
+    const result = planSceneRevision(
+      fixture("revisions/rev_golden_0009/scene-spec.json"),
+      fixture("changesets/add-key-area-light-r10.json"),
+    );
+    expect(result.plan.revisionPlanVersion).toBe("0.1.0");
+  });
+
+  it("leaves camera_living_b and camera_living_c fully unchanged", () => {
+    const result = planSceneRevision(
+      fixture("revisions/rev_golden_0011/scene-spec.json"),
+      cameraChangeSet(),
+    );
+    const rev11Cameras = (
+      fixture("revisions/rev_golden_0011/scene-spec.json") as { cameras: Array<{ id: string }> }
+    ).cameras;
+    const targetCameras = (result.targetSceneSpec as { cameras: Array<{ id: string }> }).cameras;
+    for (const id of ["camera_living_b", "camera_living_c"]) {
+      expect(targetCameras.find((camera) => camera.id === id)).toEqual(
+        rev11Cameras.find((camera) => camera.id === id),
+      );
+    }
+  });
+
+  it("blocks a stale base revision and a wrong scene target", () => {
+    const stale = cameraChangeSet();
+    stale.baseRevisionId = "rev_golden_0010";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0011/scene-spec.json"), stale),
+      ),
+    ).toBe("STALE_REVISION");
+
+    const wrongTarget = cameraChangeSet() as { operations: Array<{ targetId: string }> };
+    const wrongOperation = wrongTarget.operations[0];
+    if (!wrongOperation) throw new Error("SetCamera operation missing");
+    wrongOperation.targetId = "camera_missing_entirely";
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0011/scene-spec.json"), wrongTarget),
+      ),
+    ).toBe("CAMERA_NOT_FOUND");
+  });
+
+  it("blocks position equal to target before any DCC launch", () => {
+    const coincident = cameraChangeSet() as {
+      operations: Array<{ parameters: { position: number[]; target: number[] } }>;
+    };
+    const operation = coincident.operations[0];
+    if (!operation) throw new Error("SetCamera operation missing");
+    operation.parameters.target = [...operation.parameters.position];
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0011/scene-spec.json"), coincident),
+      ),
+    ).toBe("CAMERA_POSITION_TARGET_INVALID");
+  });
+
+  it("blocks a SetCamera request whose desired state already matches the canonical camera", () => {
+    const unchanged = cameraChangeSet() as {
+      operations: Array<{ parameters: { focalLengthMm: number } }>;
+    };
+    const operation = unchanged.operations[0];
+    if (!operation) throw new Error("SetCamera operation missing");
+    operation.parameters.focalLengthMm = 24;
+    expect(
+      errorCode(() =>
+        planSceneRevision(fixture("revisions/rev_golden_0011/scene-spec.json"), unchanged),
+      ),
+    ).toBe("CAMERA_STATE_UNCHANGED");
+  });
+
+  it("blocks a duplicate camera logical ID target", () => {
+    const scene = fixture("revisions/rev_golden_0011/scene-spec.json") as {
+      cameras: Array<Record<string, unknown>>;
+    };
+    const cameraA = scene.cameras.find((camera) => camera.id === "camera_living_a");
+    if (!cameraA) throw new Error("camera_living_a missing");
+    scene.cameras.push({ ...cameraA });
+    expect(errorCode(() => planSceneRevision(scene, cameraChangeSet()))).toBe(
+      "CAMERA_ID_AMBIGUOUS",
+    );
+  });
+
+  it("reports only camera_living_a as changed, with 13 other managed entries unchanged", () => {
+    const diff = diffSemanticManifests(
+      fixture("revisions/rev_golden_0011/expected-scene-manifest.json"),
+      fixture("revisions/rev_golden_0012/expected-scene-manifest.json"),
+    );
+    expect(() => assertRevisionDiff(diff, cameraChangeSet() as never)).not.toThrow();
+    expect(diff.changed).toHaveLength(1);
+    expect(diff.changed[0]?.logicalId).toBe("camera_living_a");
+    expect(Object.keys(diff.changed[0]?.changes ?? {}).sort()).toEqual([
+      "focalLengthMm",
+      "transform.rotationEuler",
+    ]);
+    expect(diff.added).toEqual([]);
+    expect(diff.removed).toEqual([]);
+    expect(diff.unchanged).toHaveLength(13);
+  });
+
+  it("produces the exact rev12 canonical camera-state oracle, verifying all three cameras", () => {
+    const expected = canonicalCameraStateExpectation(
+      fixture("revisions/rev_golden_0012/scene-spec.json"),
+    );
+    expect(expected).not.toBeNull();
+    const value = expected as {
+      cameraStateVersion: string;
+      revisionId: string;
+      sceneSpecVersion: string;
+      cameras: Array<Record<string, unknown>>;
+      status: string;
+    };
+    expect(value.cameraStateVersion).toBe("0.1.0");
+    expect(value.revisionId).toBe("rev_golden_0012");
+    expect(value.sceneSpecVersion).toBe("0.3.0");
+    expect(value.status).toBe("PASS");
+    expect(value.cameras.map((camera) => camera.logicalId)).toEqual([
+      "camera_living_a",
+      "camera_living_b",
+      "camera_living_c",
+    ]);
+    const cameraA = value.cameras.find((camera) => camera.logicalId === "camera_living_a");
+    expect(cameraA).toMatchObject({
+      actualClass: "Freecamera",
+      canonicalPosition: [1200, 3800, 1500],
+      canonicalTarget: [3000, 200, 1300],
+      orientationPolicy: "look_at_target",
+      focalLengthMm: 28,
+      sensorWidthMm: 36,
+    });
+    expect((cameraA as { expectedFovRadians: number }).expectedFovRadians).toBeCloseTo(
+      1.1426749596672536,
+      14,
+    );
+    expect((cameraA as { expectedFovDegrees: number }).expectedFovDegrees).toBeCloseTo(
+      65.4704525442152,
+      10,
+    );
+  });
+
+  it("compiles rev12 through compileCanonicalMaterialAppearance() with the new 28mm camera and no legacy 24mm value", () => {
+    const rev12Scene = fixture("revisions/rev_golden_0012/scene-spec.json");
+    const renderJob = fixture("render-job-v0.2-camera-living-a.json");
+    const plan = new CoronaRendererAdapter().compileCanonicalMaterialAppearance(
+      rev12Scene,
+      renderJob,
+    );
+    expect(plan.camera).toMatchObject({
+      logicalId: "camera_living_a",
+      focalLengthMm: 28,
+      sensorWidthMm: 36,
+    });
+    expect(plan.camera.fovRadians).toBeCloseTo(1.1426749596672536, 14);
+    expect(JSON.stringify(plan.camera)).not.toContain('"focalLengthMm":24');
   });
 });

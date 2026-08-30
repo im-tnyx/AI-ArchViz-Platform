@@ -436,3 +436,56 @@ historical coverage, not superseded.
   noise), and a top-level `sameIdSharedInstance`/`differentIdDistinctInstances`
   deduplication proof. This spike's compatibility evidence targets 3ds Max
   `2025.3`; no 2026 verification is claimed.
+
+## Spike 8I: canonical camera revision contract
+
+`rev_golden_0012` is the first Golden revision to change camera state:
+`camera_living_a`'s `focalLengthMm` moves from `24` to `28` via the new
+`SetCamera` operation (`scene-change-set-v0.3.schema.json`,
+`revisionPlanVersion: "0.3.0"`), deliberately isolating and permanently
+regression-testing the exact degrees/radians FOV boundary that produced the
+real Spike 8H defect. `position`/`target`/`sensorWidthMm`/`orientationPolicy`
+and camera identity are unchanged; `camera_living_b`/`camera_living_c` are
+untouched. `rev_golden_0001`-`rev_golden_0011` remain byte-identical; no
+SceneSpec schema change was needed (the existing v0.3 camera contract
+already carries every required field) and no render is required or produced
+by this spike — rendering `rev_golden_0012` is 8J's job.
+- `apps/worker/src/camera-policy.ts` (mirrored exactly by
+  `tools/3ds-max/python/camera_policy.py`, so the TS and Python sides can
+  never independently drift) is the single source for
+  `deriveCameraFovRadians`/`deriveCameraFovDegrees`/`deriveLookAtRotationEuler`.
+  `corona-renderer-adapter.ts`'s own `deriveCameraFovRadians` now re-exports
+  the shared implementation rather than defining a second copy. 3ds Max's
+  MAXScript `Camera.fov` is degrees; the FOV formula's own radian output
+  must be converted with `radiansToDegrees`/`degreesToRadians` at every DCC
+  boundary crossing — assigning a radian value directly to `camera.fov`
+  (the Spike 8H defect shape) is exactly what this spike's regression test
+  reproduces and requires the fresh camera-state verifier to reject.
+- `apply_change_set.py`'s `SetCamera` branch mutates the existing canonical
+  camera node in place — it never deletes or recreates it, and canonical
+  logical identity (`camera_living_a`) is preserved throughout. Rotation is
+  never accepted from the ChangeSet: the worker derives it deterministically
+  from `position`/`target` before the mutation ever runs, and the DCC script
+  only ever writes the already-derived value.
+- Promotion requires four independent fresh-process verifiers, not three:
+  the existing semantic-manifest, canonical render-state, and canonical
+  material-state verifiers (still sticky — rev12 is still `corona`/`preview`
+  and still SceneSpec v0.3, so both continue to apply and must still pass
+  unweakened), plus a new `verify_canonical_camera_state.py` validated
+  against `canonical-camera-state-v0.1`. Unlike the render-state/material-
+  state contracts, camera-state has no scene-level "once true, always true"
+  flag comparable to `render.engine`/`sceneSpecVersion` (cameras exist
+  unconditionally from rev1) — activation is gated by operation type
+  (`SetCamera` only) at the call site instead of inventing a new SceneSpec
+  field.
+- The camera-state verifier proves ALL canonical cameras (not only the one
+  that changed), sorted by `logicalId`, and derives the OBSERVED target from
+  physical state (`position` + orientation + `targetDistance`) rather than
+  trusting only stored metadata — `camera_policy.implied_target()` is the
+  exact inverse of `deriveLookAtRotationEuler`. A forced `fov_regression`
+  hook simulates the historical degrees-as-radians defect at the verifier's
+  own comparison logic to prove it still fails closed
+  (`CAMERA_FOV_MISMATCH`); `orientation_mismatch`/`target_mismatch` hooks
+  prove the rotation- and target-tolerance checks are load-bearing, not
+  decorative. This spike's compatibility evidence targets 3ds Max `2025.3`;
+  no 2026 verification is claimed.

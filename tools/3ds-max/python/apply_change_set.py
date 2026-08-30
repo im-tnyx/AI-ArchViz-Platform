@@ -14,13 +14,14 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from pymxs import runtime as rt
 
+import camera_policy
 import render_corona_baseline as corona
 import render_corona_material_appearance as material_appearance
 import verify_scene
 
 
 REVISION_RUNNER_VERSION = "0.1.0"
-SUPPORTED_REVISION_PLAN_VERSIONS = {"0.1.0", "0.2.0"}
+SUPPORTED_REVISION_PLAN_VERSIONS = {"0.1.0", "0.2.0", "0.3.0"}
 LOCK_USER_PROPERTIES = {
     "geometry": "AIArchViz.LockGeometry",
     "transform": "AIArchViz.LockTransform",
@@ -228,11 +229,12 @@ def apply_revision() -> dict[str, Any]:
         "SetRenderIntent",
         "AddLight",
         "MigrateMaterialAppearanceContract",
+        "SetCamera",
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
             "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, "
-            "ReplaceAsset, SetRenderIntent, AddLight, and MigrateMaterialAppearanceContract only",
+            "ReplaceAsset, SetRenderIntent, AddLight, MigrateMaterialAppearanceContract, and SetCamera only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
@@ -296,6 +298,7 @@ def apply_revision() -> dict[str, Any]:
     render_intent_configured = False
     added_light_id: str | None = None
     migrated_material_count: int | None = None
+    set_camera_target_id: str | None = None
     if operation["type"] == "SetRenderIntent":
         if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "corona_missing":
             raise MutationError("CORONA_NOT_FOUND", "Trusted test forced Corona absence")
@@ -502,6 +505,50 @@ def apply_revision() -> dict[str, Any]:
                         "instance",
                     )
         migrated_material_count = len(native_appearance_materials)
+    elif operation["type"] == "SetCamera":
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "timeout":
+            import time
+
+            time.sleep(300)
+        if "camera" not in str(rt.superClassOf(target)).lower():
+            raise MutationError("CAMERA_NOT_FOUND", f"Target {target_id} is not a Camera")
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "camera_missing":
+            raise MutationError("CAMERA_NOT_FOUND", "Trusted test forced camera absence")
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "camera_wrong_class":
+            raise MutationError("CAMERA_NOT_FOUND", "Trusted test forced wrong camera class")
+        camera_position = [float(component) for component in operation["position"]]
+        camera_target_point = [float(component) for component in operation["target"]]
+        derived_rotation = operation["derivedRotationEuler"]
+        focal_length_mm = float(operation["focalLengthMm"])
+        sensor_width_mm = float(operation["sensorWidthMm"])
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "position_write_failure":
+            raise MutationError(
+                "CAMERA_REALIZATION_FAILED", "Trusted test forced camera position write failure"
+            )
+        target.pos = _point(camera_position)
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "rotation_write_failure":
+            raise MutationError(
+                "CAMERA_REALIZATION_FAILED", "Trusted test forced camera rotation write failure"
+            )
+        target.rotation = rt.EulerAngles(
+            float(derived_rotation[0]), float(derived_rotation[1]), float(derived_rotation[2])
+        )
+        if (
+            os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE")
+            == "target_distance_write_failure"
+        ):
+            raise MutationError(
+                "CAMERA_REALIZATION_FAILED", "Trusted test forced targetDistance write failure"
+            )
+        target.targetDistance = rt.distance(target.pos, _point(camera_target_point))
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "fov_write_failure":
+            raise MutationError(
+                "CAMERA_REALIZATION_FAILED", "Trusted test forced camera FOV write failure"
+            )
+        # MAXScript's Camera.fov is degrees; never assign a radian value here
+        # (the exact Spike 8H regression this operation must never reintroduce).
+        target.fov = camera_policy.fov_degrees(focal_length_mm, sensor_width_mm)
+        set_camera_target_id = target_id
     elif operation["type"] == "MoveObject":
         transform = operation["transform"]
         target.pos = _point(transform["position"])
@@ -730,6 +777,15 @@ def apply_revision() -> dict[str, Any]:
                 entry["assetDefinitionId"] = operation["newAssetDefinition"]["id"]
                 entry["dimensions"] = operation["newAssetDefinition"]["dimensions"]
                 metadata["AIArchViz.AssetDefinitionId"] = operation["newAssetDefinition"]["id"]
+            elif operation["type"] == "SetCamera":
+                entry["transform"] = {
+                    "position": operation["position"],
+                    "rotationEuler": operation["derivedRotationEuler"],
+                    "scale": entry["transform"]["scale"],
+                }
+                entry["target"] = operation["target"]
+                entry["focalLengthMm"] = operation["focalLengthMm"]
+                entry["sensorWidthMm"] = operation["sensorWidthMm"]
             elif operation["type"] in {"LockProperty", "UnlockProperty"}:
                 current_locks = entry.get("locks", {})
                 if not isinstance(current_locks, dict):
@@ -778,6 +834,7 @@ def apply_revision() -> dict[str, Any]:
         "renderIntentConfigured": render_intent_configured,
         "addedLightId": added_light_id,
         "migratedMaterialCount": migrated_material_count,
+        "setCameraTargetId": set_camera_target_id,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/canonical-camera-state-v0.1.schema.json",
+  "title": "AI ArchViz Canonical Camera State Evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cameraStateVersion",
+    "projectId",
+    "sceneId",
+    "revisionId",
+    "sceneSpecVersion",
+    "cameras",
+    "status"
+  ],
+  "properties": {
+    "cameraStateVersion": { "const": "0.1.0" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "sceneSpecVersion": { "enum": ["0.1.0", "0.2.0", "0.3.0"] },
+    "cameras": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/cameraState" } },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "vector3": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "type": "number" },
+        { "type": "number" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "cameraState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalId",
+        "actualClass",
+        "canonicalPosition",
+        "observedPosition",
+        "canonicalTarget",
+        "observedTarget",
+        "orientationPolicy",
+        "canonicalRotationEuler",
+        "observedRotationEuler",
+        "focalLengthMm",
+        "sensorWidthMm",
+        "expectedFovRadians",
+        "expectedFovDegrees",
+        "observedFovRadians",
+        "observedFovDegrees",
+        "targetDistanceMm"
+      ],
+      "properties": {
+        "logicalId": { "$ref": "#/$defs/id" },
+        "actualClass": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "canonicalPosition": { "$ref": "#/$defs/vector3" },
+        "observedPosition": { "$ref": "#/$defs/vector3" },
+        "canonicalTarget": { "$ref": "#/$defs/vector3" },
+        "observedTarget": { "$ref": "#/$defs/vector3" },
+        "orientationPolicy": { "const": "look_at_target" },
+        "canonicalRotationEuler": { "$ref": "#/$defs/vector3" },
+        "observedRotationEuler": { "$ref": "#/$defs/vector3" },
+        "focalLengthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "sensorWidthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "expectedFovRadians": { "type": "number", "exclusiveMinimum": 0, "maximum": 3.141592653589793 },
+        "expectedFovDegrees": { "type": "number", "exclusiveMinimum": 0, "maximum": 180 },
+        "observedFovRadians": { "type": "number", "exclusiveMinimum": 0, "maximum": 3.141592653589793 },
+        "observedFovDegrees": { "type": "number", "exclusiveMinimum": 0, "maximum": 180 },
+        "targetDistanceMm": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    }
+  }
+}

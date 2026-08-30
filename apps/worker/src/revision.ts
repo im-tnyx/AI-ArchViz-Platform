@@ -8,9 +8,11 @@ import {
   validateSceneSpec,
 } from "@ai-archviz/scene-spec";
 import {
+  type CanonicalCameraStateEvidence,
   type CanonicalMaterialStateEvidence,
   type JobEnvelope,
   semanticJsonHash,
+  validateCanonicalCameraStateEvidence,
   validateCanonicalMaterialStateEvidence,
   validateCanonicalRenderStateEvidence,
   validateExecutionReport,
@@ -24,6 +26,12 @@ import {
   type Vector3,
   wallFrame,
 } from "./build-plan.js";
+import {
+  deriveCameraFovDegrees,
+  deriveCameraFovRadians,
+  deriveLookAtRotationEuler,
+  targetDistanceMm,
+} from "./camera-policy.js";
 import type { WorkerConfig } from "./config.js";
 import {
   coronaCanonicalAreaLightWidthMm,
@@ -132,6 +140,19 @@ interface MigrateMaterialAppearanceContractOperation {
   };
 }
 
+interface SetCameraOperation {
+  operationId: string;
+  type: "SetCamera";
+  targetId: string;
+  parameters: {
+    position: Vector3;
+    target: Vector3;
+    orientationPolicy: "look_at_target";
+    focalLengthMm: number;
+    sensorWidthMm: number;
+  };
+}
+
 type LockPropertyPath = "geometry" | "transform" | "material";
 type PropertyLockOperation = LockPropertyOperation | UnlockPropertyOperation;
 
@@ -143,10 +164,11 @@ type SupportedOperation =
   | ReplaceAssetOperation
   | SetRenderIntentOperation
   | AddLightOperation
-  | MigrateMaterialAppearanceContractOperation;
+  | MigrateMaterialAppearanceContractOperation
+  | SetCameraOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
-  schemaVersion: "0.1.0" | "0.2.0";
+  schemaVersion: "0.1.0" | "0.2.0" | "0.3.0";
   changeSetId: string;
   projectId: string;
   sceneId: string;
@@ -201,7 +223,15 @@ interface SceneDocument extends Record<string, unknown> {
     transform: SemanticTransform;
     locks: { geometry: boolean; transform: boolean; material: boolean };
   }>;
-  cameras: Array<{ id: string }>;
+  cameras: Array<{
+    id: string;
+    spaceId: string;
+    transform: SemanticTransform;
+    target: Vector3;
+    orientationPolicy: "look_at_target";
+    focalLengthMm: number;
+    sensorWidthMm: number;
+  }>;
   materials: Array<{
     id: string;
     name: string;
@@ -314,8 +344,22 @@ interface MigrateMaterialAppearanceMutation {
   materialAssignments: Array<{ targetId: string; materialId: string }>;
 }
 
+interface SetCameraMutation {
+  operationId: string;
+  type: "SetCamera";
+  targetId: string;
+  position: Vector3;
+  target: Vector3;
+  orientationPolicy: "look_at_target";
+  derivedRotationEuler: Vector3;
+  focalLengthMm: number;
+  sensorWidthMm: number;
+  fovRadians: number;
+  fovDegrees: number;
+}
+
 export interface RevisionMutationPlan {
-  revisionPlanVersion: "0.1.0" | "0.2.0";
+  revisionPlanVersion: "0.1.0" | "0.2.0" | "0.3.0";
   changeSetId: string;
   projectId: string;
   sceneId: string;
@@ -329,7 +373,8 @@ export interface RevisionMutationPlan {
     | ReplaceAssetMutation
     | SetRenderIntentMutation
     | AddLightMutation
-    | MigrateMaterialAppearanceMutation;
+    | MigrateMaterialAppearanceMutation
+    | SetCameraMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -387,6 +432,8 @@ export interface RevisionResult {
   renderStateEvidence: CanonicalRenderStateEvidence | null;
   materialStateVerificationProcess: ControlledProcessResult | null;
   materialStateEvidence: CanonicalMaterialStateEvidence | null;
+  cameraStateVerificationProcess: ControlledProcessResult | null;
+  cameraStateEvidence: CanonicalCameraStateEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   report: RevisionExecutionReport | null;
@@ -536,12 +583,13 @@ export function planSceneRevision(
           "SetRenderIntent",
           "AddLight",
           "MigrateMaterialAppearanceContract",
+          "SetCamera",
         ].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, AddLight, and MigrateMaterialAppearanceContract only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, AddLight, MigrateMaterialAppearanceContract, and SetCamera only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -586,7 +634,8 @@ export function planSceneRevision(
     | ReplaceAssetMutation
     | SetRenderIntentMutation
     | AddLightMutation
-    | MigrateMaterialAppearanceMutation;
+    | MigrateMaterialAppearanceMutation
+    | SetCameraMutation;
   if (operation?.type === "SetRenderIntent") {
     if (operation.targetId !== base.scene.id) {
       throw new RevisionValidationError(
@@ -767,6 +816,75 @@ export function planSceneRevision(
         targetId: assignment.targetId,
         materialId: assignment.materialId,
       })),
+    };
+  } else if (operation?.type === "SetCamera") {
+    const cameraMatches = base.cameras.filter((camera) => camera.id === operation.targetId);
+    if (cameraMatches.length === 0) {
+      throw new RevisionValidationError(
+        "CAMERA_NOT_FOUND",
+        `Camera ${operation.targetId} was not found`,
+      );
+    }
+    if (cameraMatches.length > 1) {
+      throw new RevisionValidationError(
+        "CAMERA_ID_AMBIGUOUS",
+        `Camera ${operation.targetId} is not unique`,
+      );
+    }
+    const currentCamera = cameraMatches[0] as SceneDocument["cameras"][number];
+    const { position, target, orientationPolicy, focalLengthMm, sensorWidthMm } =
+      operation.parameters;
+    if (position[0] === target[0] && position[1] === target[1] && position[2] === target[2]) {
+      throw new RevisionValidationError(
+        "CAMERA_POSITION_TARGET_INVALID",
+        `Camera ${operation.targetId} position and target must differ`,
+      );
+    }
+    const desiredState = { position, target, orientationPolicy, focalLengthMm, sensorWidthMm };
+    const currentState = {
+      position: currentCamera.transform.position,
+      target: currentCamera.target,
+      orientationPolicy: currentCamera.orientationPolicy,
+      focalLengthMm: currentCamera.focalLengthMm,
+      sensorWidthMm: currentCamera.sensorWidthMm,
+    };
+    if (isDeepStrictEqual(desiredState, currentState)) {
+      throw new RevisionValidationError(
+        "CAMERA_STATE_UNCHANGED",
+        `Camera ${operation.targetId} already matches the desired SetCamera state`,
+      );
+    }
+    // deriveLookAtRotationEuler only throws when position === target, which
+    // the check above already excludes.
+    const derivedRotationEuler = deriveLookAtRotationEuler(position, target) as Vector3;
+    const targetCamera = targetSceneSpec.cameras.find((camera) => camera.id === operation.targetId);
+    if (!targetCamera) {
+      throw new RevisionValidationError(
+        "CAMERA_NOT_FOUND",
+        `Camera ${operation.targetId} was not found`,
+      );
+    }
+    targetCamera.transform = {
+      position: structuredClone(position),
+      rotationEuler: derivedRotationEuler,
+      scale: structuredClone(currentCamera.transform.scale),
+    };
+    targetCamera.target = structuredClone(target);
+    targetCamera.orientationPolicy = orientationPolicy;
+    targetCamera.focalLengthMm = focalLengthMm;
+    targetCamera.sensorWidthMm = sensorWidthMm;
+    mutation = {
+      operationId: operation.operationId,
+      type: "SetCamera",
+      targetId: operation.targetId,
+      position: structuredClone(position),
+      target: structuredClone(target),
+      orientationPolicy,
+      derivedRotationEuler,
+      focalLengthMm,
+      sensorWidthMm,
+      fovRadians: deriveCameraFovRadians(focalLengthMm, sensorWidthMm),
+      fovDegrees: deriveCameraFovDegrees(focalLengthMm, sensorWidthMm),
     };
   } else if (operation?.type === "MoveObject") {
     const matches = base.assets.filter((asset) => asset.id === operation.targetId);
@@ -1051,7 +1169,11 @@ export function planSceneRevision(
     targetSceneSpec,
     plan: {
       revisionPlanVersion:
-        mutation.type === "MigrateMaterialAppearanceContract" ? "0.2.0" : "0.1.0",
+        mutation.type === "SetCamera"
+          ? "0.3.0"
+          : mutation.type === "MigrateMaterialAppearanceContract"
+            ? "0.2.0"
+            : "0.1.0",
       changeSetId: changeSet.changeSetId,
       projectId: changeSet.projectId,
       sceneId: changeSet.sceneId,
@@ -1417,6 +1539,36 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
     }
     return;
   }
+  if (operation?.type === "SetCamera") {
+    // A SetCamera mutation may touch any combination of these leaf fields
+    // depending on which parameters actually changed; the Golden fixture
+    // deliberately exercises only focalLengthMm (see Spike 8I scope), but
+    // the operation itself is a general absolute-camera-state contract.
+    const allowedCameraFields = new Set([
+      "focalLengthMm",
+      "sensorWidthMm",
+      "target",
+      "transform.position",
+      "transform.rotationEuler",
+    ]);
+    if (
+      diff.revision.before !== changeSet.baseRevisionId ||
+      diff.revision.after !== changeSet.targetRevisionId ||
+      diff.changed.length !== 1 ||
+      change?.logicalId !== operation.targetId ||
+      changedFields.length === 0 ||
+      !changedFields.every((field) => allowedCameraFields.has(field)) ||
+      diff.added.length !== 0 ||
+      diff.removed.length !== 0 ||
+      diff.unchanged.length !== 13
+    ) {
+      throw new RevisionValidationError(
+        "UNEXPECTED_SEMANTIC_DIFF",
+        `Revision changed unexpected semantic state: ${JSON.stringify(diff)}`,
+      );
+    }
+    return;
+  }
   if (operation?.type === "ReplaceAsset") {
     if (
       diff.revision.before !== changeSet.baseRevisionId ||
@@ -1586,6 +1738,55 @@ export function canonicalMaterialStateExpectation(
   };
 }
 
+/**
+ * Computes the canonical camera-state evidence for every camera in `scene`.
+ * Unlike `canonicalRenderStateExpectation`/`canonicalMaterialStateExpectation`,
+ * this is not internally gated by scene state: cameras exist unconditionally
+ * from rev1, so there is no scene-level flag comparable to `render.engine`
+ * or `sceneSpecVersion` that would let it self-activate "once true, always
+ * true" without inventing a new SceneSpec field. Callers gate its use by
+ * operation type (`SetCamera` only) instead, so promoting a MoveObject or
+ * MigrateMaterialAppearanceContract revision never requires a camera-state
+ * fixture that never existed for it.
+ */
+export function canonicalCameraStateExpectation(
+  scene: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const value = scene as unknown as SceneDocument;
+  if (!Array.isArray(value.cameras) || value.cameras.length === 0) return null;
+  const cameras = [...value.cameras].sort((left, right) => left.id.localeCompare(right.id));
+  return {
+    cameraStateVersion: "0.1.0",
+    projectId: value.project.id,
+    sceneId: value.scene.id,
+    revisionId: value.scene.revisionId,
+    sceneSpecVersion: value.sceneSpecVersion,
+    cameras: cameras.map((camera) => {
+      const fovRadians = deriveCameraFovRadians(camera.focalLengthMm, camera.sensorWidthMm);
+      const fovDegrees = deriveCameraFovDegrees(camera.focalLengthMm, camera.sensorWidthMm);
+      return {
+        logicalId: camera.id,
+        actualClass: "Freecamera",
+        canonicalPosition: [...camera.transform.position],
+        observedPosition: [...camera.transform.position],
+        canonicalTarget: [...camera.target],
+        observedTarget: [...camera.target],
+        orientationPolicy: camera.orientationPolicy,
+        canonicalRotationEuler: [...camera.transform.rotationEuler],
+        observedRotationEuler: [...camera.transform.rotationEuler],
+        focalLengthMm: camera.focalLengthMm,
+        sensorWidthMm: camera.sensorWidthMm,
+        expectedFovRadians: fovRadians,
+        expectedFovDegrees: fovDegrees,
+        observedFovRadians: fovRadians,
+        observedFovDegrees: fovDegrees,
+        targetDistanceMm: targetDistanceMm(camera.transform.position, camera.target),
+      };
+    }),
+    status: "PASS",
+  };
+}
+
 function findVerifiedBaseArtifact(
   config: WorkerConfig,
   identity: { projectId: string; sceneId: string; revisionId: string },
@@ -1679,6 +1880,8 @@ function noExecution(
     renderStateEvidence: null,
     materialStateVerificationProcess: null,
     materialStateEvidence: null,
+    cameraStateVerificationProcess: null,
+    cameraStateEvidence: null,
     comparison: null,
     semanticDiff: null,
     report: null,
@@ -1710,6 +1913,8 @@ interface RevisionContext {
   renderStateEvidence: CanonicalRenderStateEvidence | null;
   materialStateVerificationProcess: ControlledProcessResult | null;
   materialStateEvidence: CanonicalMaterialStateEvidence | null;
+  cameraStateVerificationProcess: ControlledProcessResult | null;
+  cameraStateEvidence: CanonicalCameraStateEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   baseArtifactPath: string;
@@ -1775,6 +1980,8 @@ function resultFor(context: RevisionContext, report: RevisionExecutionReport): R
     renderStateEvidence: context.renderStateEvidence,
     materialStateVerificationProcess: context.materialStateVerificationProcess,
     materialStateEvidence: context.materialStateEvidence,
+    cameraStateVerificationProcess: context.cameraStateVerificationProcess,
+    cameraStateEvidence: context.cameraStateEvidence,
     comparison: context.comparison,
     semanticDiff: context.semanticDiff,
     report,
@@ -1866,6 +2073,7 @@ export async function applySceneChangeSet(
     plan: RevisionMutationPlan;
     expectedRenderState: Record<string, unknown> | null;
     expectedMaterialState: Record<string, unknown> | null;
+    expectedCameraState: Record<string, unknown> | null;
     baseArtifactPath: string;
     baseArtifactHash: string;
   };
@@ -1963,6 +2171,10 @@ export async function applySceneChangeSet(
       plan: planned.plan,
       expectedRenderState: canonicalRenderStateExpectation(targetScene),
       expectedMaterialState: canonicalMaterialStateExpectation(targetScene),
+      expectedCameraState:
+        planned.plan.operation.type === "SetCamera"
+          ? canonicalCameraStateExpectation(targetScene)
+          : null,
       baseArtifactPath: verifiedBase.artifactPath,
       baseArtifactHash: verifiedBase.artifactHash,
     };
@@ -2059,6 +2271,8 @@ export async function applySceneChangeSet(
       renderStateEvidence: null,
       materialStateVerificationProcess: null,
       materialStateEvidence: null,
+      cameraStateVerificationProcess: null,
+      cameraStateEvidence: null,
       comparison: null,
       semanticDiff: null,
       baseArtifactPath: prepared.baseArtifactPath,
@@ -2070,6 +2284,9 @@ export async function applySceneChangeSet(
     writeDeterministicJson(workspace.expectedManifestPath, prepared.expectedManifest);
     if (prepared.expectedMaterialState) {
       writeDeterministicJson(workspace.expectedMaterialStatePath, prepared.expectedMaterialState);
+    }
+    if (prepared.expectedCameraState) {
+      writeDeterministicJson(workspace.expectedCameraStatePath, prepared.expectedCameraState);
     }
     if (prepared.expectedRenderState) {
       writeDeterministicJson(workspace.expectedRenderStatePath, prepared.expectedRenderState);
@@ -2121,7 +2338,11 @@ export async function applySceneChangeSet(
           AI_ARCHVIZ_MUTATION_RESULT_PATH: workspace.mutationResultPath,
           AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE:
             process.env.AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE,
-          ...(prepared.expectedRenderState || prepared.expectedMaterialState
+          AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE:
+            process.env.AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE,
+          ...(prepared.expectedRenderState ||
+          prepared.expectedMaterialState ||
+          prepared.expectedCameraState
             ? { AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1" }
             : {}),
         },
@@ -2383,6 +2604,92 @@ export async function applySceneChangeSet(
       }
       context.materialStateEvidence = materialStateEvidence;
     }
+    if (prepared.expectedCameraState) {
+      context.cameraStateVerificationProcess = await runControlledProcess({
+        executable: context.dcc.batchExecutablePath,
+        args: threeDsMaxBatchArguments(
+          resolve(config.repositoryRoot, "tools/3ds-max/python/verify_canonical_camera_state.py"),
+        ),
+        cwd: context.dcc.installationPath ?? dirname(context.dcc.batchExecutablePath),
+        timeoutMs,
+        env: buildDccChildEnvironment({
+          overrides: {
+            AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
+            AI_ARCHVIZ_EXPECTED_CAMERA_STATE_PATH: workspace.expectedCameraStatePath,
+            AI_ARCHVIZ_CAMERA_STATE_PATH: workspace.cameraStatePath,
+            AI_ARCHVIZ_CAMERA_STATE_RESULT_PATH: workspace.cameraStateResultPath,
+            AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE:
+              process.env.AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE,
+            AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
+          },
+        }),
+        outputEncoding: "utf16le",
+      });
+      if (context.cameraStateVerificationProcess.errorCode) {
+        return failRevision(
+          config,
+          context,
+          context.cameraStateVerificationProcess.errorCode,
+          "Fresh canonical camera-state verification process failed",
+          context.cameraStateVerificationProcess.errorCode === "PROCESS_TIMEOUT",
+          true,
+        );
+      }
+      if (!existsSync(workspace.cameraStatePath)) {
+        const cameraStateResult = existsSync(workspace.cameraStateResultPath)
+          ? (readJson(workspace.cameraStateResultPath) as {
+              status?: unknown;
+              errorCode?: unknown;
+              message?: unknown;
+            })
+          : null;
+        return failRevision(
+          config,
+          context,
+          typeof cameraStateResult?.errorCode === "string"
+            ? cameraStateResult.errorCode
+            : "CAMERA_STATE_VERIFICATION_FAILED",
+          typeof cameraStateResult?.message === "string"
+            ? cameraStateResult.message
+            : "Canonical camera-state evidence is missing",
+          false,
+          true,
+        );
+      }
+      if (!existsSync(workspace.cameraStateResultPath)) {
+        return failRevision(
+          config,
+          context,
+          "CAMERA_STATE_VERIFICATION_FAILED",
+          "Canonical camera-state verification result is missing",
+          false,
+          true,
+        );
+      }
+      const cameraStateEvidence = readJson(workspace.cameraStatePath) as Record<string, unknown>;
+      const cameraStateValidation = validateCanonicalCameraStateEvidence(cameraStateEvidence);
+      if (!cameraStateValidation.ok) {
+        return failRevision(
+          config,
+          context,
+          "CAMERA_STATE_EVIDENCE_INVALID",
+          JSON.stringify(cameraStateValidation.errors),
+          false,
+          true,
+        );
+      }
+      if (!isDeepStrictEqual(cameraStateEvidence, prepared.expectedCameraState)) {
+        return failRevision(
+          config,
+          context,
+          "CAMERA_STATE_MISMATCH",
+          `Expected ${JSON.stringify(prepared.expectedCameraState)}, received ${JSON.stringify(cameraStateEvidence)}`,
+          false,
+          true,
+        );
+      }
+      context.cameraStateEvidence = cameraStateEvidence;
+    }
     if (rawFileHash(prepared.baseArtifactPath) !== prepared.baseArtifactHash) {
       return failRevision(
         config,
@@ -2488,7 +2795,8 @@ function replayRevision(
   if (
     changeSet.operations[0]?.type === "SetRenderIntent" ||
     changeSet.operations[0]?.type === "AddLight" ||
-    changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract"
+    changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract" ||
+    changeSet.operations[0]?.type === "SetCamera"
   ) {
     const renderStatePath = resolve(dirname(manifestPath), "canonical-render-state.json");
     if (!existsSync(renderStatePath)) {
@@ -2509,7 +2817,10 @@ function replayRevision(
     renderStateEvidence = candidateEvidence;
   }
   let materialStateEvidence: CanonicalMaterialStateEvidence | null = null;
-  if (changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract") {
+  if (
+    changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract" ||
+    changeSet.operations[0]?.type === "SetCamera"
+  ) {
     const materialStatePath = resolve(dirname(manifestPath), "canonical-material-state.json");
     if (!existsSync(materialStatePath)) {
       return noExecution(
@@ -2528,6 +2839,26 @@ function replayRevision(
     }
     materialStateEvidence = candidateMaterialEvidence;
   }
+  let cameraStateEvidence: CanonicalCameraStateEvidence | null = null;
+  if (changeSet.operations[0]?.type === "SetCamera") {
+    const cameraStatePath = resolve(dirname(manifestPath), "canonical-camera-state.json");
+    if (!existsSync(cameraStatePath)) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Canonical camera-state replay evidence missing"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    const candidateCameraEvidence = readJson(cameraStatePath) as Record<string, unknown>;
+    if (!validateCanonicalCameraStateEvidence(candidateCameraEvidence).ok) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Canonical camera-state replay evidence invalid"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    cameraStateEvidence = candidateCameraEvidence;
+  }
   return {
     workerVersion: "0.1.0",
     status: "SUCCESS",
@@ -2542,6 +2873,8 @@ function replayRevision(
     renderStateEvidence,
     materialStateVerificationProcess: null,
     materialStateEvidence,
+    cameraStateVerificationProcess: null,
+    cameraStateEvidence,
     comparison: null,
     semanticDiff,
     report,

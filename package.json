@@ -24,6 +24,7 @@
     "test:3dsmax:canonical-golden-corona-preview-rev11": "pnpm run build && node apps/worker/dist/canonical-golden-corona-preview-rev11-integration.js",
     "test:3dsmax:corona-material-appearance": "pnpm run build && node apps/worker/dist/corona-material-appearance-integration.js",
     "test:3dsmax:canonical-material-appearance-revision": "pnpm run build && node apps/worker/dist/canonical-material-appearance-revision-integration.js",
+    "test:3dsmax:canonical-camera-revision": "pnpm run build && node apps/worker/dist/canonical-camera-revision-integration.js",
     "worker": "pnpm run build && node apps/worker/dist/cli.js",
     "test:3dsmax:health": "pnpm run build && node apps/worker/dist/cli.js probe-3ds-max",
     "test:3dsmax:golden": "pnpm run build && node apps/worker/dist/cli.js build-scene tests/fixtures/living-room-golden/job-envelope.json",

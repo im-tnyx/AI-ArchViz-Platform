@@ -6,6 +6,7 @@ import {
   type OpeningMarker,
   type WallSegment,
 } from "./build-plan.js";
+import { deriveCameraFovRadians } from "./camera-policy.js";
 import {
   coronaCanonicalAreaLightWidthMm,
   coronaCanonicalIntensityScale,
@@ -13,6 +14,9 @@ import {
   sortCanonicalCoronaLights,
 } from "./corona-renderer-policy.js";
 import type { RendererAdapter } from "./renderer-adapter.js";
+
+/** Re-exported for backward compatibility; the canonical definition now lives in camera-policy.ts. */
+export { deriveCameraFovRadians };
 
 export type Vector3 = [number, number, number];
 
@@ -260,10 +264,6 @@ function assertUniqueIds(values: readonly { id: string }[], code: CoronaAdapterE
     if (seen.has(value.id)) fail(code, `Duplicate canonical id: ${value.id}`);
     seen.add(value.id);
   }
-}
-
-export function deriveCameraFovRadians(focalLengthMm: number, sensorWidthMm: number): number {
-  return 2 * Math.atan(sensorWidthMm / (2 * focalLengthMm));
 }
 
 function validateSemanticIntent(scene: SceneSpecSubset, renderJob: Record<string, unknown>): void {

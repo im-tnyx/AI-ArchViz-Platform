@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "0.3.0",
+  "changeSetId": "chg_set_camera_r12",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0011",
+  "targetRevisionId": "rev_golden_0012",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Change the canonical living-room hero camera focal length from 24mm to 28mm.",
+  "riskLevel": "medium",
+  "operations": [
+    {
+      "operationId": "op_set_camera_r12",
+      "type": "SetCamera",
+      "targetId": "camera_living_a",
+      "reason": "Golden deterministic camera revision exercising the degrees/radians FOV boundary.",
+      "riskLevel": "medium",
+      "parameters": {
+        "position": [1200, 3800, 1500],
+        "target": [3000, 200, 1300],
+        "orientationPolicy": "look_at_target",
+        "focalLengthMm": 28,
+        "sensorWidthMm": 36
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["camera_living_a"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-08-30T06:00:00Z"
+  }
+}
