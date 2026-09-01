@@ -1,5 +1,64 @@
 # Latest Validation Evidence
 
+## Post-8I canonical camera precision closure (local commit `662abfa`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 235/235 (4 new tests: repeated-call determinism, a
+  focal-length-only-change orientation-identity check, and
+  `canonicalCameraAngle`'s exact 6-decimal rounding)
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:canonical-camera-revision` — re-ran end to end with the
+  normalized `deriveLookAtRotationEuler`/`look_at_rotation_euler`: fresh
+  semantic-manifest verification now reports exactly one changed field for
+  `camera_living_a` (`focalLengthMm` only), 13 unchanged, 0 added, 0
+  removed; canonical render-state, material-state, and the four-verifier
+  promotion gate, all 11 forced-failure cases (including the `fov_regression`
+  hook that still fails closed with `CAMERA_FOV_MISMATCH`), rev11
+  immutability, and idempotent replay all remained PASS unchanged from 8I.
+- `test:3dsmax:canonical-golden-corona-preview-rev11` (8H) and
+  `test:3dsmax:canonical-golden-corona-preview` (8E) — both PASS unchanged;
+  neither consumes `deriveLookAtRotationEuler`, so this closure does not
+  touch their camera handling.
+
+Root cause: `deriveLookAtRotationEuler()`/`look_at_rotation_euler()`
+returned full float precision, while rev11's hand-authored
+`camera_living_a.transform.rotationEuler` was rounded to 6 decimal places.
+Deriving the same physical orientation from the same unchanged
+position/target therefore produced a numerically different (but physically
+identical) value, making a focal-length-only `SetCamera` revision falsely
+report an unrelated `transform.rotationEuler` semantic diff. Fixed by adding
+`canonicalCameraAngle()`/`canonical_camera_angle()` (round to 6 decimal
+places) to the shared camera-policy modules and applying it inside the
+look-at derivation itself, so every caller gets the normalized value with no
+per-call rounding responsibility. `rev_golden_0012`'s `scene-spec.json` and
+`expected-scene-manifest.json` were regenerated from the fixed derivation;
+`camera_living_a.transform.rotationEuler` in rev12 is now byte-identical to
+rev11's `[-2.84471, 0, 206.565051]`. FOV precision
+(`fovRadians`/`fovDegrees`) was deliberately left unrounded — this closure
+is scoped to Euler-angle serialization only.
+
+A transient environmental issue was encountered and resolved during this
+closure's DCC validation, unrelated to the fix itself: two consecutive
+`canonical-camera-revision` runs failed with `PROCESS_TIMEOUT` even though
+the underlying 3ds Max script logged "Task Completed Successfully" well
+within the 180s wall-clock budget. Diagnosis found an unrelated, foreign
+`find.exe / -path */supabase-*/...` process that had been running since
+11:28 AM, had consumed roughly 32,000 CPU-seconds scanning the entire
+filesystem root, and was starving the DCC batch process's exit/cleanup
+phase of CPU. This process was not owned by this repository or session; it
+was terminated only after explicit user confirmation. All three suites
+passed cleanly on the following run with no code changes.
+
+Target 3ds Max 2026 verification was not performed; only 2025.3
+compatibility mode is claimed. No test-owned 3ds Max process remained after
+the run; both previously-observed interactive `3dsmax.exe` sessions had
+exited by the time this closure's validation completed.
+
 ## Spike 8I canonical camera revision (local commit `1792183`)
 
 Static gates, all PASS:
@@ -20,9 +79,11 @@ DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
   `camera_policy.fov_degrees`, never the raw radian value), and updated only
   the worker-owned camera metadata; the camera object's own identity was
   never deleted or recreated. Fresh semantic-manifest verification reported
-  exactly one changed entry (`camera_living_a`: `focalLengthMm` and the
-  full-precision recomputed `transform.rotationEuler`), 13 unchanged, 0
-  added, 0 removed. Fresh canonical render-state and canonical
+  exactly one changed entry (`camera_living_a`: `focalLengthMm` and, at the
+  time this evidence was captured, the full-precision recomputed
+  `transform.rotationEuler` — see "Post-8I canonical camera precision
+  closure" above, which normalizes this to `focalLengthMm` only), 13
+  unchanged, 0 added, 0 removed. Fresh canonical render-state and canonical
   material-state verification both reported the unchanged Corona
   `preview` intent, `light_living_key_area`, and all three v0.3 materials.
   The new `verify_canonical_camera_state.py` independently re-observed all
@@ -72,15 +133,19 @@ for two of the three cameras; both languages' `targetDistanceMm`/
 `target_distance_mm` now round to 6 decimal places, eliminating the
 discrepancy without any loss of meaningful precision.
 
-One accepted, non-bug precision nuance: rev11's original hand-authored
-`camera_living_a.transform.rotationEuler` is rounded to ~6 significant
-figures, while the new deterministic `deriveLookAtRotationEuler` computed
-from the same unchanged position/target produces full float precision. This
-makes the rev11 -> rev12 semantic diff report both `focalLengthMm` and
-`transform.rotationEuler` as changed, even though the physical orientation
-is unchanged; this is accepted (not fixed by touching the forbidden rev11
-fixture) and is explicitly permitted by `assertRevisionDiff`'s `SetCamera`
-branch.
+A precision nuance was identified here (rev11's hand-authored
+`camera_living_a.transform.rotationEuler` was rounded to ~6 significant
+figures, while `deriveLookAtRotationEuler` produced full float precision,
+making the rev11 -> rev12 semantic diff report both `focalLengthMm` and
+`transform.rotationEuler` as changed even though the physical orientation
+was unchanged) and was, at the time, accepted rather than fixed. It was
+subsequently closed without touching the immutable rev11 fixture — see
+"Post-8I canonical camera precision closure" above, which normalizes the
+look-at derivation itself so the rev11 -> rev12 diff now reports
+`focalLengthMm` only. `assertRevisionDiff`'s `SetCamera` branch still
+permits `transform.rotationEuler` as an allowed changed field, since a real
+position/target change (not exercised by the Golden fixture) legitimately
+changes the derived orientation.
 
 Target 3ds Max 2026 verification was not performed; only 2025.3
 compatibility mode is claimed. No test-owned 3ds Max process remained after

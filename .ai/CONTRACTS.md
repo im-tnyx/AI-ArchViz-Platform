@@ -332,7 +332,15 @@
   MAXScript `Camera.fov` is degrees, never a genuine radian value — the
   exact Spike 8H boundary defect — and every DCC-side read or write through
   this module converts explicitly; there is no third, independent copy of
-  this math anywhere in the codebase.
+  this math anywhere in the codebase. `deriveLookAtRotationEuler`/
+  `look_at_rotation_euler` normalize their returned pitch/roll/yaw through
+  `canonicalCameraAngle()`/`canonical_camera_angle()` (round to 6 decimal
+  places) before returning, so two derivations from the same
+  position/target always serialize to the identical JSON number, matching
+  the precision already used by the hand-authored Golden camera fixtures.
+  This canonical-representation rounding is a distinct concept from a live
+  DCC observation's angular tolerance (`verify_canonical_camera_state.py`'s
+  `ANGLE_TOLERANCE`) and must never replace it.
 - The revision engine never accepts a camera's rotation from the
   ChangeSet: `SetCamera`'s mutation branch in `revision.ts` always derives
   `transform.rotationEuler` via `deriveLookAtRotationEuler(position,
@@ -344,17 +352,18 @@
   `sensorWidthMm > 0` are enforced by the v0.3 schema itself, not
   re-validated in the mutation branch.
 - `rev_golden_0012` changes only `camera_living_a.focalLengthMm` (24mm ->
-  28mm); position, target, sensor width, orientation policy, and every
-  other managed entry (including `camera_living_b`/`camera_living_c`) are
+  28mm); position, target, sensor width, orientation policy, and the
+  normalized derived rotation are unchanged (`transform.rotationEuler` is
+  now byte-identical to rev11's `[-2.84471, 0, 206.565051]`), every other
+  managed entry (including `camera_living_b`/`camera_living_c`) is
   unchanged, and rev1-rev11 remain byte-identical. `assertRevisionDiff`'s
-  `SetCamera` branch permits `focalLengthMm` and `transform.rotationEuler`
-  as the only fields allowed to change (the latter because rev11's
-  hand-rounded rotation and the newly re-derived full-precision rotation
-  differ below the 7th decimal, a physically meaningless but honest
-  artifact — not suppressed, and not a reason to touch the immutable rev11
-  fixture), always with exactly 13 unchanged entries and no additions or
-  removals. `revisionPlanVersion` is `"0.3.0"` only for `SetCamera`;
-  `"0.1.0"`/`"0.2.0"` plans for other operation types are unaffected.
+  `SetCamera` branch still permits both `focalLengthMm` and
+  `transform.rotationEuler` as allowed changed fields — the latter for a
+  real position/target change, which the Golden fixture does not exercise
+  but the general `SetCamera` contract must still support — always with
+  exactly 13 unchanged entries and no additions or removals.
+  `revisionPlanVersion` is `"0.3.0"` only for `SetCamera`; `"0.1.0"`/
+  `"0.2.0"` plans for other operation types are unaffected.
 - `apply_change_set.py`'s DCC mutation flow for `SetCamera` opens the
   verified rev11 source, resolves `camera_living_a` by
   `AIArchViz.LogicalObjectId`, requires its actual class to already be a

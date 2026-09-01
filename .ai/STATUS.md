@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `1792183`
-- Commit: `feat: add canonical camera revision`
+- Local `main` HEAD: `662abfa`
+- Commit: `fix: normalize canonical camera orientation`
 - Remote tracking state at this snapshot: local `main` is ahead of
   `origin/main` pending this session's push.
 
@@ -182,6 +182,15 @@
   target metadata, and deliberately re-proves the exact degrees/radians
   boundary that caused the 8H defect (a forced regression hook still fails
   closed with `CAMERA_FOV_MISMATCH`). No render was produced in this spike.
+- A post-8I closure normalized `deriveLookAtRotationEuler`/
+  `look_at_rotation_euler` to the same 6-decimal precision as the Golden
+  fixtures (`canonicalCameraAngle()`/`canonical_camera_angle()`), so
+  `rev_golden_0012`'s `camera_living_a.transform.rotationEuler` is now
+  byte-identical to rev11's rather than differing at full float precision.
+  The durable statement is: rev11 -> rev12 changes
+  `camera_living_a.focalLengthMm` only; position, target, orientation
+  policy, sensor width, and the normalized derived rotation are unchanged.
+  FOV precision (`fovRadians`/`fovDegrees`) is unaffected.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and
