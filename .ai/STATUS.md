@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `662abfa`
-- Commit: `fix: normalize canonical camera orientation`
+- Local `main` HEAD: `d15bd4c`
+- Commit: `feat: render golden scene from canonical camera state`
 - Remote tracking state at this snapshot: local `main` is ahead of
   `origin/main` pending this session's push.
 
@@ -39,14 +39,18 @@
   persisted rev11 state has now been rendered directly — renderer, light,
   materials, and camera all resolved/observed/reused from the verified
   `.max`, with none created — proving 8G's persistence is actually
-  production-usable rather than only revision-time-verifiable (8H); and the
+  production-usable rather than only revision-time-verifiable (8H); the
   first deterministic camera revision, `rev_golden_0012`
   (`camera_living_a` focal length 24mm -> 28mm only; position, target,
   sensor width, and orientation policy unchanged), has been added on top of
   rev11, gated by four independent fresh-process verifiers including a new
   `canonical-camera-state-v0.1` contract, with rotation always
   worker-derived from position/target rather than trusted from the
-  ChangeSet (8I).
+  ChangeSet (8I); and that persisted rev12 state has now been rendered
+  directly from its 28mm camera — renderer, light, materials, and camera
+  all resolved/observed/reused from the verified `.max`, with none created
+  — mirroring 8H's own rev11 preview but gated by a fourth pre-render
+  verification layer (canonical camera state) that 8H predates (8J).
 - DCC execution is default-deny end-to-end: trusted local worker configuration
   must set `allowDccExecution: true`, the call site must separately authorize
   the specific launch, and DCC integration suites additionally require
@@ -191,6 +195,28 @@
   `camera_living_a.focalLengthMm` only; position, target, orientation
   policy, sensor width, and the normalized derived rotation are unchanged.
   FOV precision (`fovRadians`/`fovDegrees`) is unaffected.
+- Spike 8J rendered the first Golden preview whose renderer, light,
+  material, and camera intent are all already-canonical, already-persisted
+  rev12 state: it compiled through `compileCanonicalMaterialAppearance()`
+  (plan v0.2, camera A at 28mm, no legacy 24mm value), independently
+  re-proved all FOUR rev12 verification contracts (semantic, canonical
+  render-state, canonical material-state, and the new canonical
+  camera-state) fresh against a staged copy before rendering, and
+  resolved/observed/reused the persisted Corona renderer, CoronaLight,
+  native `AVZ_MATERIAL_*` Corona Physical Materials, and the 28mm
+  `camera_living_a` without creating, switching, or writing to any of
+  them. The render runner never writes `camera.pos`/`camera.rotation`/
+  `camera.fov`/`camera.targetDistance`; it reuses
+  `verify_canonical_camera_state.py` (Spike 8I's own fresh-process
+  verifier) rather than a second independent FOV/look-at formula. A new
+  `canonical-corona-preview-evidence-v0.3` schema (rev12,
+  `sceneSpecVersion: "0.3.0"`, canonical-vs-observed camera
+  position/target/rotation/FOV) sits alongside the untouched v0.1 (rev10)
+  and v0.2 (rev11); no `rev_golden_0013` was created and the loaded scene
+  was never saved. 22 forced-failure cases across all four verification
+  layers (hash, manifest, render-state, material-state, camera-state
+  including the mandatory FOV-regression proof, diagnostic-light, camera,
+  renderer, Safe Scene, PNG, timeout) all failed closed.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

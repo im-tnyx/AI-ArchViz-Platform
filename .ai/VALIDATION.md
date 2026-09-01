@@ -1,5 +1,78 @@
 # Latest Validation Evidence
 
+## Spike 8J canonical Golden Corona preview from rev12 camera state (local commit `d15bd4c`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 254/254 (19 new tests, including a static-source proof that
+  the runner imports/calls no material-creation, camera-creation, or
+  camera-mutation primitive)
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:canonical-golden-corona-preview-rev12` (new) — built
+  `rev_golden_0001`-`rev_golden_0012` through the real revision pipeline
+  (base + r2..r12, including 8I's `SetCamera`); compiled the staged rev12
+  SceneSpec through `compileCanonicalMaterialAppearance()` to plan v0.2
+  (camera A `focalLengthMm: 28`, `fovRadians≈1.1426749596672536`, no legacy
+  24mm value; wall/floor/sofa roughness `0.62`/`0.34`/`0.78`, all
+  `metalness: 0`, matching 8G/8H exactly); a fresh Safe-Scene process
+  independently re-verified the staged copy against all FOUR rev12
+  contracts (semantic manifest, canonical render state, canonical material
+  state, canonical camera state — the last new to this spike, verifying all
+  three canonical cameras sorted by `logicalId`) before ever calling
+  render; resolved the persisted production Corona renderer, the persisted
+  `light_living_key_area` CoronaLight, and all three persisted
+  `AVZ_MATERIAL_*` Corona Physical Materials purely by observation (no
+  creation, no reassignment); confirmed material deduplication in both
+  directions; resolved the persisted `camera_living_a` node purely to
+  obtain a render handle — no write to `camera.pos`/`camera.rotation`/
+  `camera.fov`/`camera.targetDistance` occurred, and its physical FOV
+  (~65.47deg / ~1.1427rad) and orientation were proven fresh one layer
+  earlier by `verify_canonical_camera_state.py` (reused verbatim from Spike
+  8I, not re-derived); confirmed `camera_living_b`/`camera_living_c`
+  unchanged; rendered a valid 320x240 four-pass PNG; produced
+  `canonical-corona-preview-evidence-v0.3` with `revisionId:
+  "rev_golden_0012"` and canonical-vs-observed camera
+  position/target/rotation/FOV recorded side by side; and proved
+  canonical/staged rev12 raw hashes unchanged, no `rev_golden_0013`
+  created, and rev12 replay unaffected afterward. 22 forced-failure cases
+  (staged-hash tamper, manifest mismatch, Safe Scene, four
+  canonical-render-state mismatches, four canonical-material-state
+  mismatches, six canonical-camera-state mismatches — camera missing,
+  wrong class, the mandatory FOV degrees-as-radians regression, orientation
+  mismatch, target mismatch, invalid evidence — obsolete diagnostic light,
+  camera ambiguity, renderer missing, invalid PNG, timeout) all failed
+  closed with no PASS evidence and no owned process left running.
+- `test:3dsmax:canonical-camera-revision` (8I),
+  `test:3dsmax:canonical-golden-corona-preview-rev11` (8H),
+  `test:3dsmax:canonical-material-appearance-revision` (8G),
+  `test:3dsmax:corona-material-appearance` (8F),
+  `test:3dsmax:canonical-golden-corona-preview` (8E),
+  `test:3dsmax:canonical-render-state-revision` (8D),
+  `test:3dsmax:golden-corona-preview` (8C), `test:3dsmax:corona-adapter`
+  (8B), `test:3dsmax:corona-baseline` (8A), `test:3dsmax:revision`,
+  `test:3dsmax:replace-asset`, `test:3dsmax:asset-inspection`,
+  `test:3dsmax:external-asset-ingestion` — all PASS unchanged. In
+  particular, `canonical-golden-corona-preview-rev11` (8H) still
+  builds/verifies `rev_golden_0011` at 24mm only, still performs
+  observation-only camera reuse with no fourth verification layer, and
+  creates no `rev_golden_0012`, so it remains historical coverage rather
+  than being superseded or repointed.
+
+No new defects were found this spike; the runner design deliberately reused
+8I's `verify_canonical_camera_state.py` and 8H's render-runner structure
+rather than introducing a second independent camera-observation path, which
+avoided reproducing either the Spike 8H degrees/radians defect or the
+Spike 8I `targetDistance`/cross-runtime-`hypot()` issues a third time.
+
+Target 3ds Max 2026 verification was not performed; only 2025.3
+compatibility mode is claimed. No test-owned 3ds Max process remained after
+the run; the two previously-observed interactive `3dsmax.exe` sessions had
+already exited by the time this spike's DCC validation ran.
+
 ## Post-8I canonical camera precision closure (local commit `662abfa`)
 
 Static gates, all PASS:

@@ -402,3 +402,59 @@
 - No render is produced by this spike; rendering `rev_golden_0012` from its
   canonical camera state is out of scope (a plausible future Spike 8J, not
   authorized).
+
+## Canonical Golden Corona preview from rev12 (Spike 8J)
+
+- `canonical-golden-corona-preview-rev12-execution.ts` (a new, separate
+  execution module from 8H's `executeCanonicalGoldenCoronaPreviewRev11`,
+  which is untouched) requires the source SceneSpec to be exactly
+  `rev_golden_0012` at `sceneSpecVersion: "0.3.0"` and compiles it only
+  through `compileCanonicalMaterialAppearance()` (plan v0.2), additionally
+  asserting the compiled plan's camera is exactly 28mm/36mm before any DCC
+  launch. Rendering remains execution output, not a SceneChangeSet
+  transition: no `rev_golden_0013` is ever created and the loaded scene is
+  never saved.
+- The render runner (`render_canonical_golden_corona_preview_rev12.py`)
+  never creates a light or a material, never switches the renderer, and
+  never writes to the camera. It resolves and observes the already-
+  persisted renderer, `light_living_key_area` CoronaLight, and
+  `AVZ_MATERIAL_*` Corona Physical Materials by reusing `verify_scene`,
+  `verify_canonical_render_state`, and `verify_canonical_material_state` —
+  the same fresh-process verifiers 8G/8H already trust. Unlike 8H, it adds
+  a FOURTH mandatory pre-render verification layer, canonical camera state,
+  by reusing `verify_canonical_camera_state.py` verbatim (Spike 8I's own
+  fresh-process verifier) rather than introducing a second independent
+  FOV/look-at formula — the exact thing Item 29 of this spike's task
+  forbade. All four verification contracts (semantic manifest, canonical
+  render state, canonical material state, canonical camera state) must
+  pass fresh against the staged artifact before any render call.
+- Camera reuse is strictly observation-only, one layer downstream of an
+  already-completed proof: after `verify_canonical_camera_state.py` has
+  independently confirmed `camera_living_a`'s physical position,
+  orientation, and FOV (with a forced `fov_regression` hook proving the
+  historical degrees-as-radians defect still fails closed with
+  `CAMERA_FOV_MISMATCH`), the render runner performs one more resolution
+  step purely to obtain a native node handle for `rt.render(camera=...)` —
+  it never writes `camera.pos`/`camera.rotation`/`camera.fov`/
+  `camera.targetDistance`, and a static unit test asserts the runner's
+  source contains none of those write patterns nor any material/camera/
+  light creation call.
+- `canonical-corona-preview-evidence-v0.3` is a new, separate schema
+  (`evidenceVersion: "0.3.0"`, `revisionId: "rev_golden_0012"`,
+  `sceneSpecVersion: "0.3.0"`); `canonical-corona-preview-evidence-v0.1`
+  (rev10, temporary `AVZ_CORONA_*` realization, Spike 8E) and
+  `canonical-corona-preview-evidence-v0.2` (rev11, persisted 24mm camera,
+  Spike 8H) are byte-for-byte unchanged. v0.3's camera evidence carries
+  canonical-vs-observed `position`/`target`/`rotationEuler` and
+  expected-vs-observed `fovRadians`/`fovDegrees` side by side, sourced
+  directly from the camera-state verifier's own tolerance-checked-canonical
+  evidence rather than re-derived by the render runner — the same
+  normalization pattern established by `canonical-render-state-v0.1`/
+  `canonical-material-state-v0.1`/`canonical-camera-state-v0.1`.
+- 8H (`canonical-golden-corona-preview-rev11-execution.ts`/
+  `render_canonical_golden_corona_preview_rev11.py`) is completely
+  untouched: it still builds/verifies `rev_golden_0011` only, still
+  realizes/reuses the 24mm camera under three verification layers (it
+  predates canonical camera state), and creates no `rev_golden_0012`. 8J
+  does not repoint or extend 8H; it is a structurally parallel, narrower
+  entry point for the rev12 case.
