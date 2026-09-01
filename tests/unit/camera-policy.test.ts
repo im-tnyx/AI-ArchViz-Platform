@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canonicalCameraAngle,
   degreesToRadians,
   deriveCameraFovDegrees,
   deriveCameraFovRadians,
@@ -37,11 +38,9 @@ describe("camera-policy FOV math", () => {
 });
 
 describe("camera-policy look-at rotation derivation", () => {
-  it("derives the exact canonical camera_living_a rotation", () => {
+  it("derives the exact canonical camera_living_a rotation, normalized to the Golden fixture's 6-decimal precision", () => {
     const rotation = deriveLookAtRotationEuler([1200, 3800, 1500], [3000, 200, 1300]);
-    expect(rotation[0]).toBeCloseTo(-2.8447103878693705, 10);
-    expect(rotation[1]).toBe(0);
-    expect(rotation[2]).toBeCloseTo(206.56505117707798, 10);
+    expect(rotation).toEqual([-2.84471, 0, 206.565051]);
   });
 
   it("throws when position and target coincide", () => {
@@ -52,5 +51,33 @@ describe("camera-policy look-at rotation derivation", () => {
     const first = deriveLookAtRotationEuler([100, 200, 300], [400, 500, 600]);
     const second = deriveLookAtRotationEuler([100, 200, 300], [400, 500, 600]);
     expect(first).toEqual(second);
+  });
+
+  it("repeated calls with the same position/target always produce the exact same Euler array (post-8I precision closure)", () => {
+    const calls = Array.from({ length: 5 }, () =>
+      deriveLookAtRotationEuler([1200, 3800, 1500], [3000, 200, 1300]),
+    );
+    for (const rotation of calls) {
+      expect(rotation).toEqual(calls[0]);
+    }
+  });
+
+  it("a focal-length-only camera change does not alter the derived rotation (rev11 vs rev12 orientation identity)", () => {
+    const position: [number, number, number] = [1200, 3800, 1500];
+    const target: [number, number, number] = [3000, 200, 1300];
+    // focalLengthMm/sensorWidthMm never enter the look-at derivation, so the
+    // same position/target always yields the same orientation regardless of
+    // any lens change applied alongside it.
+    const rotationBefore24mm = deriveLookAtRotationEuler(position, target);
+    const rotationAfter28mm = deriveLookAtRotationEuler(position, target);
+    expect(rotationAfter28mm).toEqual(rotationBefore24mm);
+  });
+});
+
+describe("canonicalCameraAngle", () => {
+  it("rounds to exactly 6 decimal places with no insignificant trailing zeros", () => {
+    expect(canonicalCameraAngle(-2.8447103878693705)).toBe(-2.84471);
+    expect(canonicalCameraAngle(206.56505117707798)).toBe(206.565051);
+    expect(canonicalCameraAngle(0)).toBe(0);
   });
 });

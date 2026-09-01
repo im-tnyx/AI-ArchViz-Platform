@@ -685,7 +685,7 @@ describe("Technical Spike 8I canonical camera revisions", () => {
       position: [1200, 3800, 1500],
       target: [3000, 200, 1300],
       orientationPolicy: "look_at_target",
-      derivedRotationEuler: [-2.8447103878693705, 0, 206.56505117707798],
+      derivedRotationEuler: [-2.84471, 0, 206.565051],
       focalLengthMm: 28,
       sensorWidthMm: 36,
       fovRadians: 1.1426749596672536,
@@ -777,7 +777,7 @@ describe("Technical Spike 8I canonical camera revisions", () => {
     );
   });
 
-  it("reports only camera_living_a as changed, with 13 other managed entries unchanged", () => {
+  it("reports only camera_living_a's focalLengthMm as changed, with 13 other managed entries unchanged", () => {
     const diff = diffSemanticManifests(
       fixture("revisions/rev_golden_0011/expected-scene-manifest.json"),
       fixture("revisions/rev_golden_0012/expected-scene-manifest.json"),
@@ -785,13 +785,27 @@ describe("Technical Spike 8I canonical camera revisions", () => {
     expect(() => assertRevisionDiff(diff, cameraChangeSet() as never)).not.toThrow();
     expect(diff.changed).toHaveLength(1);
     expect(diff.changed[0]?.logicalId).toBe("camera_living_a");
-    expect(Object.keys(diff.changed[0]?.changes ?? {}).sort()).toEqual([
-      "focalLengthMm",
-      "transform.rotationEuler",
-    ]);
+    // Post-8I precision closure: canonicalCameraAngle normalizes the derived
+    // rotation to rev11's own 6-decimal precision, so a focal-length-only
+    // SetCamera no longer produces an unrelated rotationEuler diff.
+    expect(Object.keys(diff.changed[0]?.changes ?? {}).sort()).toEqual(["focalLengthMm"]);
     expect(diff.added).toEqual([]);
     expect(diff.removed).toEqual([]);
     expect(diff.unchanged).toHaveLength(13);
+  });
+
+  it("does not alter transform.rotationEuler for a focal-length-only SetCamera (rev11 vs rev12 orientation identity)", () => {
+    const rev11Camera = (
+      fixture("revisions/rev_golden_0011/scene-spec.json") as {
+        cameras: Array<{ id: string; transform: { rotationEuler: number[] } }>;
+      }
+    ).cameras.find((camera) => camera.id === "camera_living_a");
+    const rev12Camera = (
+      fixture("revisions/rev_golden_0012/scene-spec.json") as {
+        cameras: Array<{ id: string; transform: { rotationEuler: number[] } }>;
+      }
+    ).cameras.find((camera) => camera.id === "camera_living_a");
+    expect(rev12Camera?.transform.rotationEuler).toEqual(rev11Camera?.transform.rotationEuler);
   });
 
   it("produces the exact rev12 canonical camera-state oracle, verifying all three cameras", () => {

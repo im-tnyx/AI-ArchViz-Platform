@@ -232,9 +232,12 @@ async function main(): Promise<void> {
     };
     assert.equal(semanticDiff.changed?.length, 1);
     assert.equal(semanticDiff.changed?.[0]?.logicalId, "camera_living_a");
+    // Post-8I precision closure: canonicalCameraAngle normalizes the derived
+    // rotation to the same 6-decimal precision as the hand-authored rev11
+    // fixture, so a focal-length-only SetCamera no longer produces an
+    // unrelated rotationEuler diff.
     assert.deepEqual(Object.keys(semanticDiff.changed?.[0]?.changes ?? {}).sort(), [
       "focalLengthMm",
-      "transform.rotationEuler",
     ]);
     assert.equal(semanticDiff.unchanged?.length, 13);
     assert.equal(semanticDiff.added?.length, 0);

@@ -17,6 +17,18 @@ from __future__ import annotations
 import math
 
 ROTATION_ANGLE_TOLERANCE = 0.001
+CANONICAL_ANGLE_PRECISION = 6
+
+
+def canonical_camera_angle(value: float) -> float:
+    """Canonical serialization for a derived camera Euler angle: fixed
+    6-decimal rounding, mirroring `camera-policy.ts`'s
+    `canonicalCameraAngle` exactly so two derivations from the same
+    position/target always serialize to the identical JSON number. This is
+    a canonical-representation concern only, distinct from the looser
+    `angle_close()` tolerance used for a live DCC observation.
+    """
+    return round(float(value), CANONICAL_ANGLE_PRECISION)
 
 
 def fov_radians(focal_length_mm: float, sensor_width_mm: float) -> float:
@@ -36,7 +48,7 @@ def look_at_rotation_euler(position: list[float], target: list[float]) -> tuple[
         raise ValueError("Camera position and target must differ")
     pitch = math.degrees(math.atan2(dz, horizontal))
     yaw = (math.degrees(math.atan2(dy, dx)) + 270.0) % 360.0
-    return pitch, 0.0, yaw
+    return canonical_camera_angle(pitch), canonical_camera_angle(0.0), canonical_camera_angle(yaw)
 
 
 def target_distance_mm(position: list[float], target: list[float]) -> float:

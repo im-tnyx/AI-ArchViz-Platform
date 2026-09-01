@@ -14,6 +14,23 @@
 
 export type CameraVector3 = readonly [number, number, number];
 
+const CANONICAL_ANGLE_PRECISION = 6;
+
+/**
+ * Canonical serialization for a derived camera Euler angle: fixed 6-decimal
+ * rounding so two derivations from the same position/target always
+ * serialize to the identical JSON number, matching the precision already
+ * used by the hand-authored Golden camera fixtures (e.g. rev11's
+ * `camera_living_a` rotation). This is a canonical-representation concern
+ * only — a live DCC observation is compared with its own, deliberately
+ * looser angular tolerance (see `verify_canonical_camera_state.py`'s
+ * `ANGLE_TOLERANCE`), which this function must never replace.
+ */
+export function canonicalCameraAngle(value: number): number {
+  const factor = 10 ** CANONICAL_ANGLE_PRECISION;
+  return Math.round(value * factor) / factor;
+}
+
 export function radiansToDegrees(radians: number): number {
   return (radians * 180) / Math.PI;
 }
@@ -63,5 +80,5 @@ export function deriveLookAtRotationEuler(
   }
   const pitch = radiansToDegrees(Math.atan2(dz, horizontal));
   const yaw = (radiansToDegrees(Math.atan2(dy, dx)) + 270) % 360;
-  return [pitch, 0, yaw];
+  return [canonicalCameraAngle(pitch), canonicalCameraAngle(0), canonicalCameraAngle(yaw)];
 }
