@@ -57,6 +57,7 @@ export type GoldenCoronaPreviewEvidence = Record<string, unknown>;
 export type CanonicalRenderStateEvidence = Record<string, unknown>;
 export type CanonicalCoronaPreviewEvidence = Record<string, unknown>;
 export type CanonicalCoronaPreviewEvidenceV02 = Record<string, unknown>;
+export type CanonicalCoronaPreviewEvidenceV03 = Record<string, unknown>;
 export type CoronaExecutionPlanV02 = Record<string, unknown>;
 export type CoronaMaterialAppearanceEvidence = Record<string, unknown>;
 export type CanonicalMaterialStateEvidence = Record<string, unknown>;
@@ -96,6 +97,9 @@ export const canonicalCoronaPreviewEvidenceSchema = readSchema(
 );
 export const canonicalCoronaPreviewEvidenceV02Schema = readSchema(
   "canonical-corona-preview-evidence-v0.2.schema.json",
+);
+export const canonicalCoronaPreviewEvidenceV03Schema = readSchema(
+  "canonical-corona-preview-evidence-v0.3.schema.json",
 );
 export const coronaExecutionPlanV02Schema = readSchema("corona-execution-plan-v0.2.schema.json");
 export const coronaMaterialAppearanceEvidenceSchema = readSchema(
@@ -152,6 +156,9 @@ const canonicalCoronaPreviewEvidenceValidator = ajv.compile(
 const canonicalCoronaPreviewEvidenceV02Validator = ajv.compile(
   canonicalCoronaPreviewEvidenceV02Schema,
 ) as ValidateFunction<CanonicalCoronaPreviewEvidenceV02>;
+const canonicalCoronaPreviewEvidenceV03Validator = ajv.compile(
+  canonicalCoronaPreviewEvidenceV03Schema,
+) as ValidateFunction<CanonicalCoronaPreviewEvidenceV03>;
 const coronaExecutionPlanV02Validator = ajv.compile(
   coronaExecutionPlanV02Schema,
 ) as ValidateFunction<CoronaExecutionPlanV02>;
@@ -261,6 +268,12 @@ export function validateCanonicalCoronaPreviewEvidenceV02(
   value: unknown,
 ): ValidationResult<CanonicalCoronaPreviewEvidenceV02> {
   return runValidation(canonicalCoronaPreviewEvidenceV02Validator, value);
+}
+
+export function validateCanonicalCoronaPreviewEvidenceV03(
+  value: unknown,
+): ValidationResult<CanonicalCoronaPreviewEvidenceV03> {
+  return runValidation(canonicalCoronaPreviewEvidenceV03Validator, value);
 }
 
 export function validateCoronaExecutionPlanV02(

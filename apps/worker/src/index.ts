@@ -3,6 +3,7 @@ export * from "./build-plan.js";
 export * from "./camera-policy.js";
 export * from "./canonical-golden-corona-preview-execution.js";
 export * from "./canonical-golden-corona-preview-rev11-execution.js";
+export * from "./canonical-golden-corona-preview-rev12-execution.js";
 export * from "./config.js";
 export * from "./corona-material-appearance-execution.js";
 export * from "./corona-renderer-policy.js";

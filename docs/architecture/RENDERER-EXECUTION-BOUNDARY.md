@@ -489,3 +489,67 @@ by this spike — rendering `rev_golden_0012` is 8J's job.
   prove the rotation- and target-tolerance checks are load-bearing, not
   decorative. This spike's compatibility evidence targets 3ds Max `2025.3`;
   no 2026 verification is claimed.
+
+### Post-8I closure: canonical camera Euler normalization
+
+`deriveLookAtRotationEuler`/`look_at_rotation_euler` round their returned
+pitch/roll/yaw to 6 decimal places via `canonicalCameraAngle`/
+`canonical_camera_angle`, matching the precision already used by the
+hand-authored Golden camera fixtures. Two derivations from the same
+position/target now always serialize to the identical JSON number, so
+`rev_golden_0012`'s `camera_living_a.transform.rotationEuler` is
+byte-identical to rev11's rather than differing at full float precision —
+the rev11 -> rev12 semantic diff reports `focalLengthMm` only. This is a
+canonical-representation concern, distinct from a live DCC observation's
+angular tolerance, and must never replace it.
+
+## Spike 8J: canonical Golden Corona preview from rev12 camera state
+
+The progression from 8H to 8J: 8H rendered `rev_golden_0011` entirely from
+already-persisted renderer/light/material/camera state at the historical
+24mm focal length, purely by observation. 8I then added `rev_golden_0012`,
+a pure `SetCamera` revision moving `camera_living_a` to 28mm with no render.
+The post-8I closure normalized the canonical Euler serialization. 8J closes
+the loop: it renders `rev_golden_0012` the same way 8H rendered rev11 —
+entirely from already-canonical, already-persisted state — except the
+camera it observes and reuses is now the 28mm camera 8I revised. **8J does
+not create or mutate any camera state before rendering**; it is
+strictly observation/reuse, exactly like 8H.
+
+- `canonical-golden-corona-preview-rev12-execution.ts` and
+  `render_canonical_golden_corona_preview_rev12.py` are new, narrow entry
+  points mirroring 8H's own rev11 execution/runner pair structurally (8H
+  itself is untouched and still builds/verifies/renders `rev_golden_0011` at
+  24mm only). The only structural addition is a fourth mandatory pre-render
+  verification layer: canonical camera state.
+- Before any render call, all four fresh-process verifiers must PASS against
+  the staged rev12 artifact — semantic manifest, canonical render state,
+  canonical material state, and canonical camera state (reusing
+  `verify_canonical_camera_state.py`, the exact fresh-process verifier
+  Spike 8I trusts, rather than a second independent FOV/look-at formula).
+  The camera-state layer verifies all three canonical cameras sorted by
+  `logicalId`, not only the one being rendered; `camera_living_a` must
+  resolve to the canonical 28mm/36mm lens state, and
+  `camera_living_b`/`camera_living_c` must be unchanged.
+- The render runner never writes `camera.pos`, `camera.rotation`,
+  `camera.fov`, or `camera.targetDistance`; it only resolves the persisted
+  `camera_living_a` node (by `AIArchViz.LogicalObjectId`) to obtain a handle
+  for `rt.render(camera=...)`, after the camera-state verifier has already
+  proven its physical semantics fresh. A forced `fov_regression` hook
+  (reused from 8I's own verifier) still fails closed with
+  `CAMERA_FOV_MISMATCH`, proving the historical degrees-as-radians defect
+  cannot silently return through the render path either.
+- `canonical-corona-preview-evidence-v0.3.schema.json` is a new, separate
+  schema (`evidenceVersion: "0.3.0"`, `revisionId: "rev_golden_0012"`);
+  `canonical-corona-preview-evidence-v0.1` (rev10, temporary realization,
+  8E) and `canonical-corona-preview-evidence-v0.2` (rev11, persisted 24mm
+  camera, 8H) are byte-for-byte unchanged. v0.3's camera evidence carries
+  canonical-vs-observed position/target/rotation and expected-vs-observed
+  FOV radians/degrees side by side (the same tolerance-checked-canonical
+  normalization as `canonical-camera-state-v0.1`), sourced directly from the
+  camera-state verifier's own evidence rather than re-derived.
+- Rendering `rev_golden_0012` is execution output, not a SceneChangeSet
+  transition: no `rev_golden_0013` is ever created, the loaded scene is
+  never saved, and canonical/staged rev12 artifact hashes are verified
+  unchanged before and after every run. This spike's compatibility evidence
+  targets 3ds Max `2025.3`; no 2026 verification is claimed.
