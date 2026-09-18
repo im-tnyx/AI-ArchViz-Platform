@@ -1,5 +1,55 @@
 # Latest Validation Evidence
 
+## Spike 9A deterministic spatial placement validation (local commit `a5d4f9a`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 282/282 (42 new tests: 22 pure spatial-engine tests covering
+  Golden rev12 PASS, sofa/coffee-table collision, boundary crossing vs.
+  boundary touching, rotated-OBB correctness with an explicit AABB
+  false-positive guard, doorway access-clearance blocking vs. touching,
+  unsupported roll/pitch, ReplaceAsset candidate footprint with a
+  dedicated synthetic fixture, external_max dimension-only equivalence, a
+  synthetic concave L-shaped space, determinism, and the
+  `spatial-validation-evidence-v0.1` schema; 20 new revision-integration
+  tests including MoveObject/ReplaceAsset spatial-preflight blocking with
+  specific `SPATIAL_*` codes through the real `planSceneRevision` pipeline)
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 (`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`):
+
+- `test:3dsmax:revision`, `test:3dsmax:replace-asset`,
+  `test:3dsmax:external-asset-ingestion`,
+  `test:3dsmax:canonical-camera-revision`,
+  `test:3dsmax:canonical-golden-corona-preview-rev12` — all PASS
+  unchanged. These are the suites whose `MoveObject`/`ReplaceAsset`
+  preflight behavior is affected by the new spatial gate (directly, or via
+  a build chain that includes earlier Golden `MoveObject`/`ReplaceAsset`
+  revisions); all historical Golden operations (`MoveObject` r2/r7,
+  `ReplaceAsset` r8) remain spatially valid under `spatial-policy-v0.1`
+  because their real geometry is actually valid — no fixture was altered
+  and no revision was grandfathered by ID to make this pass.
+- A transient environmental failure was encountered and ruled out during
+  this spike's DCC validation: the first run of
+  `canonical-camera-revision` failed with `PROCESS_EXIT_NONZERO` at the
+  rev11 `MigrateMaterialAppearanceContract` mutation step — an operation
+  type Spike 9A does not touch at all. No stray or runaway process was
+  found on retry (unlike the `find.exe` incident during the post-8I
+  closure), and a clean re-run of both affected suites passed cleanly with
+  no code changes, confirming this was a one-off environmental hiccup
+  rather than a regression.
+
+The pure engine was also spot-verified by direct execution against the
+real `rev_golden_0012` fixture (not just via the test runner) before the
+test suite was written, confirming exactly 3 supported asset footprints,
+1 doorway clearance, and 0 violations, with hand-verified corner/rotation
+arithmetic for the rotated sofa and the `opening_d01` clearance zone.
+
+Target 3ds Max 2026 verification was not performed; only 2025.3
+compatibility mode is claimed. No test-owned 3ds Max process remained
+after the run.
+
 ## Spike 8J canonical Golden Corona preview from rev12 camera state (local commit `d15bd4c`)
 
 Static gates, all PASS:

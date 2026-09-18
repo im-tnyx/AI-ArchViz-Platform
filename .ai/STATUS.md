@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `d15bd4c`
-- Commit: `feat: render golden scene from canonical camera state`
+- Local `main` HEAD: `a5d4f9a`
+- Commit: `feat: add deterministic spatial placement validation`
 - Remote tracking state at this snapshot: local `main` is ahead of
   `origin/main` pending this session's push.
 
@@ -217,6 +217,28 @@
   layers (hash, manifest, render-state, material-state, camera-state
   including the mandatory FOV-regression proof, diagnostic-light, camera,
   renderer, Safe Scene, PNG, timeout) all failed closed.
+- Spike 9A introduced the platform's first deterministic spatial safety
+  oracle, `spatial-policy-v0.1` (`packages/spatial-engine/`): a pure,
+  DCC-independent package with zero runtime dependencies that answers "is
+  this placement geometrically safe?" for a candidate `MoveObject` or
+  `ReplaceAsset` before any 3ds Max process launches. It covers 2.5D
+  floor-plan occupancy: concave-safe space containment (corner containment
+  plus edge-crossing detection, not corner-only), oriented-rectangle
+  asset-asset collision via exact SAT (never AABB as the authoritative
+  test), and a conservative doorway access-clearance envelope (explicitly
+  not swing geometry or a code-compliance claim). `apps/worker/src/
+  build-plan.ts`'s `wallFrame()` now re-exports the package's
+  implementation rather than defining a second copy. The oracle is wired
+  into `revision.ts`'s `MoveObject`/`ReplaceAsset` branches and
+  `external-asset-ingestion.ts`'s controlled `VERIFIED` `external_max`
+  path as a strictly additive gate layered after the pre-existing
+  corner-only `validatePlacement`/`OBJECT_OUTSIDE_SPACE` check — nothing
+  previously blocked stops being blocked, and the new `SPATIAL_*` codes
+  only catch cases the legacy check could not (concave-boundary crossings,
+  asset-asset collisions, doorway blocking). No SceneSpec or
+  SceneChangeSet schema changed, no new Golden revision was created, and
+  no new DCC script exists — the entire engine runs under `pnpm test`. New
+  `spatial-validation-evidence-v0.1` contract added to worker-contracts.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

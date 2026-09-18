@@ -458,3 +458,93 @@
   predates canonical camera state), and creates no `rev_golden_0012`. 8J
   does not repoint or extend 8H; it is a structurally parallel, narrower
   entry point for the rev12 case.
+
+## Deterministic spatial placement validation (Spike 9A)
+
+- `packages/spatial-engine/` is a new, pure, DCC-independent package with
+  zero runtime dependencies (no ajv, no json-canonicalize — those stay in
+  `worker-contracts`). It never touches 3ds Max, pymxs, Corona, worker
+  process execution, filesystem paths, or OS state; inputs are plain
+  validated canonical data, outputs are plain deterministic data. It
+  requires no new DCC script — every spatial test runs under normal
+  `pnpm test`.
+- `spatial-policy-v0.1` (implementation-owned, not user/job supplied) is
+  frozen to: floor-plan XY occupancy (2.5D — height is preserved in source
+  data but is never an authoritative collision axis), concave-safe
+  canonical space containment, proxy-asset OBB collision, and a doorway
+  access-clearance envelope. Circulation/pathfinding, true 3D collision,
+  and any DCC geometry query are explicitly out of scope (see
+  [SPATIAL-VALIDATION.md](../docs/architecture/SPATIAL-VALIDATION.md)).
+- `SPATIAL_EPSILON_MM = 0.001` is the single frozen epsilon
+  (`packages/spatial-engine/src/geometry.ts`), used consistently for
+  point-on-boundary, segment intersection, SAT overlap, and the roll/pitch
+  "upright" support check (as a degrees tolerance) — no other epsilon
+  exists anywhere in the package.
+- Supported asset footprint model: `type: proxy_asset`, definition
+  `pivotPolicy: floor_center`, positive scale, and upright orientation
+  (`rotationEuler.x`/`.y` within `SPATIAL_EPSILON_MM` degrees of zero);
+  `rotationEuler.z` (yaw) is fully supported. Anything else — non-zero
+  roll/pitch, `back_center_floor` pivot, invalid/missing dimensions —
+  returns `SPATIAL_FOOTPRINT_UNSUPPORTED` with no guessed footprint, never
+  a silent projection. Canonical corner order is frozen: local `(-x,-y)`,
+  `(+x,-y)`, `(+x,+y)`, `(-x,+y)`, rotated/translated to world XY.
+- Space containment requires BOTH every footprint corner inside-or-on the
+  space boundary AND no footprint edge properly crossing a
+  space-boundary edge (a robust, epsilon-aware segment test) — corner-only
+  containment is insufficient for a concave polygon whose boundary dips
+  between two contained corners. Boundary touching alone is always
+  allowed; a footprint is invalid only if it has positive geometry outside
+  the space beyond the epsilon.
+- Asset-asset collision uses exact convex-polygon SAT, never world-axis
+  AABB as the authoritative test (AABB may only be a future broad phase).
+  A collision requires interior overlap by more than the epsilon on every
+  candidate axis; boundary touching alone is allowed. Collision identity
+  always uses canonical logical IDs, sorted lexicographically
+  (`assetAId < assetBId`) so semantically identical scenes always report
+  the pair in the same order.
+- The doorway access-clearance envelope (`width = opening.width` along the
+  host wall, `depth = opening.width` into the room, starting at the
+  interior wall face) is deliberately conservative: **not** swing
+  geometry, **not** a building-code claim, applies identically regardless
+  of `swingDirection`, and never depends on `hingeSide`. Windows never
+  produce a clearance zone. The interior side is derived from the shared
+  `wallFrame()` (negated `exteriorNormal`) — `apps/worker/src/
+  build-plan.ts`'s own `wallFrame()` now re-exports this single
+  implementation rather than defining a second copy, so the DCC-side wall
+  math and the pure spatial engine can never independently drift.
+- Three pure APIs: `validateSpatialScene(sceneSpec)` (full-scene),
+  `evaluateAssetPlacement(sceneSpec, assetId, desiredTransform)` (the
+  future boundary an AI planner calls before proposing `MoveObject`), and
+  `evaluateAssetReplacement(sceneSpec, assetId, newAssetDefinitionId)`
+  (same boundary for `ReplaceAsset`; the *new* definition's dimensions are
+  authoritative, never the old footprint). None mutates its input; all
+  produce byte-equivalent normalized evidence for semantically identical
+  scenes regardless of input array order (`assetFootprints` sorted by
+  `assetId`, `doorwayClearances` by `openingId`, `violations` by
+  `code, primaryId, secondaryId`).
+- `spatial-validation-evidence-v0.1`
+  (`packages/worker-contracts/schema/spatial-validation-evidence-v0.1.schema.json`,
+  `validateSpatialValidationEvidence`) wraps a `validateSpatialScene()`
+  result with `evidenceVersion: "0.1.0"` and `sceneSpecHash` (hashing is a
+  worker-contracts concern via `semanticJsonHash`, built by
+  `apps/worker/src/spatial-validation.ts`'s `spatialValidationEvidence()`
+  — the pure engine itself never hashes). No filesystem paths appear
+  anywhere in the evidence.
+- The oracle is integrated into `apps/worker/src/revision.ts`'s
+  `MoveObject` and `ReplaceAsset` branches (`enforceSpatialPlacement`/
+  `enforceSpatialReplacement`, called with the *original* base scene, not
+  a pre-mutated target) and into `apps/worker/src/
+  external-asset-ingestion.ts`'s controlled `VERIFIED` `external_max`
+  `ReplaceAsset` path (validated against the fully-constructed
+  `targetSceneSpec`, since the new external definition does not exist in
+  the base scene yet) — **strictly additively**. The pre-existing
+  `validatePlacement()`/`OBJECT_OUTSIDE_SPACE` corner-only check in
+  `revision.ts` and `validateSpatialFit()`/`OBJECT_OUTSIDE_SPACE` in
+  `external-asset-ingestion.ts` are both completely unchanged and still
+  run first; the new `spatial-policy-v0.1` checks run strictly afterward
+  and only add rejections the legacy checks cannot catch. A specific
+  `SPATIAL_*` code is always propagated (never a generic
+  `REVISION_FAILED`), and an invalid candidate reaches zero DCC launch
+  because the check runs entirely inside the pure preflight step, before
+  `allowDccExecution && authorizeDccExecution` is ever reached. No other
+  operation type is newly gated.
