@@ -71,6 +71,7 @@ Do not report a 3ds Max integration test as passed unless it actually ran agains
 - Preserve public contracts unless the task explicitly changes them.
 - Update tests when behavior changes.
 - Update canonical docs or `.ai/` continuity files only when verified project state changes.
+- When a confirmed milestone changes, update the relevant `.ai/` file in the same focused change and keep it concise and evidence-based.
 - Never put secrets, credentials, machine-specific absolute paths, transient logs, generated `.max` files, or `.workspace/` contents into tracked documentation.
 - Do not commit large generated artifacts unless the repository explicitly defines them as fixtures.
 

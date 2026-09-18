@@ -2,10 +2,13 @@
 
 ## Local baseline
 
-- Local `main` HEAD: `a5d4f9a`
-- Commit: `feat: add deterministic spatial placement validation`
-- Remote tracking state at this snapshot: local `main` is ahead of
-  `origin/main` pending this session's push.
+- Synchronized base: `ef94fd2b924a0f70b70c94619a75237ce7c73252`
+  (`docs: add local 3ds Max runbook`); local `main` was fast-forwarded from
+  `d9bef5e3fd888d67f182c85cacf30c27ccf67686` before this documentation-only
+  checkpoint.
+- No runtime or DCC validation was performed as part of this checkpoint.
+- Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
+  remains an ancestor of the synchronized base.
 
 ## Verified capability boundary
 

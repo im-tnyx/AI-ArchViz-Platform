@@ -162,20 +162,24 @@ selection, scene planning, camera ranking, and render critique.
 - [ADR-0001: Real 3D as Production Source of Truth](docs/decisions/0001-real-3d-source-of-truth.md)
 - [ADR-0002: SceneSpec as Canonical Scene Contract](docs/decisions/0002-scenespec-canonical-contract.md)
 
+## Agent Continuity
+
+For long-running implementation work, read the tracked
+[`.ai/`](.ai/README.md) continuity packet before acting. It records the current
+verified state, active contract guardrails, validation evidence, and the next
+authorized action. Runtime source, schemas, tests, and canonical `docs/` files
+remain authoritative for behavior.
+
 ## Status
 
-**Stage:** Contract closure complete / ready for deterministic technical spike
+**Current engineering state:** See [`.ai/STATUS.md`](.ai/STATUS.md) for the
+verified local snapshot and [`.ai/NEXT_TASK.md`](.ai/NEXT_TASK.md) for the
+currently authorized scope.
 
-Current priorities:
-
-1. Initialize only the minimal local worker/toolchain skeleton.
-2. Validate and consume the existing SceneSpec/worker schemas and Golden fixture.
-3. Prove controlled communication with 3ds Max.
-4. Generate, save, fresh-reopen, and semantically verify the Golden scene.
-5. Prove durable idempotent replay and forced-failure safety.
-6. Prove one minimal deterministic revision.
-7. Add CAD, assets/lookdev, and Corona preview in the documented sequence.
-8. Add AI only after the deterministic 3D pipeline is reliable.
+The single current-work reference is [`.ai/NEXT_TASK.md`](.ai/NEXT_TASK.md).
+The documented long-term development order remains in the
+[Project Plan](docs/architecture/PROJECT-PLAN.md); it does not authorize a
+future spike by itself.
 
 ## License
 
