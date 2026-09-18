@@ -1,3 +1,5 @@
+import { wallFrame as sharedWallFrame } from "@ai-archviz/spatial-engine";
+
 export type Vector3 = [number, number, number];
 
 export interface ManagedMetadata {
@@ -180,27 +182,23 @@ function resolveAssetDefinitions(scene: SceneSpecSubset): Map<string, AssetDefin
   return definitions;
 }
 
-function distance(start: Vector3, end: Vector3): number {
-  return Math.hypot(end[0] - start[0], end[1] - start[1], end[2] - start[2]);
-}
-
+/**
+ * Re-exports the single canonical wall reference frame from
+ * `@ai-archviz/spatial-engine` rather than defining a second copy (Spike
+ * 9A). Behavior is unchanged: `length`, unit tangent `u`, and
+ * `exteriorNormal` (thicknessDirection: exterior_right_of_u) are computed
+ * identically to before this refactor.
+ */
 export function wallFrame(wall: Pick<WallInput, "start" | "end">): {
   length: number;
   u: Vector3;
   exteriorNormal: Vector3;
 } {
-  const length = distance(wall.start, wall.end);
-  if (length <= 0) throw new Error("Wall baseline must have positive length");
-  const u: Vector3 = [
-    (wall.end[0] - wall.start[0]) / length,
-    (wall.end[1] - wall.start[1]) / length,
-    (wall.end[2] - wall.start[2]) / length,
-  ];
-  const canonicalZero = (value: number): number => (Object.is(value, -0) ? 0 : value);
+  const frame = sharedWallFrame(wall);
   return {
-    length,
-    u: u.map(canonicalZero) as Vector3,
-    exteriorNormal: [canonicalZero(u[1]), canonicalZero(-u[0]), 0],
+    length: frame.length,
+    u: [...frame.u] as Vector3,
+    exteriorNormal: [...frame.exteriorNormal] as Vector3,
   };
 }
 

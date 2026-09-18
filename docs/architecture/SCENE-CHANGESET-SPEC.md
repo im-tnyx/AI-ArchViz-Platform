@@ -527,6 +527,18 @@ Validation must check:
 - renderer/material compatibility
 - locked properties
 
+> **Implemented (Technical Spike 9A):** room fit, collision, and doorway
+> clearance ("clearances" above) are now enforced by a deterministic
+> spatial preflight (`spatial-policy-v0.1`, see
+> [SPATIAL-VALIDATION.md](SPATIAL-VALIDATION.md)) that runs before any DCC
+> launch, using the *new* asset definition's dimensions against the
+> existing `preserve_anchor` transform. It fails closed with a specific
+> `SPATIAL_*` code (never a generic failure) and applies to both
+> `procedural_proxy` replacement and the controlled `VERIFIED`
+> `external_max` replacement path, without touching the asset-trust
+> boundary. This is strictly additive to the pre-existing spatial-fit
+> check — nothing already blocked stops being blocked.
+
 ---
 
 ## 15. Transform Operations
@@ -536,6 +548,11 @@ Validation must check:
 SceneChangeSet v0.1 uses absolute desired-state transforms only. Relative
 deltas are outside the v0.1 machine contract because blind replay would not be
 idempotent.
+
+> **Implemented (Technical Spike 9A):** an asset `MoveObject` now also
+> passes the same deterministic `spatial-policy-v0.1` preflight described
+> above (room fit, asset-asset collision, doorway clearance) before any DCC
+> launch, strictly additive to the pre-existing spatial-fit check.
 
 ```json
 {

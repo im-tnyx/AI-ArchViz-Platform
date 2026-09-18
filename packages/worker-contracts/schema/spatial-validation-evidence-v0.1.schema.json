@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/spatial-validation-evidence-v0.1.schema.json",
+  "title": "Deterministic spatial placement validation evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "policyVersion", "projectId", "sceneId", "revisionId", "sceneSpecVersion", "sceneSpecHash", "status", "assetFootprints", "doorwayClearances", "violations"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "policyVersion": { "const": "spatial-policy-v0.1" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "sceneSpecVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "sceneSpecHash": { "$ref": "#/$defs/hash" },
+    "status": { "enum": ["PASS", "FAILED"] },
+    "assetFootprints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assetFootprint" }
+    },
+    "doorwayClearances": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/doorwayClearance" }
+    },
+    "violations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/violation" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "point2": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "corners2": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/point2" },
+        { "$ref": "#/$defs/point2" },
+        { "$ref": "#/$defs/point2" },
+        { "$ref": "#/$defs/point2" }
+      ],
+      "items": false,
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "assetFootprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId", "assetDefinitionId", "spaceId", "centerXY", "widthMm", "lengthMm", "rotationZDegrees", "cornersXY"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/id" },
+        "assetDefinitionId": { "$ref": "#/$defs/id" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "centerXY": { "$ref": "#/$defs/point2" },
+        "widthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "lengthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "rotationZDegrees": { "type": "number" },
+        "cornersXY": { "$ref": "#/$defs/corners2" }
+      }
+    },
+    "doorwayClearance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["openingId", "hostGeometryId", "spaceId", "widthMm", "depthMm", "cornersXY"],
+      "properties": {
+        "openingId": { "$ref": "#/$defs/id" },
+        "hostGeometryId": { "$ref": "#/$defs/id" },
+        "spaceId": { "type": "string" },
+        "widthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "depthMm": { "type": "number", "exclusiveMinimum": 0 },
+        "cornersXY": { "$ref": "#/$defs/corners2" }
+      }
+    },
+    "violation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "SPATIAL_FOOTPRINT_UNSUPPORTED",
+            "SPATIAL_ASSET_OUTSIDE_SPACE",
+            "SPATIAL_ASSET_COLLISION",
+            "SPATIAL_DOOR_CLEARANCE_BLOCKED"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "assetId": { "$ref": "#/$defs/id" },
+        "assetAId": { "$ref": "#/$defs/id" },
+        "assetBId": { "$ref": "#/$defs/id" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "openingId": { "$ref": "#/$defs/id" },
+        "hostGeometryId": { "$ref": "#/$defs/id" }
+      }
+    }
+  }
+}

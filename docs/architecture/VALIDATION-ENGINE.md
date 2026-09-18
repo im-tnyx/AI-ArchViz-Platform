@@ -387,6 +387,16 @@ A change affecting approved design should generally raise risk and may require a
 
 ## 14. Spatial Validation
 
+> **Implemented (Technical Spike 9A):** sections 14-16 below remain the
+> original planning sketch. The real, implemented contract is
+> `spatial-policy-v0.1`, documented authoritatively in
+> [SPATIAL-VALIDATION.md](SPATIAL-VALIDATION.md) and implemented in
+> `packages/spatial-engine/`. It currently covers floor-plan XY occupancy,
+> concave-safe space containment, oriented-rectangle (SAT) asset-asset
+> collision, and a doorway access-clearance envelope — not yet the full
+> wall/ceiling/mirroring/support-plane checks sketched below, and
+> explicitly not circulation/pathfinding or true 3D collision.
+
 Spatial validation operates in canonical SceneSpec coordinates.
 
 Checks include:

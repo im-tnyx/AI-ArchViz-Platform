@@ -864,3 +864,94 @@ describe("Technical Spike 8I canonical camera revisions", () => {
     expect(JSON.stringify(plan.camera)).not.toContain('"focalLengthMm":24');
   });
 });
+
+describe("Technical Spike 9A deterministic spatial placement preflight", () => {
+  function moveCoffeeTableChangeSet(transform: {
+    position: number[];
+    rotationEuler: number[];
+    scale: number[];
+  }): Record<string, unknown> {
+    const changeSet = fixture("changesets/move-coffee-table-r2.json") as {
+      baseRevisionId: string;
+      targetRevisionId: string;
+      operations: Array<{ parameters: { transform: unknown } }>;
+    };
+    changeSet.baseRevisionId = "rev_golden_0012";
+    changeSet.targetRevisionId = "rev_golden_0099_test_only";
+    const operation = changeSet.operations[0];
+    if (!operation) throw new Error("MoveObject operation missing");
+    operation.parameters.transform = transform;
+    return changeSet as unknown as Record<string, unknown>;
+  }
+
+  it("blocks a MoveObject that collides with another asset before any mutation, with zero DCC-relevant state produced", () => {
+    const rev12 = fixture("revisions/rev_golden_0012/scene-spec.json");
+    const sourceOrder = structuredClone(rev12);
+    const changeSet = moveCoffeeTableChangeSet({
+      position: [3000, 3350, 0], // exact sofa position
+      rotationEuler: [0, 0, 0],
+      scale: [1, 1, 1],
+    });
+    expect(errorCode(() => planSceneRevision(rev12, changeSet))).toBe("SPATIAL_ASSET_COLLISION");
+    // Pure preflight: the base SceneSpec passed in is never mutated.
+    expect(rev12).toEqual(sourceOrder);
+  });
+
+  it("blocks a MoveObject that exits the room boundary by more than epsilon (legacy corner-only check fires first for this simple convex room; the concave-room case where the new engine's own SPATIAL_ASSET_OUTSIDE_SPACE is load-bearing is covered in spatial-engine.test.ts)", () => {
+    const rev12 = fixture("revisions/rev_golden_0012/scene-spec.json");
+    const changeSet = moveCoffeeTableChangeSet({
+      position: [5900, 2200, 0],
+      rotationEuler: [0, 0, 0],
+      scale: [1, 1, 1],
+    });
+    expect(errorCode(() => planSceneRevision(rev12, changeSet))).toBe("OBJECT_OUTSIDE_SPACE");
+  });
+
+  it("blocks a MoveObject that enters the doorway access-clearance envelope", () => {
+    const rev12 = fixture("revisions/rev_golden_0012/scene-spec.json");
+    const changeSet = moveCoffeeTableChangeSet({
+      // Half-width 600mm: centered at x=600 the footprint spans x:[0,1200],
+      // touching (not crossing) the room's west boundary while still fully
+      // overlapping the opening_d01 clearance zone (x:[0,900], y:[1200,2100]).
+      position: [600, 1650, 0],
+      rotationEuler: [0, 0, 0],
+      scale: [1, 1, 1],
+    });
+    expect(errorCode(() => planSceneRevision(rev12, changeSet))).toBe(
+      "SPATIAL_DOOR_CLEARANCE_BLOCKED",
+    );
+  });
+
+  it("blocks a MoveObject with an unsupported tilted footprint", () => {
+    const rev12 = fixture("revisions/rev_golden_0012/scene-spec.json");
+    const changeSet = moveCoffeeTableChangeSet({
+      position: [3300, 2200, 0],
+      rotationEuler: [7, 0, 0],
+      scale: [1, 1, 1],
+    });
+    expect(errorCode(() => planSceneRevision(rev12, changeSet))).toBe(
+      "SPATIAL_FOOTPRINT_UNSUPPORTED",
+    );
+  });
+
+  it("still allows a genuinely valid MoveObject through the spatial gate", () => {
+    const rev12 = fixture("revisions/rev_golden_0012/scene-spec.json");
+    const changeSet = moveCoffeeTableChangeSet({
+      position: [3200, 2200, 0],
+      rotationEuler: [0, 0, 0],
+      scale: [1, 1, 1],
+    });
+    const result = planSceneRevision(rev12, changeSet);
+    expect(result.plan.operation.type).toBe("MoveObject");
+  });
+
+  it("does not retroactively gate an unrelated non-asset operation (SetRenderIntent)", () => {
+    // SetRenderIntent has no asset transform/definition at all, so the new
+    // spatial preflight must simply never engage for it; this is proven by
+    // the operation succeeding exactly as before 9A.
+    const rev8 = fixture("revisions/rev_golden_0008/scene-spec.json");
+    const changeSet = fixture("changesets/set-render-intent-r9.json");
+    const result = planSceneRevision(rev8, changeSet);
+    expect(result.plan.operation.type).toBe("SetRenderIntent");
+  });
+});

@@ -7,6 +7,7 @@ import {
   validateSceneChangeSet,
   validateSceneSpec,
 } from "@ai-archviz/scene-spec";
+import { evaluateAssetPlacement, evaluateAssetReplacement } from "@ai-archviz/spatial-engine";
 import {
   type CanonicalCameraStateEvidence,
   type CanonicalMaterialStateEvidence,
@@ -911,6 +912,7 @@ export function planSceneRevision(
       );
     }
     validatePlacement(base, target, operation.parameters.transform);
+    enforceSpatialPlacement(base, operation.targetId, operation.parameters.transform);
     const targetAsset = targetSceneSpec.assets.find((asset) => asset.id === operation.targetId);
     if (!targetAsset) throw new RevisionValidationError("TARGET_NOT_FOUND", "Target disappeared");
     targetAsset.transform = structuredClone(operation.parameters.transform);
@@ -1103,6 +1105,7 @@ export function planSceneRevision(
       operation.targetId,
       operation.parameters.newAssetDefinitionId,
     );
+    enforceSpatialReplacement(base, operation.targetId, candidate.candidateAssetDefinitionId);
     const targetAsset = targetSceneSpec.assets.find((asset) => asset.id === operation.targetId);
     if (!targetAsset) throw new RevisionValidationError("TARGET_NOT_FOUND", "Asset disappeared");
     targetAsset.assetDefinitionId = candidate.candidateAssetDefinitionId;
@@ -1346,6 +1349,60 @@ function pointInPolygonOrBoundary(point: [number, number], boundary: Vector3[]):
     if (intersects) inside = !inside;
   }
   return inside;
+}
+
+/**
+ * Additional, strictly ADDITIVE deterministic spatial preflight
+ * (spatial-policy-v0.1, Technical Spike 9A) layered on top of the legacy
+ * `validatePlacement`/`OBJECT_OUTSIDE_SPACE` corner-only check above: exact
+ * concave-safe space containment, asset-asset OBB collision, and doorway
+ * access-clearance blocking. It never weakens or replaces the legacy check
+ * — it only catches additional cases the legacy corner-only check cannot
+ * (e.g. a concave-polygon edge crossing between two contained corners, or a
+ * collision with another asset).
+ */
+function spatialViolationForAsset(
+  result: {
+    violations: Array<{
+      code: string;
+      message: string;
+      assetId?: string;
+      assetAId?: string;
+      assetBId?: string;
+    }>;
+  },
+  assetId: string,
+): { code: string; message: string } | undefined {
+  return result.violations.find(
+    (violation) =>
+      violation.assetId === assetId ||
+      violation.assetAId === assetId ||
+      violation.assetBId === assetId,
+  );
+}
+
+function enforceSpatialPlacement(
+  base: Record<string, unknown>,
+  assetId: string,
+  transform: SemanticTransform,
+): void {
+  const violation = spatialViolationForAsset(
+    evaluateAssetPlacement(base, assetId, transform),
+    assetId,
+  );
+  if (violation) throw new RevisionValidationError(violation.code, violation.message);
+}
+
+function enforceSpatialReplacement(
+  base: Record<string, unknown>,
+  assetId: string,
+  newAssetDefinitionId: string,
+): void {
+  const violation = spatialViolationForAsset(
+    evaluateAssetReplacement(base, assetId, newAssetDefinitionId),
+    assetId,
+  );
+  if (violation) throw new RevisionValidationError(violation.code, violation.message);
 }
 
 function managedLogicalIds(scene: SceneDocument): string[] {

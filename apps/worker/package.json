@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@ai-archviz/scene-spec": "workspace:*",
+    "@ai-archviz/spatial-engine": "workspace:*",
     "@ai-archviz/worker-contracts": "workspace:*"
   }
 }

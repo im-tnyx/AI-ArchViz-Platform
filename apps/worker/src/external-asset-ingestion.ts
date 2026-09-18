@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { validateSceneChangeSet, validateSceneSpec } from "@ai-archviz/scene-spec";
+import { validateSpatialScene } from "@ai-archviz/spatial-engine";
 import { semanticJsonHash, validateSceneManifest } from "@ai-archviz/worker-contracts";
 import {
   type AssetArtifactRegistry,
@@ -650,6 +651,20 @@ export function preflightExternalAssetIngestion({
   const targetValidation = validateSceneSpec(targetSceneSpec);
   if (!targetValidation.ok) fail("SCHEMA_INVALID", "Target SceneSpec is invalid");
   assertExternalDefinitionAppend(scene, targetSceneSpec, definition);
+  // Additional, strictly ADDITIVE deterministic spatial preflight
+  // (spatial-policy-v0.1, Technical Spike 9A) layered on top of the legacy
+  // validateSpatialFit()/OBJECT_OUTSIDE_SPACE AABB check above: exact
+  // concave-safe containment, asset-asset OBB collision, and doorway
+  // clearance, using the NEW external definition's canonical dimensions
+  // only (no file/artifact access occurs here).
+  const spatialResult = validateSpatialScene(targetSceneSpec);
+  const spatialViolation = spatialResult.violations.find(
+    (violation) =>
+      violation.assetId === operation.targetId ||
+      violation.assetAId === operation.targetId ||
+      violation.assetBId === operation.targetId,
+  );
+  if (spatialViolation) fail(spatialViolation.code, spatialViolation.message);
   const expectedManifest = targetManifest(
     baseManifest,
     contract.targetRevisionId,

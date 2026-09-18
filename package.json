@@ -9,7 +9,7 @@
     "pnpm": ">=11.19.0 <12"
   },
   "scripts": {
-    "build": "tsc -b packages/scene-spec packages/worker-contracts apps/worker",
+    "build": "tsc -b packages/scene-spec packages/spatial-engine packages/worker-contracts apps/worker",
     "typecheck": "pnpm run build && tsc --noEmit -p tsconfig.tests.json",
     "lint": "biome check .",
     "test": "pnpm run build && vitest run",

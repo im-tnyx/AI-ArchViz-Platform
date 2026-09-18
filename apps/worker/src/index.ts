@@ -22,4 +22,5 @@ export * from "./paths.js";
 export * from "./probe.js";
 export * from "./process.js";
 export * from "./revision.js";
+export * from "./spatial-validation.js";
 export * from "./workspace.js";
