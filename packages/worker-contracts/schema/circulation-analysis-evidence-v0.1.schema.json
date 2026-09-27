@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/circulation-analysis-evidence-v0.1.schema.json",
+  "title": "Deterministic circulation analysis evidence v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "policyVersion", "projectId", "sceneId", "revisionId", "sceneSpecVersion", "sceneSpecHash", "spatialPolicyVersion", "spatialValidationStatus", "gridStepMm", "agentRadiusMm", "spaces", "graphSemanticHash", "status", "violations"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "policyVersion": { "const": "circulation-policy-v0.1" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "sceneSpecVersion": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "sceneSpecHash": { "$ref": "#/$defs/hash" },
+    "spatialPolicyVersion": { "const": "spatial-policy-v0.1" },
+    "spatialValidationStatus": { "enum": ["PASS", "FAILED"] },
+    "gridStepMm": { "const": 100 },
+    "agentRadiusMm": { "const": 300 },
+    "spaces": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/space" }
+    },
+    "graphSemanticHash": { "$ref": "#/$defs/hash" },
+    "status": { "enum": ["PASS", "FAILED"] },
+    "violations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/violation" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "nodeId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*::(0|[1-9][0-9]*)::(0|[1-9][0-9]*)$", "maxLength": 160 },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "point2": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spaceId", "gridOriginXY", "gridSize", "walkableNodeCount", "edgeCount", "componentCount", "components", "doorPortals"],
+      "properties": {
+        "spaceId": { "$ref": "#/$defs/id" },
+        "gridOriginXY": { "$ref": "#/$defs/point2" },
+        "gridSize": {
+          "type": "array",
+          "prefixItems": [{ "$ref": "#/$defs/count" }, { "$ref": "#/$defs/count" }],
+          "items": false,
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "walkableNodeCount": { "$ref": "#/$defs/count" },
+        "edgeCount": { "$ref": "#/$defs/count" },
+        "componentCount": { "$ref": "#/$defs/count" },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["componentId", "nodeCount"],
+            "properties": {
+              "componentId": { "$ref": "#/$defs/nodeId" },
+              "nodeCount": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "doorPortals": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/doorPortal" }
+        }
+      }
+    },
+    "doorPortal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["openingId", "spaceId", "portalXY", "status", "nodeId", "componentId"],
+      "properties": {
+        "openingId": { "$ref": "#/$defs/id" },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "portalXY": { "$ref": "#/$defs/point2" },
+        "status": { "enum": ["RESOLVED", "BLOCKED"] },
+        "nodeId": { "oneOf": [{ "$ref": "#/$defs/nodeId" }, { "type": "null" }] },
+        "componentId": { "oneOf": [{ "$ref": "#/$defs/nodeId" }, { "type": "null" }] }
+      }
+    },
+    "violation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "enum": ["CIRCULATION_SOURCE_SPATIAL_INVALID", "CIRCULATION_PORTAL_BLOCKED"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "spaceId": { "$ref": "#/$defs/id" },
+        "openingId": { "$ref": "#/$defs/id" },
+        "portalXY": { "$ref": "#/$defs/point2" }
+      }
+    }
+  }
+}

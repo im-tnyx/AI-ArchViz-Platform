@@ -10,6 +10,12 @@ Boundary Validation", and "Collision Validation" sections — those sections
 remain historical planning sketches; this document and
 `packages/spatial-engine/` are the authoritative, implemented contract.
 
+Walkable circulation (Spike 9B) is a separate policy,
+`circulation-policy-v0.1`, documented in
+[CIRCULATION-ANALYSIS.md](CIRCULATION-ANALYSIS.md). It consumes this
+policy's footprints and doorway clearances but does not change
+spatial-policy-v0.1's frozen scope or its revision-gating behavior.
+
 ## 2. Package boundary
 
 `packages/spatial-engine/` is a pure, DCC-independent package. It has zero

@@ -78,7 +78,7 @@ export function orientedRectangleCorners(
   ];
 }
 
-function distancePointToSegment(point: Point2, a: Point2, b: Point2): number {
+export function distancePointToSegment(point: Point2, a: Point2, b: Point2): number {
   const abx = b[0] - a[0];
   const aby = b[1] - a[1];
   const lengthSquared = abx * abx + aby * aby;
@@ -224,6 +224,107 @@ function project(corners: readonly Point2[], axis: Point2): [number, number] {
  * (overlap <= epsilon on any axis) is allowed. World-axis AABB is never
  * used as the authoritative test — only as a possible future broad phase.
  */
+function cross(origin: Point2, a: Point2, b: Point2): number {
+  return (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0]);
+}
+
+/**
+ * Exact minimum distance between segments `a1`-`a2` and `b1`-`b2`: zero when
+ * they properly cross, otherwise the minimum is always attained at one of
+ * the four endpoints, so no sampling is involved.
+ */
+export function distanceSegmentToSegment(a1: Point2, a2: Point2, b1: Point2, b2: Point2): number {
+  const d1 = cross(a1, a2, b1);
+  const d2 = cross(a1, a2, b2);
+  const d3 = cross(b1, b2, a1);
+  const d4 = cross(b1, b2, a2);
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return 0;
+  }
+  return Math.min(
+    distancePointToSegment(a1, b1, b2),
+    distancePointToSegment(a2, b1, b2),
+    distancePointToSegment(b1, a1, a2),
+    distancePointToSegment(b2, a1, a2),
+  );
+}
+
+/** Inside-or-on test for a convex polygon given in consistent winding (either direction). */
+function pointInConvexPolygon(point: Point2, corners: readonly Point2[]): boolean {
+  let sign = 0;
+  const n = corners.length;
+  for (let index = 0; index < n; index += 1) {
+    const value = cross(corners[index] as Point2, corners[(index + 1) % n] as Point2, point);
+    if (value === 0) continue;
+    const current = value > 0 ? 1 : -1;
+    if (sign === 0) sign = current;
+    else if (sign !== current) return false;
+  }
+  return true;
+}
+
+/** Exact distance from `point` to a (possibly rotated) rectangle; zero inside or on it. */
+export function distancePointToRectangle(point: Point2, corners: readonly Point2[]): number {
+  if (pointInConvexPolygon(point, corners)) return 0;
+  let minimum = Number.POSITIVE_INFINITY;
+  const n = corners.length;
+  for (let index = 0; index < n; index += 1) {
+    minimum = Math.min(
+      minimum,
+      distancePointToSegment(point, corners[index] as Point2, corners[(index + 1) % n] as Point2),
+    );
+  }
+  return minimum;
+}
+
+/** Exact distance from segment `a`-`b` to a (possibly rotated) rectangle; zero if they touch or intersect. */
+export function distanceSegmentToRectangle(
+  a: Point2,
+  b: Point2,
+  corners: readonly Point2[],
+): number {
+  if (pointInConvexPolygon(a, corners) || pointInConvexPolygon(b, corners)) return 0;
+  let minimum = Number.POSITIVE_INFINITY;
+  const n = corners.length;
+  for (let index = 0; index < n; index += 1) {
+    minimum = Math.min(
+      minimum,
+      distanceSegmentToSegment(a, b, corners[index] as Point2, corners[(index + 1) % n] as Point2),
+    );
+  }
+  return minimum;
+}
+
+/** Minimum distance from `point` to any edge of the closed `polygon` ring. */
+export function distancePointToPolygonBoundary(point: Point2, polygon: readonly Point2[]): number {
+  let minimum = Number.POSITIVE_INFINITY;
+  const n = polygon.length;
+  for (let index = 0; index < n; index += 1) {
+    minimum = Math.min(
+      minimum,
+      distancePointToSegment(point, polygon[index] as Point2, polygon[(index + 1) % n] as Point2),
+    );
+  }
+  return minimum;
+}
+
+/** Minimum distance from segment `a`-`b` to any edge of the closed `polygon` ring. */
+export function distanceSegmentToPolygonBoundary(
+  a: Point2,
+  b: Point2,
+  polygon: readonly Point2[],
+): number {
+  let minimum = Number.POSITIVE_INFINITY;
+  const n = polygon.length;
+  for (let index = 0; index < n; index += 1) {
+    minimum = Math.min(
+      minimum,
+      distanceSegmentToSegment(a, b, polygon[index] as Point2, polygon[(index + 1) % n] as Point2),
+    );
+  }
+  return minimum;
+}
+
 export function rectanglesOverlap(
   cornersA: readonly Point2[],
   cornersB: readonly Point2[],

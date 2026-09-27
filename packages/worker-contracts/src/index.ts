@@ -63,6 +63,7 @@ export type CoronaMaterialAppearanceEvidence = Record<string, unknown>;
 export type CanonicalMaterialStateEvidence = Record<string, unknown>;
 export type CanonicalCameraStateEvidence = Record<string, unknown>;
 export type SpatialValidationEvidence = Record<string, unknown>;
+export type CirculationAnalysisEvidence = Record<string, unknown>;
 
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
@@ -110,6 +111,9 @@ export const canonicalMaterialStateSchema = readSchema("canonical-material-state
 export const canonicalCameraStateSchema = readSchema("canonical-camera-state-v0.1.schema.json");
 export const spatialValidationEvidenceSchema = readSchema(
   "spatial-validation-evidence-v0.1.schema.json",
+);
+export const circulationAnalysisEvidenceSchema = readSchema(
+  "circulation-analysis-evidence-v0.1.schema.json",
 );
 
 const ajv = new Ajv2020({
@@ -178,6 +182,9 @@ const canonicalCameraStateValidator = ajv.compile(
 const spatialValidationEvidenceValidator = ajv.compile(
   spatialValidationEvidenceSchema,
 ) as ValidateFunction<SpatialValidationEvidence>;
+const circulationAnalysisEvidenceValidator = ajv.compile(
+  circulationAnalysisEvidenceSchema,
+) as ValidateFunction<CirculationAnalysisEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -311,6 +318,12 @@ export function validateSpatialValidationEvidence(
   value: unknown,
 ): ValidationResult<SpatialValidationEvidence> {
   return runValidation(spatialValidationEvidenceValidator, value);
+}
+
+export function validateCirculationAnalysisEvidence(
+  value: unknown,
+): ValidationResult<CirculationAnalysisEvidence> {
+  return runValidation(circulationAnalysisEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {
