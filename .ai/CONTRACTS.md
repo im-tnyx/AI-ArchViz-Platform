@@ -556,3 +556,47 @@
   because the check runs entirely inside the pure preflight step, before
   `allowDccExecution && authorizeDccExecution` is ever reached. No other
   operation type is newly gated.
+
+## Deterministic circulation analysis (Spike 9B)
+
+- `circulation-policy-v0.1` lives in
+  `packages/spatial-engine/src/circulation.ts`, a separate policy from
+  `spatial-policy-v0.1` (unchanged) inside the same pure, dependency-free
+  package. Authoritative doc:
+  [CIRCULATION-ANALYSIS.md](../docs/architecture/CIRCULATION-ANALYSIS.md).
+- Frozen constants: grid step 100 mm, agent disc radius 300 mm, snap
+  distance `100 * sqrt(2)` mm, route distance rounded to 6 decimals,
+  shared `SPATIAL_EPSILON_MM = 0.001`. These are software access-probe
+  parameters, not building-code, accessibility, egress, or ergonomic
+  claims.
+- `validateSpatialScene()` must PASS first
+  (`CIRCULATION_SOURCE_SPATIAL_INVALID` otherwise). Obstacles are exactly
+  the 9A asset OBB footprints; 9A doorway clearances are free space used
+  for portals; windows produce nothing.
+- Per space, grid centers are `min + (i + 0.5) * 100` from the boundary's
+  bounding box; node ID `spaceId::ix::iy` (integers only); frozen node
+  order `spaceId`, `ix`, `iy`. A node is walkable when strictly inside the
+  space with exact distance >= `300 - epsilon` to every boundary segment
+  and asset rectangle. 8-neighbor edges (N, NE, E, SE, S, SW, W, NW;
+  costs 100 / `100*sqrt(2)`) require no diagonal corner cutting and an
+  exact swept-segment clearance check. Component ID = smallest member node
+  in frozen order.
+- Door portal = midpoint of the clearance's two into-room corners. Portals
+  and route endpoints must themselves be clear probe centers and snap only
+  to a walkable node within the snap distance via a clear segment
+  (nearest, then lowest node order); otherwise
+  `CIRCULATION_PORTAL_BLOCKED` / `CIRCULATION_ENDPOINT_BLOCKED` /
+  `CIRCULATION_ENDPOINT_UNRESOLVABLE`.
+- `findCirculationRoute()` is same-space only (no cross-space topology is
+  guessed) and uses deterministic Dijkstra with exact integer step-count
+  costs compared as `a + b*sqrt(2)`; ties resolve by frozen node order.
+  Disconnected endpoints return `CIRCULATION_NO_ROUTE`.
+- `circulation-analysis-evidence-v0.1` (built by
+  `apps/worker/src/circulation-analysis.ts`'s
+  `circulationAnalysisEvidence()`, schema-validated) is compact: summaries
+  and door portals only, with the full normalized graph committed via
+  `graphSemanticHash` (`semanticJsonHash`, worker layer). No nodes, edges,
+  paths, or DCC data are serialized.
+- 9B adds no revision gate: `MoveObject`/`ReplaceAsset` remain gated by
+  `spatial-policy-v0.1` only until an explicit canonical circulation
+  requirement contract exists.

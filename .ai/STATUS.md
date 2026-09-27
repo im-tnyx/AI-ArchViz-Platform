@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `0160de6` (`fix: centralize dcc batch launch policy`),
-  on top of the `8ec74e6` agent-continuity reconciliation.
+- Local baseline HEAD: `7ed0fee` (`feat: add deterministic circulation graph`),
+  on top of `0160de6` (`fix: centralize dcc batch launch policy`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -243,6 +243,20 @@
   SceneChangeSet schema changed, no new Golden revision was created, and
   no new DCC script exists — the entire engine runs under `pnpm test`. New
   `spatial-validation-evidence-v0.1` contract added to worker-contracts.
+- Spike 9B added `circulation-policy-v0.1`
+  (`packages/spatial-engine/src/circulation.ts`), a separate, pure,
+  DCC-independent analysis layered on the unchanged `spatial-policy-v0.1`:
+  a 100 mm per-space grid probed by a 300 mm-radius floor-plan disc with
+  exact clearance to the eroded space boundary and the 9A asset OBBs, a
+  fixed 8-neighbor graph with no diagonal corner cutting and swept-segment
+  edge clearance, stable connected components, interior door portals, and
+  a same-space deterministic Dijkstra route query. Golden rev12 analyzes
+  PASS (1394 walkable nodes, one component, `opening_d01` portal
+  resolved) and routes from that portal. New compact
+  `circulation-analysis-evidence-v0.1` commits to the full graph via
+  `graphSemanticHash`. It is analysis only: no revision gate, no schema
+  change, no rev13, no DCC script, and no building-code or accessibility
+  claim.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

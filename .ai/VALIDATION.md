@@ -1,5 +1,35 @@
 # Latest Validation Evidence
 
+## Spike 9B deterministic circulation graph (local commit `7ed0fee`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 315/315 (32 new in `tests/unit/circulation.test.ts`:
+  frozen constants; Golden rev12 analysis PASS with frozen counts, portal
+  node, and `graphSemanticHash`; Golden portal route (39 orthogonal + 2
+  diagonal steps, 4182.842712 mm); 500 mm gap `NO_ROUTE` while 9A PASSes
+  vs 1000 mm gap route; rotated OBB with an AABB-only counterexample;
+  concave L-space; flush-furniture and narrow-door `PORTAL_BLOCKED`;
+  endpoint blocked/unresolvable/unknown space; stable components; a
+  proven equal-cost mirrored-route tie-break; reordered-input determinism;
+  input immutability; source-spatial-invalid; compact schema-valid
+  evidence; a 9A-valid `MoveObject` still planning despite blocking the
+  portal; purity boundary; no corner cutting; swept-segment edge
+  clearance). Removing the edge-clearance check or the corner-cutting
+  rule was confirmed to fail tests. All 9A tests unchanged and PASS.
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS first run on 3ds Max 2025 compatibility mode
+(2025.3 install, `AI_ARCHVIZ_ALLOW_DCC_TESTS=1`), launched through the
+centralized `threeDsMaxBatchArguments()` policy:
+
+- `test:3dsmax:revision`, `test:3dsmax:replace-asset`,
+  `test:3dsmax:canonical-golden-corona-preview-rev12` (28mm camera
+  observed not mutated, no rev13).
+
+Target 3ds Max 2026 was not tested.
+
 ## Post-8J DCC batch launch policy closure (local commit `0160de6`)
 
 Structural hardening only: eleven worker modules with private
