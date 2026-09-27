@@ -96,6 +96,14 @@
   the specific `AI_ARCHVIZ_*` overrides that call site owns. No wildcard
   prefix (`AI_ARCHVIZ_*`, `VRAY_*`, `ADSK_*`, `CORONA_*`) is copied from the
   parent process.
+- Every 3ds Max Batch launch obtains its arguments from the single
+  `threeDsMaxBatchArguments()` (`apps/worker/src/dcc-batch.ts`):
+  `[scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"]`, never `-silent`
+  (a `3dsmax.exe` flag, not a batch flag). No other worker source may
+  construct these flags; a static guard in
+  `tests/unit/worker-foundation.test.ts` fails if a flag literal appears
+  outside `dcc-batch.ts` or any `batchExecutablePath` launch uses another
+  argument builder.
 
 ## Corona rendering (Spikes 8A-8D)
 

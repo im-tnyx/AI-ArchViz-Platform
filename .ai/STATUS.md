@@ -2,13 +2,10 @@
 
 ## Local baseline
 
-- Synchronized base: `ef94fd2b924a0f70b70c94619a75237ce7c73252`
-  (`docs: add local 3ds Max runbook`); local `main` was fast-forwarded from
-  `d9bef5e3fd888d67f182c85cacf30c27ccf67686` before this documentation-only
-  checkpoint.
-- No runtime or DCC validation was performed as part of this checkpoint.
+- Local baseline HEAD: `0160de6` (`fix: centralize dcc batch launch policy`),
+  on top of the `8ec74e6` agent-continuity reconciliation.
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
-  remains an ancestor of the synchronized base.
+  remains an ancestor of the local baseline.
 
 ## Verified capability boundary
 
@@ -64,6 +61,10 @@
   proven `VRAY_FOR_3DSMAX2025_MAIN` key) plus caller-owned `AI_ARCHVIZ_*`
   overrides only; secret and untrusted parent variables never reach a DCC
   process. See [VALIDATION.md](VALIDATION.md) for the regression evidence.
+- Every 3ds Max Batch launch (20 call sites across 14 worker modules) takes
+  its arguments from the single `threeDsMaxBatchArguments()` helper; the
+  eleven feature-local copies that had drifted in are removed and a
+  static unit guard prevents reintroduction.
 - Local DCC evidence covers 3ds Max 2025.3 compatibility mode across every
   mandatory `test:3dsmax:*` suite. Production target 3ds Max 2026 is not yet
   verified.

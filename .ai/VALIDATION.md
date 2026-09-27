@@ -1,5 +1,33 @@
 # Latest Validation Evidence
 
+## Post-8J DCC batch launch policy closure (local commit `0160de6`)
+
+Structural hardening only: eleven worker modules with private
+`batchArguments()` copies now call the shared `threeDsMaxBatchArguments()`;
+flags, environment policy, authorization, and Python scripts are unchanged.
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 283/283, including a new static guard that fails if a
+  `-safescene`/`-dm`/`-silent` literal appears outside `dcc-batch.ts` or any
+  `batchExecutablePath` launch uses another argument builder (confirmed to
+  fail when one local helper was temporarily restored)
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS on 3ds Max 2025.3 compatibility mode
+(`AI_ARCHVIZ_ALLOW_DCC_TESTS=1`), first run, no retries:
+
+- `test:3dsmax:canonical-golden-corona-preview-rev12` (8J),
+  `-rev11` (8H), `test:3dsmax:canonical-golden-corona-preview` (8E),
+  `test:3dsmax:corona-adapter`, `test:3dsmax:corona-baseline`,
+  `test:3dsmax:corona-material-appearance`, `test:3dsmax:asset-inspection`,
+  `test:3dsmax:external-asset-ingestion`, `test:3dsmax:golden-corona-preview`
+- 8J still reports rev12 source, persisted 28mm camera observed not
+  mutated, four verification layers, no light/material creation, no rev13.
+
+Target 3ds Max 2026 was not tested.
+
 ## Spike 9A deterministic spatial placement validation (local commit `a5d4f9a`)
 
 Static gates, all PASS:
