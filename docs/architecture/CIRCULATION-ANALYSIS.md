@@ -70,10 +70,16 @@ occupancy rules are reused, never duplicated.
 
 - Each `space.boundary` is the walkable enclosure, with 9A's polygon
   semantics (convex and simple concave polygons).
-- Obstacles are exactly the 9A asset footprints (`validateSpatialScene`'s
-  `assetFootprints`, derived by `deriveAssetFootprint`) — the real oriented
-  rectangles, never an AABB and never inflated geometry. Every footprint in
-  the scene is an obstacle for every space; spaces are not assumed disjoint.
+- Each space graph uses only 9A asset footprints whose canonical `spaceId`
+  matches that space (`validateSpatialScene`'s `assetFootprints`, derived by
+  `deriveAssetFootprint`) — the real oriented rectangles, never an AABB and
+  never inflated geometry. Ownership comes only from
+  `AssetFootprint.spaceId`, never from coordinates, geometric overlap,
+  `hostGeometryId`, DCC nodes, or array order. Spaces may share XY
+  (stacked floors, overlapping or nested boundaries), so furniture in one
+  space never obstructs another. A footprint referencing a space that does
+  not exist joins no graph; 9A's own handling of it is unchanged. This
+  mirrors the same-space-only routing rule (section 15).
 - 9A doorway access-clearance zones are NOT obstacles; they are free space
   used to derive door portals.
 - Windows produce no portal, node, or opening into another space.

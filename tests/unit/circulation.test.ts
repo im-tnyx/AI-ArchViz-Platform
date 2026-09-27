@@ -804,3 +804,207 @@ describe("Technical Spike 9B: edge rules", () => {
     expectPathClear(scene, "space_synthetic", route.path.pointsXY);
   });
 });
+
+describe("Post-9B: circulation obstacles are scoped to their canonical space", () => {
+  type SpaceKey = "space_a" | "space_b";
+  interface ScopedBox extends Box {
+    spaceId: string;
+  }
+
+  /**
+   * Two distinct canonical spaces on different levels (a stacked-floor layout)
+   * sharing identical XY boundaries by default, with a 900mm door on space_a's
+   * west wall whose interior portal is (900,1500).
+   */
+  function twoSpaceScene(
+    boxes: ScopedBox[],
+    boundaries: Partial<Record<SpaceKey, Array<[number, number]>>> = {},
+  ): Scene {
+    const spaces = (["space_a", "space_b"] as const).map((id) => ({
+      id,
+      levelId: id === "space_a" ? "level_ground" : "level_upper",
+      boundary: (boundaries[id] ?? rectangle(4000, 3000)).map(([x, y]) => [x, y, 0]),
+    }));
+    return {
+      sceneSpecVersion: "0.3.0",
+      project: { id: "project_synthetic" },
+      scene: { id: "scene_synthetic", revisionId: "rev_synthetic_0001" },
+      levels: [
+        { id: "level_ground", elevation: 0 },
+        { id: "level_upper", elevation: 3200 },
+      ],
+      spaces,
+      geometry: spaces.flatMap((space) =>
+        space.boundary.map((point, index) => {
+          const next = space.boundary[(index + 1) % space.boundary.length] as number[];
+          return {
+            id: `wall_${space.id.slice(-1)}_${index}`,
+            type: "wall",
+            spaceId: space.id,
+            start: point,
+            end: next,
+          };
+        }),
+      ),
+      openings: [
+        {
+          id: "opening_a_door",
+          type: "door",
+          hostGeometryId: "wall_a_3",
+          offset: 1050,
+          width: 900,
+        },
+      ],
+      assetDefinitions: boxes.map((box) => ({
+        id: `assetdef_${box.id}`,
+        dimensions: [box.size[0], box.size[1], 500],
+        pivotPolicy: "floor_center",
+      })),
+      assets: boxes.map((box) => ({
+        id: box.id,
+        type: "proxy_asset",
+        assetDefinitionId: `assetdef_${box.id}`,
+        spaceId: box.spaceId,
+        transform: {
+          position: [box.center[0], box.center[1], 0],
+          rotationEuler: [0, 0, box.rotation ?? 0],
+          scale: [1, 1, 1],
+        },
+      })),
+    };
+  }
+
+  /** A full-depth furniture wall at x=centerX±400: it severs any space it belongs to. */
+  const divider = (spaceId: string, centerX = 2000): ScopedBox => ({
+    id: `asset_divider_${spaceId.replace("space_", "")}`,
+    spaceId,
+    center: [centerX, 1500],
+    size: [800, 3000],
+  });
+  const crossing = (spaceId: SpaceKey): CirculationRouteQuery => ({
+    spaceId,
+    startXY: [900, 1500],
+    endXY: [3500, 1500],
+  });
+  const graphOf = (scene: Scene, spaceId: string) =>
+    analyzeCirculation(scene).graph.spaces.find((space) => space.spaceId === spaceId);
+  const codes = (route: ReturnType<typeof findCirculationRoute>) =>
+    route.violations.map((violation) => violation.code);
+
+  it("keeps space_a walkable and routable when only space_b holds furniture at the same XY", () => {
+    const empty = twoSpaceScene([]);
+    const scene = twoSpaceScene([divider("space_b")]);
+    expect(validateSpatialScene(scene).status).toBe("PASS");
+
+    expect(graphOf(scene, "space_a")).toEqual(graphOf(empty, "space_a"));
+    expect(findCirculationRoute(scene, crossing("space_a"))).toEqual(
+      findCirculationRoute(empty, crossing("space_a")),
+    );
+    expect(findCirculationRoute(scene, crossing("space_a")).reachable).toBe(true);
+
+    // The furniture is genuinely an obstacle in its own space.
+    expect(graphOf(scene, "space_b")?.componentCount).toBe(2);
+    expect(codes(findCirculationRoute(scene, crossing("space_b")))).toEqual([
+      "CIRCULATION_NO_ROUTE",
+    ]);
+  });
+
+  it("isolates the reverse direction: space_a furniture never affects space_b", () => {
+    const empty = twoSpaceScene([]);
+    const scene = twoSpaceScene([divider("space_a")]);
+    expect(validateSpatialScene(scene).status).toBe("PASS");
+
+    expect(graphOf(scene, "space_b")).toEqual(graphOf(empty, "space_b"));
+    expect(findCirculationRoute(scene, crossing("space_b"))).toEqual(
+      findCirculationRoute(empty, crossing("space_b")),
+    );
+    expect(codes(findCirculationRoute(scene, crossing("space_a")))).toEqual([
+      "CIRCULATION_NO_ROUTE",
+    ]);
+  });
+
+  it("does not let a space_b asset overlapping space_a's door portal block that portal", () => {
+    const overPortal: ScopedBox = {
+      id: "asset_upstairs_chest",
+      spaceId: "space_b",
+      center: [900, 1500],
+      size: [600, 600],
+    };
+    const scene = twoSpaceScene([overPortal]);
+    expect(validateSpatialScene(scene).status).toBe("PASS");
+    const corners = validateSpatialScene(scene).assetFootprints[0]?.cornersXY;
+    if (!corners) throw new Error("footprint missing");
+    expect(distancePointToRectangle([900, 1500], corners)).toBe(0);
+
+    const result = analyzeCirculation(scene);
+    expect(result.status).toBe("PASS");
+    expect(result.violations).toEqual([]);
+    const portals = result.spaces.find((space) => space.spaceId === "space_a")?.doorPortals;
+    expect(portals).toHaveLength(1);
+    expect(portals?.[0]).toMatchObject({
+      openingId: "opening_a_door",
+      spaceId: "space_a",
+      portalXY: [900, 1500],
+      status: "RESOLVED",
+    });
+  });
+
+  it("returns a deep-equal space_a route and graph projection when only space_b furniture moves", () => {
+    const before = twoSpaceScene([divider("space_b", 2000)]);
+    const after = twoSpaceScene([divider("space_b", 3000)]);
+    const routeBefore = findCirculationRoute(before, crossing("space_a"));
+    const routeAfter = findCirculationRoute(after, crossing("space_a"));
+    expect(routeBefore).toMatchObject({ status: "PASS", reachable: true });
+    expect(routeAfter).toEqual(routeBefore);
+
+    expect(graphOf(after, "space_a")).toEqual(graphOf(before, "space_a"));
+    expect(graphOf(after, "space_b")).not.toEqual(graphOf(before, "space_b"));
+    // The whole-scene hash legitimately changes because space_b's graph changed.
+    expect(circulationAnalysisEvidence(after).graphSemanticHash).not.toBe(
+      circulationAnalysisEvidence(before).graphSemanticHash,
+    );
+  });
+
+  it("isolates partially overlapping (non-identical) boundaries too", () => {
+    const shifted = {
+      space_b: rectangle(4000, 3000).map(([x, y]) => [x + 2000, y] as [number, number]),
+    };
+    const empty = twoSpaceScene([], shifted);
+    // Inside both boundaries in XY (x 2000..4000), but canonically owned by space_b.
+    const scene = twoSpaceScene(
+      [{ id: "asset_overlap_block", spaceId: "space_b", center: [3000, 1500], size: [800, 3000] }],
+      shifted,
+    );
+    expect(validateSpatialScene(scene).status).toBe("PASS");
+    expect(graphOf(scene, "space_a")).toEqual(graphOf(empty, "space_a"));
+    expect(graphOf(scene, "space_b")).not.toEqual(graphOf(empty, "space_b"));
+  });
+
+  it("never injects a footprint that references a missing space into any graph", () => {
+    const empty = twoSpaceScene([]);
+    const scene = twoSpaceScene([divider("space_missing")]);
+    // Existing 9A behavior for an unknown spaceId is preserved as-is (no new rejection).
+    expect(validateSpatialScene(scene).status).toBe("PASS");
+    expect(analyzeCirculation(scene).graph).toEqual(analyzeCirculation(empty).graph);
+  });
+
+  it("is independent of source order across spaces, assets, definitions, geometry, and openings", () => {
+    const scene = twoSpaceScene([
+      divider("space_b"),
+      { id: "asset_ground_table", spaceId: "space_a", center: [3000, 700], size: [800, 400] },
+    ]);
+    const reordered = structuredClone(scene);
+    for (const key of ["spaces", "assets", "assetDefinitions", "geometry", "openings"]) {
+      (reordered[key] as unknown[]).reverse();
+    }
+    expect(analyzeCirculation(reordered)).toEqual(analyzeCirculation(scene));
+    expect(circulationAnalysisEvidence(reordered).graphSemanticHash).toBe(
+      circulationAnalysisEvidence(scene).graphSemanticHash,
+    );
+    for (const spaceId of ["space_a", "space_b"] as const) {
+      expect(findCirculationRoute(reordered, crossing(spaceId))).toEqual(
+        findCirculationRoute(scene, crossing(spaceId)),
+      );
+    }
+  });
+});

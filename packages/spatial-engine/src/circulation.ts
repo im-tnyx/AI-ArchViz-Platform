@@ -317,11 +317,24 @@ function resolveAnchor(graph: SpaceGraph, point: Point2): Anchor {
   return best ? { kind: "resolved", node: best.node } : { kind: "unresolvable" };
 }
 
+/**
+ * A space's obstacles are exactly the 9A footprints canonically assigned to
+ * that space (`footprint.spaceId`), never inferred from coordinates. Spaces
+ * may share XY (stacked floors, overlapping boundaries), so another space's
+ * furniture must never obstruct this one.
+ */
 function sceneObstacles(sceneSpec: Record<string, unknown>) {
   const spatial = validateSpatialScene(sceneSpec);
+  const obstaclesBySpace = new Map<string, Array<readonly Point2[]>>();
+  for (const footprint of spatial.assetFootprints) {
+    const list = obstaclesBySpace.get(footprint.spaceId) ?? [];
+    list.push(footprint.cornersXY);
+    obstaclesBySpace.set(footprint.spaceId, list);
+  }
   return {
     spatial,
-    obstacles: spatial.assetFootprints.map((footprint) => footprint.cornersXY),
+    obstaclesFor: (spaceId: string): ReadonlyArray<readonly Point2[]> =>
+      obstaclesBySpace.get(spaceId) ?? [],
   };
 }
 
@@ -369,7 +382,7 @@ function portalFor(clearance: DoorwayClearance, graph: SpaceGraph | undefined) {
  */
 export function analyzeCirculation(sceneSpec: Record<string, unknown>): CirculationAnalysisResult {
   const scene = sceneSpec as unknown as SpatialSceneInput;
-  const { spatial, obstacles } = sceneObstacles(sceneSpec);
+  const { spatial, obstaclesFor } = sceneObstacles(sceneSpec);
   const base = {
     policyVersion: CIRCULATION_POLICY_VERSION,
     spatialPolicyVersion: SPATIAL_POLICY_VERSION,
@@ -404,7 +417,7 @@ export function analyzeCirculation(sceneSpec: Record<string, unknown>): Circulat
   }
 
   const graphs = new Map(
-    sortedSpaces(scene).map((space) => [space.id, buildSpaceGraph(space, obstacles)]),
+    sortedSpaces(scene).map((space) => [space.id, buildSpaceGraph(space, obstaclesFor(space.id))]),
   );
   const violations: CirculationViolation[] = [];
   const portalsBySpace = new Map<string, CirculationDoorPortal[]>();
@@ -592,7 +605,7 @@ export function findCirculationRoute(
   });
 
   const scene = sceneSpec as unknown as SpatialSceneInput;
-  const { spatial, obstacles } = sceneObstacles(sceneSpec);
+  const { spatial, obstaclesFor } = sceneObstacles(sceneSpec);
   if (spatial.status !== "PASS") {
     return failed([
       {
@@ -611,7 +624,7 @@ export function findCirculationRoute(
       },
     ]);
   }
-  const graph = buildSpaceGraph(space, obstacles);
+  const graph = buildSpaceGraph(space, obstaclesFor(space.id));
   const anchors = (
     [
       ["start", requestedStartXY],
