@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `7ed0fee` (`feat: add deterministic circulation graph`),
-  on top of `0160de6` (`fix: centralize dcc batch launch policy`).
+- Local baseline HEAD: `8e5808b` (`fix: scope circulation obstacles by space`),
+  on top of `7ed0fee` (`feat: add deterministic circulation graph`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -247,7 +247,8 @@
   (`packages/spatial-engine/src/circulation.ts`), a separate, pure,
   DCC-independent analysis layered on the unchanged `spatial-policy-v0.1`:
   a 100 mm per-space grid probed by a 300 mm-radius floor-plan disc with
-  exact clearance to the eroded space boundary and the 9A asset OBBs, a
+  exact clearance to the eroded space boundary and the 9A asset OBBs
+  assigned to that same space (scoped by canonical `spaceId`), a
   fixed 8-neighbor graph with no diagonal corner cutting and swept-segment
   edge clearance, stable connected components, interior door portals, and
   a same-space deterministic Dijkstra route query. Golden rev12 analyzes

@@ -570,9 +570,13 @@
   parameters, not building-code, accessibility, egress, or ergonomic
   claims.
 - `validateSpatialScene()` must PASS first
-  (`CIRCULATION_SOURCE_SPATIAL_INVALID` otherwise). Obstacles are exactly
-  the 9A asset OBB footprints; 9A doorway clearances are free space used
-  for portals; windows produce nothing.
+  (`CIRCULATION_SOURCE_SPATIAL_INVALID` otherwise). Each space graph uses
+  only the 9A asset OBB footprints whose canonical `AssetFootprint.spaceId`
+  matches that space (never inferred from coordinates or overlap; a
+  footprint naming a missing space joins no graph), so spaces sharing XY
+  (stacked floors, overlapping boundaries) never obstruct each other; 9A
+  doorway clearances are free space used for portals; windows produce
+  nothing.
 - Per space, grid centers are `min + (i + 0.5) * 100` from the boundary's
   bounding box; node ID `spaceId::ix::iy` (integers only); frozen node
   order `spaceId`, `ix`, `iy`. A node is walkable when strictly inside the

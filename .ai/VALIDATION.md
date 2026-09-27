@@ -1,5 +1,34 @@
 # Latest Validation Evidence
 
+## Post-9B circulation space-scoping closure (local commit `8e5808b`)
+
+Correctness closure within `circulation-policy-v0.1`: each space graph now
+uses only 9A footprints whose canonical `spaceId` matches that space
+(previously every footprint obstructed every space). 9A, all schemas, and
+the policy version are unchanged; no rev13.
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 322/322, including 7 new two-space tests (identical-XY
+  spaces on different levels, both isolation directions, foreign-space
+  asset over a door portal, deep-equal space_a route and graph projection
+  when only space_b furniture moves, partially overlapping boundaries, a
+  footprint naming a missing space, reordered spaces/assets/definitions/
+  geometry/openings). Six of the seven fail against the previous global
+  obstacle list. All existing 9B Golden values (1394 nodes, 5126 edges,
+  component `space_living_main::3::3`, portal node `::8::16`, route
+  4182.842712 mm / 39 + 2 steps, frozen `graphSemanticHash`) are
+  unchanged.
+- `pnpm test:asset-trust`
+
+DCC gates, all PASS first run on 3ds Max 2025 compatibility mode (2025.3
+install) through the centralized `threeDsMaxBatchArguments()` policy:
+`test:3dsmax:revision`, `test:3dsmax:replace-asset`,
+`test:3dsmax:canonical-golden-corona-preview-rev12`.
+
+Target 3ds Max 2026 was not tested.
+
 ## Spike 9B deterministic circulation graph (local commit `7ed0fee`)
 
 Static gates, all PASS:
