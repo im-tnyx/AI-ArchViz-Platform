@@ -5,6 +5,8 @@
 **Project:** AI ArchViz Platform  
 **Role:** Canonical scene contract between architectural inputs, AI systems, deterministic geometry/placement engines, DCC applications, renderers, and revision workflows.
 
+> Later versions are defined by the immutable schemas in `packages/scene-spec/schema/`. SceneSpec v0.4 (`0.4.0`) is v0.3 plus the required `circulationRequirements[]` contract; see [CIRCULATION-REQUIREMENTS.md](CIRCULATION-REQUIREMENTS.md).
+
 ---
 
 ## 1. Purpose

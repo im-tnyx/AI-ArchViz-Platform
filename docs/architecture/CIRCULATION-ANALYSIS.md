@@ -22,6 +22,12 @@ SceneSpec
 Circulation is a derived analysis capability. It adds no SceneSpec or
 SceneChangeSet field, no schema version, and no Golden revision.
 
+9B remains generic analysis: it answers route queries but does not decide
+which routes matter. Canonical required routes are declared separately in
+SceneSpec v0.4 `circulationRequirements[]` and evaluated through this
+engine; see [CIRCULATION-REQUIREMENTS.md](CIRCULATION-REQUIREMENTS.md)
+(Spike 9C).
+
 ## 2. Package boundary
 
 The implementation lives in `packages/spatial-engine/src/circulation.ts`,
