@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `8e5808b` (`fix: scope circulation obstacles by space`),
-  on top of `7ed0fee` (`feat: add deterministic circulation graph`).
+- Local baseline HEAD: `40e1c38` (`feat: add canonical circulation requirement contract`),
+  on top of `8e5808b` (`fix: scope circulation obstacles by space`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -258,6 +258,21 @@
   `graphSemanticHash`. It is analysis only: no revision gate, no schema
   change, no rev13, no DCC script, and no building-code or accessibility
   claim.
+- Spike 9C introduced SceneSpec v0.4 (v0.3 unchanged plus a required
+  `circulationRequirements[]` contract): `same_space_route` requirements
+  between `door_portal` and `point` endpoints, pinned to
+  `circulation-policy-v0.1`, with deterministic structural validation
+  (sorted unique IDs, space/door/host-wall/space-ownership references,
+  distinct endpoints) kept separate from satisfaction. A pure
+  `evaluateCirculationRequirements()` reuses 9B as the only route
+  authority, and `circulation-requirement-evidence-v0.1` records
+  per-requirement SATISFIED/UNSATISFIED results with
+  `requirementSetHash`, `graphSemanticHash`, and per-route hashes. A
+  dedicated synthetic v0.4 fixture
+  (`tests/fixtures/circulation-requirements/`) satisfies both of its
+  requirements. Not yet enforced: no revision gate, no SceneChangeSet
+  operation, no v0.3 to v0.4 migration; Golden rev1-rev12 unchanged (rev12
+  stays v0.3), no rev13.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

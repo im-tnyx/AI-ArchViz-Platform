@@ -604,3 +604,50 @@
 - 9B adds no revision gate: `MoveObject`/`ReplaceAsset` remain gated by
   `spatial-policy-v0.1` only until an explicit canonical circulation
   requirement contract exists.
+
+## Canonical circulation requirements (Spike 9C)
+
+- SceneSpec v0.4 (`packages/scene-spec/schema/scene-spec-v0.4.schema.json`,
+  `sceneSpecVersion: "0.4.0"`) is v0.3 with every property and `$defs`
+  entry unchanged plus the required top-level `circulationRequirements[]`
+  (empty array valid). v0.1-v0.3 schemas are untouched; v0.3 rejects the
+  field. `validateSceneSpec()` supports exactly 0.1.0-0.4.0. Generic
+  `constraints[]` semantics are unchanged. Authoritative doc:
+  [CIRCULATION-REQUIREMENTS.md](../docs/architecture/CIRCULATION-REQUIREMENTS.md).
+- Requirement: `id`, `type: same_space_route` (only type), `spaceId`,
+  `evaluationPolicy: circulation-policy-v0.1` (pinned; anything else fails
+  the schema), `start`/`end` endpoints of kind `door_portal` (`openingId`)
+  or `point` (`pointXY`, two finite JSON numbers, world XY mm). No
+  severity/priority/weight; every entry is a requirement.
+- v0.4 semantic validation keeps asset identity checks and adds
+  `circulationRequirementOrder` (sorted by id, code-point; never
+  reordered), `uniqueCirculationRequirementId`,
+  `circulationRequirementSpaceReference`,
+  `circulationRequirementOpeningReference`,
+  `circulationRequirementOpeningType` (door only),
+  `circulationRequirementOpeningHost` (exactly one wall),
+  `circulationRequirementOpeningSpace` (host wall canonical `spaceId`
+  equals the requirement space), and
+  `circulationRequirementDistinctEndpoints`. Blocked endpoints and missing
+  routes are satisfaction results, never validation errors.
+- `evaluateCirculationRequirements()`
+  (`packages/spatial-engine/src/circulation-requirements.ts`) is pure and
+  reuses 9B only: door portals from `analyzeCirculation()`, routes from
+  `findCirculationRoute()`. Outcomes: SATISFIED, or UNSATISFIED with
+  `CIRCULATION_SOURCE_SPATIAL_INVALID` / `CIRCULATION_PORTAL_BLOCKED` /
+  `CIRCULATION_ENDPOINT_BLOCKED` / `CIRCULATION_ENDPOINT_UNRESOLVABLE` /
+  `CIRCULATION_NO_ROUTE`. A requirement depends only on its own endpoints
+  and route (an unrelated blocked portal never fails it). Overall PASS
+  requires 9A PASS and every requirement SATISFIED; results sorted by
+  `requirementId`.
+- `circulation-requirement-evidence-v0.1` (built and schema-validated by
+  `apps/worker/src/circulation-requirement-evidence.ts`'s
+  `circulationRequirementEvidence()`, which first validates the scene as
+  v0.4) carries identity, `sceneSpecHash`, both policy versions,
+  `requirementSetHash`, `graphSemanticHash`, per-requirement results with
+  `routeSemanticHash` (hash of the exact 9B route result), and `status`;
+  no paths. `circulation-analysis-evidence-v0.1` is unchanged.
+- Not enforced yet: no revision gate, no SceneChangeSet operation, no
+  v0.3 to v0.4 migration, Golden rev1-rev12 unchanged (rev12 stays v0.3),
+  no rev13. Requirements express project intent under a named policy, not
+  building-code or accessibility compliance.

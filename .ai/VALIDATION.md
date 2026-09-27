@@ -1,5 +1,39 @@
 # Latest Validation Evidence
 
+## Spike 9C canonical circulation requirement contract (local commit `40e1c38`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 355/355, including 33 new in
+  `tests/unit/circulation-requirements.test.ts`: v0.4 = v0.3 + additions
+  only; fixture validity; v0.4 requires the field (empty array valid);
+  v0.3 rejects it; unknown versions rejected; v0.4 asset identity kept;
+  every historical SceneSpec valid, unmigrated, rev12 still v0.3, no
+  rev13; v0.1 still accepted; no SceneChangeSet circulation operation;
+  every structural rule (missing space/opening, window portal,
+  missing/non-wall host, door owned by another space with identical XY,
+  duplicate IDs, unsorted, identical endpoints, pinned policy/type/kinds,
+  3D/NaN/Infinity points, severity); blocked-point and no-route scenes
+  remain valid; frozen PASS baseline evidence and hashes; portal endpoint
+  equals the 9B portal and node; `CIRCULATION_NO_ROUTE`,
+  `CIRCULATION_ENDPOINT_BLOCKED`, `CIRCULATION_PORTAL_BLOCKED`; an
+  unrelated blocked portal leaves requirements SATISFIED; source-spatial-
+  invalid fails closed; stacked-space isolation; determinism; reordered
+  inputs; immutability; 9B reuse; no revision/ingestion enforcement.
+- `pnpm test:asset-trust`
+- Golden rev1-rev12, v0.1-v0.3 SceneSpec schemas, all SceneChangeSet
+  schemas, existing evidence schemas, and `revision.ts` show no diff.
+
+DCC gates, all PASS first run on 3ds Max 2025 compatibility mode (2025.3
+install) through the centralized `threeDsMaxBatchArguments()` policy:
+`test:3dsmax:revision`, `test:3dsmax:replace-asset`,
+`test:3dsmax:canonical-camera-revision`,
+`test:3dsmax:canonical-golden-corona-preview-rev12`. They ran alongside
+three unrelated interactive 3ds Max 2025 sessions, which were not touched.
+
+Target 3ds Max 2026 was not tested.
+
 ## Post-9B circulation space-scoping closure (local commit `8e5808b`)
 
 Correctness closure within `circulation-policy-v0.1`: each space graph now
