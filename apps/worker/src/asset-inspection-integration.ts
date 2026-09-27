@@ -24,6 +24,7 @@ import {
   resolveArtifactForInspection,
   resolveVerifiedAssetArtifact,
 } from "./asset-trust.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { discoverThreeDsMax } from "./discovery.js";
@@ -105,10 +106,6 @@ function registryFor(
   };
 }
 
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
-}
-
 async function main(): Promise<void> {
   requireDccTestApproval();
   if (existsSync(runRoot)) rmSync(runRoot, { recursive: true, force: true });
@@ -120,7 +117,7 @@ async function main(): Promise<void> {
     assert.ok(dcc.batchExecutablePath, "3dsmaxbatch.exe is required");
     const fixtureProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(repositoryRoot, "tools/3ds-max/python/create_inspection_fixture.py"),
       ),
       cwd: dcc.installationPath ?? repositoryRoot,

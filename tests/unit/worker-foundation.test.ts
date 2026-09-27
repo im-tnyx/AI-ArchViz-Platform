@@ -1,6 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, normalize, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   discoverThreeDsMax,
@@ -100,6 +101,43 @@ describe("3ds Max batch arguments", () => {
       "-safescene",
       "ON",
     ]);
+    expect(threeDsMaxBatchArguments("runner.py")).toEqual([
+      "runner.py",
+      "-v",
+      "2",
+      "-dm",
+      "on",
+      "-safescene",
+      "ON",
+    ]);
+    expect(threeDsMaxBatchArguments("runner.py")).not.toContain("-silent");
+  });
+
+  it("keeps every production batch launch on the single shared argument policy", () => {
+    const sourceRoot = fileURLToPath(new URL("../../apps/worker/src/", import.meta.url));
+    const sources = readdirSync(sourceRoot, { recursive: true, encoding: "utf8" })
+      .filter((file) => file.endsWith(".ts"))
+      .map((file) => ({
+        file: file.replaceAll("\\", "/"),
+        text: readFileSync(join(sourceRoot, file), "utf8"),
+      }));
+    const flagLiteral = /["'`]-(?:safescene|dm|silent)["'`]/iu;
+    const launch = /executable:\s*[\w.]*batchExecutablePath,\s*args:\s*(\w+)\(/gu;
+
+    const flagOwners = sources.filter(({ text }) => flagLiteral.test(text)).map(({ file }) => file);
+    expect(flagOwners).toEqual(["dcc-batch.ts"]);
+
+    const launches = sources.flatMap(({ file, text }) =>
+      [...text.matchAll(launch)].map((match) => ({ file, builder: match[1] })),
+    );
+    const batchExecutableReferences = sources.reduce(
+      (count, { text }) =>
+        count + (text.match(/executable:\s*[\w.]*batchExecutablePath/gu)?.length ?? 0),
+      0,
+    );
+    expect(launches.length).toBeGreaterThan(0);
+    expect(launches.length).toBe(batchExecutableReferences);
+    expect(launches.filter(({ builder }) => builder !== "threeDsMaxBatchArguments")).toEqual([]);
   });
 
   it("requires an explicit opt-in before a DCC integration suite can launch", () => {

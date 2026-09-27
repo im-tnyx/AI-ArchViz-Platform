@@ -6,6 +6,7 @@ import {
   validateRenderEvidence,
   validateRenderJob,
 } from "@ai-archviz/worker-contracts";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
@@ -146,10 +147,6 @@ function isPng(path: string, expected: { width: number; height: number }): boole
   const width = bytes.readUInt32BE(16);
   const height = bytes.readUInt32BE(20);
   return width === expected.width && height === expected.height;
-}
-
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function failure(
@@ -361,7 +358,7 @@ export async function renderCoronaBaseline({
     }
     const controlledProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(config.repositoryRoot, "tools/3ds-max/python/render_corona_baseline.py"),
       ),
       cwd: dcc.installationPath ?? config.repositoryRoot,

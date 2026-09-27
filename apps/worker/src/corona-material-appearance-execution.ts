@@ -10,6 +10,7 @@ import {
   type CoronaExecutionPlanV02,
   CoronaRendererAdapter,
 } from "./corona-renderer-adapter.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
@@ -83,10 +84,6 @@ function parseScriptResult(value: unknown): ScriptResult | null {
       ? { deduplication: asRecord(record.deduplication) as Record<string, unknown> }
       : {}),
   };
-}
-
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function fail(
@@ -220,7 +217,7 @@ export async function executeCoronaMaterialAppearance({
   try {
     const dccProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(config.repositoryRoot, "tools/3ds-max/python/render_corona_material_appearance.py"),
       ),
       cwd: dcc.installationPath ?? config.repositoryRoot,

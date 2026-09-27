@@ -23,6 +23,7 @@ import {
   type CoronaExecutionPlanV02,
   CoronaRendererAdapter,
 } from "./corona-renderer-adapter.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
@@ -134,10 +135,6 @@ function isExpectedPng(path: string): boolean {
     bytes.readUInt32BE(16) === 320 &&
     bytes.readUInt32BE(20) === 240
   );
-}
-
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function fail(
@@ -547,7 +544,7 @@ export async function executeCanonicalGoldenCoronaPreviewRev11({
     }
     const dccProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(
           config.repositoryRoot,
           "tools/3ds-max/python/render_canonical_golden_corona_preview_rev11.py",

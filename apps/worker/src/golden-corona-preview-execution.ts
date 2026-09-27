@@ -23,6 +23,7 @@ import {
   type GoldenCoronaPreviewPlan,
   goldenLivingCoronaPreviewProfile,
 } from "./corona-renderer-adapter.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
@@ -109,10 +110,6 @@ function parseScriptResult(value: unknown): ScriptResult | null {
   if (temporaryExecution) result.temporaryExecution = temporaryExecution;
   if (render) result.render = render;
   return result;
-}
-
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function exactDccVersion(script: ScriptResult, process: ControlledProcessResult): string | null {
@@ -360,7 +357,7 @@ export async function executeGoldenCoronaPreview({
     }
     const process = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(config.repositoryRoot, "tools/3ds-max/python/render_golden_corona_preview.py"),
       ),
       cwd: dcc.installationPath ?? config.repositoryRoot,

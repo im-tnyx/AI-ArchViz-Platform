@@ -11,6 +11,7 @@ import {
   validateAssetArtifactEligibility,
 } from "./asset-trust.js";
 import type { WorkerConfig } from "./config.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
@@ -199,10 +200,6 @@ export function stageExactVerifiedArtifact({
     fail("ASSET_ARTIFACT_HASH_MISMATCH", "Staged artifact bytes do not match VERIFIED source");
   }
   return { sha256, byteLength };
-}
-
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function normalizedLocks(value: unknown): Record<string, boolean> {
@@ -1041,7 +1038,7 @@ export async function ingestVerifiedExternalMaxAsset(
     const timeoutMs = input.config.processTimeoutMs;
     const mutationProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(input.config.repositoryRoot, "tools/3ds-max/python/ingest_external_asset.py"),
       ),
       cwd: dcc.installationPath ?? dirname(dcc.batchExecutablePath),
@@ -1111,7 +1108,7 @@ export async function ingestVerifiedExternalMaxAsset(
     }
     const verificationProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(
+      args: threeDsMaxBatchArguments(
         resolve(input.config.repositoryRoot, "tools/3ds-max/python/verify_scene.py"),
       ),
       cwd: dcc.installationPath ?? dirname(dcc.batchExecutablePath),

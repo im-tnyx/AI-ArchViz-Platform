@@ -7,6 +7,7 @@ import {
   validateAssetInspectionJob,
 } from "@ai-archviz/worker-contracts";
 import { type AssetArtifactRegistry, resolveArtifactForInspection } from "./asset-trust.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { isDccExecutionAuthorized } from "./dcc-execution-guard.js";
 import { discoverThreeDsMax, type ThreeDsMaxDiscoveryResult } from "./discovery.js";
@@ -89,12 +90,6 @@ function evidenceMatchesDcc(
     evidence.dcc.testedMajorVersion === Number(dcc.version) &&
     evidence.dcc.compatibilityMode === compatibilityMode
   );
-}
-
-function batchArguments(scriptPath: string): string[] {
-  // 3dsmaxbatch.exe supports Python scripts directly. These flags retain
-  // Autodesk Dialog Monitor and force Safe Scene Script Execution on.
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function readInspectionEvidence(path: string): AssetInspectionEvidence | null {
@@ -184,7 +179,9 @@ export async function inspectExternalMaxArtifact({
   try {
     inspectionProcess = await runControlledProcess({
       executable: dcc.batchExecutablePath,
-      args: batchArguments(resolve(config.repositoryRoot, "tools/3ds-max/python/inspect_asset.py")),
+      args: threeDsMaxBatchArguments(
+        resolve(config.repositoryRoot, "tools/3ds-max/python/inspect_asset.py"),
+      ),
       cwd: dcc.installationPath ?? resolve(config.repositoryRoot),
       timeoutMs: config.processTimeoutMs,
       env: buildDccChildEnvironment({

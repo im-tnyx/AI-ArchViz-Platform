@@ -15,6 +15,7 @@ import type { AssetArtifact, AssetInspectionEvidence } from "@ai-archviz/worker-
 import { inspectExternalMaxArtifact } from "./asset-inspection.js";
 import { type AssetArtifactRegistry, promoteArtifactAfterInspection } from "./asset-trust.js";
 import type { WorkerConfig } from "./config.js";
+import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
 import { requireDccTestApproval } from "./dcc-test-guard.js";
 import { discoverThreeDsMax } from "./discovery.js";
@@ -44,10 +45,6 @@ function sha256File(path: string): string {
 
 function readJson(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-}
-
-function batchArguments(scriptPath: string): string[] {
-  return [scriptPath, "-v", "2", "-dm", "on", "-safescene", "ON"];
 }
 
 function catalog(): TrustedExternalAssetCatalog {
@@ -193,7 +190,7 @@ async function createVerifiedArtifact(): Promise<{
   assert.ok(dcc.batchExecutablePath, "3dsmaxbatch.exe is required");
   const fixtureProcess = await runControlledProcess({
     executable: dcc.batchExecutablePath,
-    args: batchArguments(
+    args: threeDsMaxBatchArguments(
       resolve(repositoryRoot, "tools/3ds-max/python/create_inspection_fixture.py"),
     ),
     cwd: dcc.installationPath ?? repositoryRoot,
