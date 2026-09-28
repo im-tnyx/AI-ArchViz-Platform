@@ -1,0 +1,395 @@
+{
+  "manifestVersion": "0.1.0",
+  "projectId": "project_cad_seed_living_001",
+  "sceneId": "scene_cad_seed_living_001",
+  "revisionId": "rev_cad_seed_0001",
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right"
+  },
+  "nodes": [
+    {
+      "logicalId": "asset_cad_seed_table_main",
+      "nodeName": "AVZ_asset_cad_seed_table_main",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_cad_seed_table_v1",
+      "transform": {
+        "position": [
+          3000,
+          2200,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        1200,
+        650,
+        380
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "asset_cad_seed_table_main",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001",
+        "AIArchViz.AssetDefinitionId": "assetdef_cad_seed_table_v1"
+      }
+    },
+    {
+      "logicalId": "opening_d01",
+      "nodeName": "AVZ_opening_d01",
+      "type": "door_opening",
+      "transform": {
+        "position": [
+          2400,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        900,
+        150,
+        2100
+      ],
+      "hostGeometryId": "wall_west",
+      "offset": 2400,
+      "sill": 0,
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "opening_d01",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "opening_w01",
+      "nodeName": "AVZ_opening_w01",
+      "type": "window_opening",
+      "transform": {
+        "position": [
+          1800,
+          0,
+          900
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        2400,
+        150,
+        1500
+      ],
+      "hostGeometryId": "wall_north",
+      "offset": 1800,
+      "sill": 900,
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "opening_w01",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "surface_ceiling_main",
+      "nodeName": "AVZ_surface_ceiling_main",
+      "type": "ceiling",
+      "transform": {
+        "position": [
+          0,
+          0,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        4500,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_ceiling_main",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "surface_floor_main",
+      "nodeName": "AVZ_surface_floor_main",
+      "type": "floor",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        4500,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_floor_main",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "wall_east",
+      "nodeName": "AVZ_wall_east",
+      "type": "wall",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        4500,
+        150,
+        3000
+      ],
+      "start": [
+        6000,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        4500,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "wall_east",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "wall_north",
+      "nodeName": "AVZ_wall_north",
+      "type": "wall",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        150,
+        3000
+      ],
+      "start": [
+        6000,
+        4500,
+        0
+      ],
+      "end": [
+        0,
+        4500,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "wall_north",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "wall_south",
+      "nodeName": "AVZ_wall_south",
+      "type": "wall",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        150,
+        3000
+      ],
+      "start": [
+        0,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        0,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "wall_south",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    },
+    {
+      "logicalId": "wall_west",
+      "nodeName": "AVZ_wall_west",
+      "type": "wall",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        4500,
+        150,
+        3000
+      ],
+      "start": [
+        0,
+        4500,
+        0
+      ],
+      "end": [
+        0,
+        0,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "wall_west",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    }
+  ],
+  "cameras": [
+    {
+      "logicalId": "camera_cad_seed_a",
+      "nodeName": "AVZ_camera_cad_seed_a",
+      "transform": {
+        "position": [
+          1200,
+          3800,
+          1500
+        ],
+        "rotationEuler": [
+          -2.84471,
+          0,
+          206.565051
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "target": [
+        3000,
+        200,
+        1300
+      ],
+      "focalLengthMm": 28,
+      "sensorWidthMm": 36,
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "camera_cad_seed_a",
+        "AIArchViz.ProjectId": "project_cad_seed_living_001",
+        "AIArchViz.SceneId": "scene_cad_seed_living_001",
+        "AIArchViz.RevisionId": "rev_cad_seed_0001"
+      }
+    }
+  ]
+}

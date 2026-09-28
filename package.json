@@ -9,7 +9,7 @@
     "pnpm": ">=11.19.0 <12"
   },
   "scripts": {
-    "build": "tsc -b packages/scene-spec packages/spatial-engine packages/cad-parser packages/cad-interpreter packages/worker-contracts apps/worker",
+    "build": "tsc -b packages/scene-spec packages/spatial-engine packages/cad-parser packages/cad-interpreter packages/cad-scene-seed packages/worker-contracts apps/worker",
     "typecheck": "pnpm run build && tsc --noEmit -p tsconfig.tests.json",
     "lint": "biome check .",
     "test": "pnpm run build && vitest run",
@@ -26,6 +26,7 @@
     "test:3dsmax:canonical-material-appearance-revision": "pnpm run build && node apps/worker/dist/canonical-material-appearance-revision-integration.js",
     "test:3dsmax:canonical-camera-revision": "pnpm run build && node apps/worker/dist/canonical-camera-revision-integration.js",
     "test:3dsmax:canonical-circulation-requirement-revision": "pnpm run build && node apps/worker/dist/canonical-circulation-requirement-revision-integration.js",
+    "test:3dsmax:cad-scene-seed": "pnpm run build && node apps/worker/dist/cad-scene-seed-integration.js",
     "test:3dsmax:canonical-golden-corona-preview-rev12": "pnpm run build && node apps/worker/dist/canonical-golden-corona-preview-rev12-integration.js",
     "worker": "pnpm run build && node apps/worker/dist/cli.js",
     "test:3dsmax:health": "pnpm run build && node apps/worker/dist/cli.js probe-3ds-max",
@@ -43,6 +44,7 @@
   "devDependencies": {
     "@ai-archviz/cad-interpreter": "workspace:*",
     "@ai-archviz/cad-parser": "workspace:*",
+    "@ai-archviz/cad-scene-seed": "workspace:*",
     "@ai-archviz/scene-spec": "workspace:*",
     "@ai-archviz/worker-contracts": "workspace:*",
     "@biomejs/biome": "2.5.8",

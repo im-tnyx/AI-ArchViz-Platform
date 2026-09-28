@@ -14,6 +14,11 @@ import {
   interpretCadFiles,
   writeCadInterpretation,
 } from "./cad-interpretation.js";
+import {
+  CadSceneSeedWorkerError,
+  seedSceneFromCadFiles,
+  writeCadSceneSeed,
+} from "./cad-scene-seed.js";
 import { loadWorkerConfig } from "./config.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { WorkerError } from "./errors.js";
@@ -113,6 +118,26 @@ async function execute(argv: string[]): Promise<CliResult> {
         };
       }
     }
+    case "seed-scene-from-cad": {
+      const [extractionPath, approvalPath, outputPath] = args;
+      if (!extractionPath || !approvalPath || !outputPath) {
+        return usage(
+          "seed-scene-from-cad requires repository-relative extraction and approval JSON paths and an output .json path",
+        );
+      }
+      const config = loadWorkerConfig(repositoryRoot);
+      try {
+        const result = seedSceneFromCadFiles({ repositoryRoot, extractionPath, approvalPath });
+        const paths = writeCadSceneSeed(result, config.workspaceRoot, outputPath);
+        return { exitCode: 0, output: { ok: true, ...paths, evidence: result.evidence } };
+      } catch (error) {
+        if (!(error instanceof CadSceneSeedWorkerError)) throw error;
+        return {
+          exitCode: 1,
+          output: { ok: false, errorCode: error.code, message: error.message },
+        };
+      }
+    }
     case "interpret-cad": {
       const [cadDocumentPath, profilePath, outputPath] = args;
       if (!cadDocumentPath || !profilePath || !outputPath) {
@@ -185,6 +210,7 @@ function usage(error?: string): CliResult {
         "apply-change-set <base-job> <scene-change-set>",
         "extract-cad <repository-relative-source.dxf> <workspace-relative-output.json>",
         "interpret-cad <cad-document.json> <profile.json> <workspace-relative-output.json>",
+        "seed-scene-from-cad <architectural-extraction.json> <approval.json> <workspace-relative-output.json>",
         "validate-scene <path>",
         "validate-job <path>",
         "verify-hashes <job> <scene-spec> <expected-manifest>",

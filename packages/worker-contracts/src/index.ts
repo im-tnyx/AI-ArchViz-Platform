@@ -109,6 +109,33 @@ export interface CadInterpretationEvidence {
   status: "READY_FOR_REVIEW";
 }
 
+/** Identity proof for one CAD-derived canonical SceneSpec seed (six-hash chain). */
+export interface CadSceneSeedEvidence {
+  evidenceVersion: "0.1.0";
+  canonicalizationPolicyVersion: "cad-scene-seed-policy-v0.1";
+  approvalId: string;
+  approvalHash: string;
+  sourceHash: string;
+  cadDocumentHash: string;
+  profileHash: string;
+  architecturalExtractionHash: string;
+  sceneSpecVersion: "0.4.0";
+  sceneSpecHash: string;
+  projectId: string;
+  sceneId: string;
+  revisionId: string;
+  mappingSummary: {
+    levelCount: number;
+    spaceCount: number;
+    wallCount: number;
+    surfaceCount: number;
+    openingCount: number;
+  };
+  spatialValidationStatus: "PASS";
+  circulationRequirementStatus: "PASS";
+  status: "PASS";
+}
+
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
 function readSchema(name: string): Record<string, unknown> {
@@ -170,6 +197,7 @@ export const cadExtractionEvidenceSchema = readSchema("cad-extraction-evidence-v
 export const cadInterpretationEvidenceSchema = readSchema(
   "cad-interpretation-evidence-v0.1.schema.json",
 );
+export const cadSceneSeedEvidenceSchema = readSchema("cad-scene-seed-evidence-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -255,6 +283,9 @@ const cadExtractionEvidenceValidator = ajv.compile(
 const cadInterpretationEvidenceValidator = ajv.compile(
   cadInterpretationEvidenceSchema,
 ) as ValidateFunction<CadInterpretationEvidence>;
+const cadSceneSeedEvidenceValidator = ajv.compile(
+  cadSceneSeedEvidenceSchema,
+) as ValidateFunction<CadSceneSeedEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -426,6 +457,12 @@ export function validateCadInterpretationEvidence(
   value: unknown,
 ): ValidationResult<CadInterpretationEvidence> {
   return runValidation(cadInterpretationEvidenceValidator, value);
+}
+
+export function validateCadSceneSeedEvidence(
+  value: unknown,
+): ValidationResult<CadSceneSeedEvidence> {
+  return runValidation(cadSceneSeedEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

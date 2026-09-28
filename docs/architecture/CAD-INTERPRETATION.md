@@ -230,7 +230,6 @@ floor/ceiling meshes, extrusions, or any 3D geometry (it only records
 boundary, floor elevation, and ceiling height as candidate facts), emits no
 SceneSpec structure, and assigns no canonical IDs.
 
-**Future 10C boundary (not started):** an approved architectural extraction
-plus explicit canonical project metadata, canonical logical IDs, and
-non-CAD design defaults becomes a valid SceneSpec seed for the existing
-deterministic build and verification pipeline.
+**10C:** explicit human approval of an exact extraction, canonical logical IDs,
+and approval-supplied non-CAD state produce a SceneSpec v0.4 seed; see
+[CAD-SCENE-SEED.md](CAD-SCENE-SEED.md).

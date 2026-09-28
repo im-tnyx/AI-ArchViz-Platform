@@ -1,0 +1,25 @@
+{
+  "evidenceVersion": "0.1.0",
+  "canonicalizationPolicyVersion": "cad-scene-seed-policy-v0.1",
+  "approvalId": "approval_cad_living_seed_001",
+  "approvalHash": "sha256:4fd953313856ef014ed3506d2f73ac640df1c946c6c0f8ccd21fafb9094970e5",
+  "sourceHash": "sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+  "cadDocumentHash": "sha256:0c89f758b39c0b6312912a34aed7ec4bc46f24be86c56244a029cef5628f7f26",
+  "profileHash": "sha256:8a4429606d348add059c358cb21853f246fa90a85af78b94eca62e351439a40f",
+  "architecturalExtractionHash": "sha256:b249055f4a6204c474d72cd82f613410c0f63b7145ed87f83d431f5812a33f8a",
+  "sceneSpecVersion": "0.4.0",
+  "sceneSpecHash": "sha256:7286dca5257374cd964ae1d2715fb1f3c4c7e901bfa8a7d2883b0fbc1bfdcc67",
+  "projectId": "project_cad_seed_living_001",
+  "sceneId": "scene_cad_seed_living_001",
+  "revisionId": "rev_cad_seed_0001",
+  "mappingSummary": {
+    "levelCount": 1,
+    "spaceCount": 1,
+    "wallCount": 4,
+    "surfaceCount": 2,
+    "openingCount": 2
+  },
+  "spatialValidationStatus": "PASS",
+  "circulationRequirementStatus": "PASS",
+  "status": "PASS"
+}

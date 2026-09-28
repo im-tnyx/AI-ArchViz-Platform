@@ -1,0 +1,108 @@
+{
+  "approvalVersion": "0.1.0",
+  "approvalId": "approval_cad_living_seed_001",
+  "canonicalizationPolicy": "cad-scene-seed-policy-v0.1",
+  "decision": "approved_as_is",
+  "extraction": {
+    "architecturalExtractionVersion": "0.1.0",
+    "interpretationPolicyVersion": "cad-interpretation-policy-v0.1",
+    "profileId": "golden_living_dxf_profile",
+    "architecturalExtractionHash": "sha256:b249055f4a6204c474d72cd82f613410c0f63b7145ed87f83d431f5812a33f8a",
+    "sourceHash": "sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+    "cadDocumentHash": "sha256:0c89f758b39c0b6312912a34aed7ec4bc46f24be86c56244a029cef5628f7f26",
+    "profileHash": "sha256:8a4429606d348add059c358cb21853f246fa90a85af78b94eca62e351439a40f"
+  },
+  "canonical": {
+    "project": {
+      "id": "project_cad_seed_living_001",
+      "name": "CAD Seed Living Room"
+    },
+    "scene": {
+      "id": "scene_cad_seed_living_001",
+      "revisionId": "rev_cad_seed_0001",
+      "createdAt": "2026-09-28T12:00:00Z"
+    }
+  },
+  "lockPolicy": "all_unlocked",
+  "mappings": {
+    "levels": [
+      { "candidateId": "level_candidate_ground", "logicalId": "level_ground" }
+    ],
+    "spaces": [
+      {
+        "candidateId": "space_candidate_0000",
+        "logicalId": "space_living_main",
+        "floorSurfaceId": "surface_floor_main",
+        "ceilingSurfaceId": "surface_ceiling_main"
+      }
+    ],
+    "walls": [
+      { "candidateId": "wall_candidate_0000_0000", "logicalId": "wall_south" },
+      { "candidateId": "wall_candidate_0000_0001", "logicalId": "wall_east" },
+      { "candidateId": "wall_candidate_0000_0002", "logicalId": "wall_north" },
+      { "candidateId": "wall_candidate_0000_0003", "logicalId": "wall_west" }
+    ],
+    "openings": [
+      { "candidateId": "opening_candidate_0000", "logicalId": "opening_d01" },
+      { "candidateId": "opening_candidate_0001", "logicalId": "opening_w01" }
+    ]
+  },
+  "nonCadState": {
+    "sources": [
+      {
+        "id": "source_cad_living_dxf",
+        "type": "dxf",
+        "uri": "urn:sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+        "authority": "A3",
+        "confidence": 1,
+        "verified": true
+      }
+    ],
+    "assetDefinitions": [
+      {
+        "id": "assetdef_cad_seed_table_v1",
+        "version": "1",
+        "category": "coffee_table",
+        "sourceType": "procedural_proxy",
+        "dimensions": [1200, 650, 380],
+        "pivotPolicy": "floor_center",
+        "allowNonUniformScale": false
+      }
+    ],
+    "assets": [
+      {
+        "id": "asset_cad_seed_table_main",
+        "type": "proxy_asset",
+        "assetDefinitionId": "assetdef_cad_seed_table_v1",
+        "spaceId": "space_living_main",
+        "transform": {
+          "position": [3000, 2200, 0],
+          "rotationEuler": [0, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        "locks": { "geometry": false, "transform": false, "material": false }
+      }
+    ],
+    "materials": [],
+    "materialAssignments": [],
+    "lights": [],
+    "cameras": [
+      {
+        "id": "camera_cad_seed_a",
+        "type": "camera",
+        "spaceId": "space_living_main",
+        "transform": {
+          "position": [1200, 3800, 1500],
+          "rotationEuler": [-2.84471, 0, 206.565051],
+          "scale": [1, 1, 1]
+        },
+        "target": [3000, 200, 1300],
+        "orientationPolicy": "look_at_target",
+        "focalLengthMm": 28,
+        "sensorWidthMm": 36
+      }
+    ],
+    "render": { "engine": "none", "mode": "build_only" },
+    "circulationRequirements": []
+  }
+}

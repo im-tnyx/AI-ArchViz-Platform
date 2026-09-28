@@ -10,6 +10,7 @@
       "**",
       "!!packages/cad-interpreter/schema",
       "!!packages/cad-parser/schema",
+      "!!packages/cad-scene-seed/schema",
       "!!packages/scene-spec/schema",
       "!!packages/worker-contracts/schema",
       "!!tests/fixtures"

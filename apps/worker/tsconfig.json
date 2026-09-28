@@ -9,6 +9,7 @@
   "references": [
     { "path": "../../packages/cad-interpreter" },
     { "path": "../../packages/cad-parser" },
+    { "path": "../../packages/cad-scene-seed" },
     { "path": "../../packages/scene-spec" },
     { "path": "../../packages/spatial-engine" },
     { "path": "../../packages/worker-contracts" }

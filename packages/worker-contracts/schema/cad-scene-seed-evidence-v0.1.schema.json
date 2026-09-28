@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-scene-seed-evidence-v0.1.schema.json",
+  "title": "AI ArchViz CAD scene seed evidence v0.1",
+  "description": "Identity proof for one canonical SceneSpec seed created from a human-approved architectural extraction: the full six-hash chain, canonical identity, mapping counts, and pre-DCC validation results. No paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "canonicalizationPolicyVersion", "approvalId", "approvalHash", "sourceHash", "cadDocumentHash", "profileHash", "architecturalExtractionHash", "sceneSpecVersion", "sceneSpecHash", "projectId", "sceneId", "revisionId", "mappingSummary", "spatialValidationStatus", "circulationRequirementStatus", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "canonicalizationPolicyVersion": { "const": "cad-scene-seed-policy-v0.1" },
+    "approvalId": { "$ref": "#/$defs/id" },
+    "approvalHash": { "$ref": "#/$defs/hash" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "cadDocumentHash": { "$ref": "#/$defs/hash" },
+    "profileHash": { "$ref": "#/$defs/hash" },
+    "architecturalExtractionHash": { "$ref": "#/$defs/hash" },
+    "sceneSpecVersion": { "const": "0.4.0" },
+    "sceneSpecHash": { "$ref": "#/$defs/hash" },
+    "projectId": { "$ref": "#/$defs/id" },
+    "sceneId": { "$ref": "#/$defs/id" },
+    "revisionId": { "$ref": "#/$defs/id" },
+    "mappingSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levelCount", "spaceCount", "wallCount", "surfaceCount", "openingCount"],
+      "properties": {
+        "levelCount": { "$ref": "#/$defs/count" },
+        "spaceCount": { "$ref": "#/$defs/count" },
+        "wallCount": { "$ref": "#/$defs/count" },
+        "surfaceCount": { "$ref": "#/$defs/count" },
+        "openingCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "spatialValidationStatus": { "const": "PASS" },
+    "circulationRequirementStatus": { "const": "PASS" },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 }
+  }
+}

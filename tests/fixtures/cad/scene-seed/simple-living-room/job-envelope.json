@@ -1,0 +1,27 @@
+{
+  "jobEnvelopeVersion": "0.1.0",
+  "jobId": "job_cad_seed_build_0001",
+  "idempotencyKey": "cad-scene-seed.build.rev_cad_seed_0001",
+  "requestHash": "sha256:15aeed52c8154544f2b9ec2ae5bb20c4bf437eadf0a26487802cf222db6e7075",
+  "projectId": "project_cad_seed_living_001",
+  "sceneId": "scene_cad_seed_living_001",
+  "jobType": "buildScene",
+  "baseRevisionId": null,
+  "requestedRevisionId": "rev_cad_seed_0001",
+  "inputs": {
+    "sceneSpecPath": "input/scene-spec.json",
+    "sceneSpecHash": "sha256:7286dca5257374cd964ae1d2715fb1f3c4c7e901bfa8a7d2883b0fbc1bfdcc67",
+    "expectedManifestPath": "input/expected-scene-manifest.json",
+    "expectedManifestHash": "sha256:1505d0e956161d3169383332738aea550eb4a0e2bbbcc67325e0f5c7f09fcb54"
+  },
+  "workerRequirements": {
+    "os": "windows",
+    "dcc": "3ds_max",
+    "renderer": "none"
+  },
+  "policy": {
+    "mode": "batch",
+    "timeoutSeconds": 900,
+    "retryPolicy": "safe"
+  }
+}

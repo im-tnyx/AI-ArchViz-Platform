@@ -5,6 +5,7 @@
     { "path": "./packages/spatial-engine" },
     { "path": "./packages/cad-parser" },
     { "path": "./packages/cad-interpreter" },
+    { "path": "./packages/cad-scene-seed" },
     { "path": "./packages/worker-contracts" },
     { "path": "./apps/worker" }
   ]

@@ -1,0 +1,587 @@
+{
+  "sceneSpecVersion": "0.4.0",
+  "project": {
+    "id": "project_cad_seed_living_001",
+    "name": "CAD Seed Living Room"
+  },
+  "scene": {
+    "id": "scene_cad_seed_living_001",
+    "revisionId": "rev_cad_seed_0001",
+    "headRevisionId": "rev_cad_seed_0001"
+  },
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right",
+    "axisConvention": "X_east_Y_north_Z_up",
+    "worldOrigin": [
+      0,
+      0,
+      0
+    ]
+  },
+  "sources": [
+    {
+      "id": "source_cad_living_dxf",
+      "type": "dxf",
+      "uri": "urn:sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+      "authority": "A3",
+      "confidence": 1,
+      "verified": true
+    }
+  ],
+  "levels": [
+    {
+      "id": "level_ground",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 3000
+    }
+  ],
+  "spaces": [
+    {
+      "id": "space_living_main",
+      "levelId": "level_ground",
+      "type": "living_room",
+      "boundary": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          6000,
+          0,
+          0
+        ],
+        [
+          6000,
+          4500,
+          0
+        ],
+        [
+          0,
+          4500,
+          0
+        ]
+      ],
+      "boundaryWinding": "counter_clockwise",
+      "floorElevation": 0,
+      "ceilingHeight": 3000,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "geometry": [
+    {
+      "id": "wall_south",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        0,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        0,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_east",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        6000,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        4500,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_north",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        6000,
+        4500,
+        0
+      ],
+      "end": [
+        0,
+        4500,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_west",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        0,
+        4500,
+        0
+      ],
+      "end": [
+        0,
+        0,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "surface_floor_main",
+      "type": "floor",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "boundary": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          6000,
+          0,
+          0
+        ],
+        [
+          6000,
+          4500,
+          0
+        ],
+        [
+          0,
+          4500,
+          0
+        ]
+      ],
+      "elevation": 0,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "surface_ceiling_main",
+      "type": "ceiling",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "boundary": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          6000,
+          0,
+          0
+        ],
+        [
+          6000,
+          4500,
+          0
+        ],
+        [
+          0,
+          4500,
+          0
+        ]
+      ],
+      "elevation": 3000,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [
+          0,
+          0,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening_d01",
+      "type": "door",
+      "hostGeometryId": "wall_west",
+      "offset": 2400,
+      "width": 900,
+      "sill": 0,
+      "height": 2100,
+      "hingeSide": "start_jamb",
+      "swingDirection": "into_room",
+      "transform": {
+        "position": [
+          2400,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "opening_w01",
+      "type": "window",
+      "hostGeometryId": "wall_north",
+      "offset": 1800,
+      "width": 2400,
+      "sill": 900,
+      "height": 1500,
+      "transform": {
+        "position": [
+          1800,
+          0,
+          900
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    }
+  ],
+  "assetDefinitions": [
+    {
+      "id": "assetdef_cad_seed_table_v1",
+      "version": "1",
+      "category": "coffee_table",
+      "sourceType": "procedural_proxy",
+      "dimensions": [
+        1200,
+        650,
+        380
+      ],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_cad_seed_table_main",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_cad_seed_table_v1",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [
+          3000,
+          2200,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    }
+  ],
+  "materials": [],
+  "materialAssignments": [],
+  "cameras": [
+    {
+      "id": "camera_cad_seed_a",
+      "type": "camera",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [
+          1200,
+          3800,
+          1500
+        ],
+        "rotationEuler": [
+          -2.84471,
+          0,
+          206.565051
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "target": [
+        3000,
+        200,
+        1300
+      ],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 28,
+      "sensorWidthMm": 36
+    }
+  ],
+  "render": {
+    "engine": "none",
+    "mode": "build_only"
+  },
+  "revisions": [
+    {
+      "revisionId": "rev_cad_seed_0001",
+      "parentRevisionId": null,
+      "status": "committed",
+      "createdAt": "2026-09-28T12:00:00Z"
+    }
+  ],
+  "extensions": {
+    "aiarchviz.cad_seed": {
+      "version": "0.1.0",
+      "canonicalizationPolicy": "cad-scene-seed-policy-v0.1",
+      "approvalId": "approval_cad_living_seed_001",
+      "approvalHash": "sha256:4fd953313856ef014ed3506d2f73ac640df1c946c6c0f8ccd21fafb9094970e5",
+      "profileId": "golden_living_dxf_profile",
+      "sourceHash": "sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+      "cadDocumentHash": "sha256:0c89f758b39c0b6312912a34aed7ec4bc46f24be86c56244a029cef5628f7f26",
+      "profileHash": "sha256:8a4429606d348add059c358cb21853f246fa90a85af78b94eca62e351439a40f",
+      "architecturalExtractionHash": "sha256:b249055f4a6204c474d72cd82f613410c0f63b7145ed87f83d431f5812a33f8a",
+      "mappings": {
+        "levels": [
+          {
+            "candidateId": "level_candidate_ground",
+            "logicalId": "level_ground"
+          }
+        ],
+        "spaces": [
+          {
+            "candidateId": "space_candidate_0000",
+            "logicalId": "space_living_main",
+            "floorSurfaceId": "surface_floor_main",
+            "ceilingSurfaceId": "surface_ceiling_main"
+          }
+        ],
+        "walls": [
+          {
+            "candidateId": "wall_candidate_0000_0000",
+            "logicalId": "wall_south"
+          },
+          {
+            "candidateId": "wall_candidate_0000_0001",
+            "logicalId": "wall_east"
+          },
+          {
+            "candidateId": "wall_candidate_0000_0002",
+            "logicalId": "wall_north"
+          },
+          {
+            "candidateId": "wall_candidate_0000_0003",
+            "logicalId": "wall_west"
+          }
+        ],
+        "openings": [
+          {
+            "candidateId": "opening_candidate_0000",
+            "logicalId": "opening_d01"
+          },
+          {
+            "candidateId": "opening_candidate_0001",
+            "logicalId": "opening_w01"
+          }
+        ]
+      }
+    }
+  },
+  "lights": [],
+  "circulationRequirements": []
+}
