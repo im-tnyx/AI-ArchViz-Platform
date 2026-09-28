@@ -1,5 +1,58 @@
 # Latest Validation Evidence
 
+## Spike 10C reviewed CAD -> canonical SceneSpec seed (local commit `f00f743`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 572/572 (58 new in `tests/unit/cad-scene-seed.test.ts`), run
+  four times (twice after the final code was settled), 572/572 every time;
+  no failure occurred, so no transient failure had to be diagnosed.
+- New tests: generator output deep-equals the independently authored
+  `expected-scene-spec-v0.4.json` and `expected-seed-evidence-v0.1.json`;
+  the frozen six-hash chain from the fixture DXF (`sourceHash`
+  `sha256:dad0ab0a…096d`, `cadDocumentHash` `sha256:0c89f758…7f26`,
+  `profileHash` `sha256:8a442960…a40f`, `architecturalExtractionHash`
+  `sha256:b249055f…3f8a`, `approvalHash` `sha256:4fd95331…70e5`,
+  `sceneSpecHash` `sha256:7286dca5…cc67`); provenance extension without
+  paths; new identity and one initial revision; walls/openings/level/space/
+  surfaces copied from 10B; non-CAD state as approved; a Golden rev13
+  test-only architectural projection; missing/invalid approval, rejected and
+  changes_requested decisions, stale H1-vs-H2 approval and every bound hash;
+  six geometry-override attempts rejected by schema; mapping matrix
+  (missing, unknown, duplicate candidate, duplicate logical IDs across
+  walls/surfaces/assets/openings, unsorted); non-CAD reference, schema,
+  and source-metadata failures incl. seven local-path URI forms; door
+  clearance, outside-space, and collision spatial rejections; explicit
+  unsatisfied circulation requirement; build-envelope refusal; determinism,
+  semantic approval hashing, deep-freeze immutability; worker file boundary
+  with junction escapes; static purity and dependency-direction guards.
+- Mutation checks (built seed package, then restored): automatic wall IDs
+  when a mapping is missing fails 3 tests; approval-hash bypass fails 1;
+  wall thickness not taken from the extraction fails 8; wrong host mapping
+  fails 9.
+- `pnpm test:asset-trust` — 7/7; 10A and 10B suites unchanged and PASS
+  (frozen 10A/10B hashes unchanged).
+
+DCC gates on 3ds Max 2025 compatibility mode (2025.3 install), all PASS:
+
+- `test:3dsmax:cad-scene-seed` (new; run before and again after the final
+  source-metadata check): DXF -> 10A -> 10B -> approval -> 10C with every
+  frozen hash; default-deny refusal with no process and no .max; build
+  through the existing `build-scene` pipeline (centralized batch policy,
+  sanitized environment); fresh-process manifest equal to the frozen expected
+  manifest; project/scene/revision identity, 4 walls, door on `wall_west`
+  at 2400, window on `wall_north`, 1 proxy asset, 1 camera; non-empty
+  regular output .max (1,069,056 bytes); no image output; idempotent replay
+  with no new DCC process; no test-owned 3dsmaxbatch left.
+- Golden initial build regression (`build-scene` on the Golden job in a
+  fresh workspace, i.e. `test:3dsmax:golden` without ledger replay):
+  SUCCESS, not replayed, manifest comparison PASS.
+- No shared build, camera, revision, or Python module changed, so no other
+  DCC suite was affected.
+
+Target 3ds Max 2026 was not tested.
+
 ## Spike 10B deterministic CAD interpretation (local commit `8a3e555`)
 
 Static gates, all PASS:

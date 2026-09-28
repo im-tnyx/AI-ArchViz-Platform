@@ -772,3 +772,32 @@
   "READY_FOR_REVIEW"`; no arrays, no paths. The worker recomputes the
   input hashes with `semanticJsonHash` (`CAD_INTERPRET_HASH_MISMATCH`).
 - See [../docs/architecture/CAD-INTERPRETATION.md](../docs/architecture/CAD-INTERPRETATION.md).
+
+## Reviewed CAD -> canonical SceneSpec seed (Spike 10C)
+
+- `cad-scene-seed-policy-v0.1` (software-owned) +
+  `cad-scene-seed-approval-v0.1`
+  (`packages/cad-scene-seed/schema`, `validateCadSceneSeedApproval`):
+  declarative approval with `approvalId`, exact `canonicalizationPolicy`,
+  `decision` (only `approved_as_is` canonicalizes), the exact
+  `architecturalExtractionHash` plus `sourceHash`/`cadDocumentHash`/
+  `profileHash`/`profileId`, canonical `project` and `scene` identity,
+  `lockPolicy: "all_unlocked"`, sorted candidate -> logical-ID mappings for
+  every level, space (+ floor/ceiling surface IDs), wall, and opening, and
+  `nonCadState` validated by reference to SceneSpec v0.4 `$defs`. No
+  override field exists; architectural corrections go through a new 10B run.
+- `createSceneSpecSeed(extraction, approval)` is pure: validates both,
+  refuses non-approved and stale approvals
+  (`CAD_SCENE_SEED_APPROVAL_HASH_MISMATCH`), enforces complete, unique,
+  sorted mappings, copies every architectural fact from the extraction,
+  emits SceneSpec v0.4 with one committed initial revision and the
+  `aiarchviz.cad_seed` provenance extension (hashes, IDs, mappings, no
+  paths), then `validateSceneSpec`, reference, and source-metadata checks
+  (a `dxf` source `urn:sha256:<sourceHash>`, no local paths).
+- Worker `createCadSceneSeed` adds 9A spatial and 9C circulation
+  validation and `cad-scene-seed-evidence-v0.1` (six hashes, identity,
+  mapping counts, PASS statuses; no paths);
+  `assertSeedBuildRealizable` refuses seeds the current initial build
+  cannot realize exactly. The seed enters the existing `build-scene`
+  pipeline unchanged; it is not a SceneChangeSet revision.
+- See [../docs/architecture/CAD-SCENE-SEED.md](../docs/architecture/CAD-SCENE-SEED.md).

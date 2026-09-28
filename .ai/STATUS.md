@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `8a3e555` (`feat: add deterministic cad interpretation`),
-  on top of `f51ea5a` (`fix: harden cad path containment`).
+- Local baseline HEAD: `f00f743` (`feat: seed canonical scenes from reviewed cad`),
+  on top of `8a3e555` (`feat: add deterministic cad interpretation`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -333,6 +333,25 @@
   simple-living-room fixture recovers the Golden rev13 room, walls, door,
   and window geometry (test-only comparison). No SceneSpec, AI, DCC, or
   network; no DCC path changed.
+- Spike 10C completed the first DXF -> editable .max path. The pure
+  `@ai-archviz/cad-scene-seed` package (`cad-scene-seed-policy-v0.1`)
+  turns one exact, human-approved `architectural-extraction-v0.1` plus an
+  explicit declarative `cad-scene-seed-approval-v0.1` (`approved_as_is`
+  only, bound to the exact extraction/source/CAD/profile hashes, no
+  override fields) into an initial SceneSpec v0.4 seed: canonical project,
+  scene, and single committed revision from the approval; every level,
+  space, surface, wall, and opening logical ID explicitly mapped (sorted,
+  complete, unique; never derived); every architectural fact copied from
+  the extraction; non-CAD state (one proxy asset, one camera, render
+  none/build_only, empty materials/lights/circulation) approval-supplied
+  and validated against the normative SceneSpec v0.4 `$defs`; provenance
+  in the `aiarchviz.cad_seed` extension. SceneSpec, 9A spatial, and 9C
+  circulation validation must PASS before any write or DCC. New
+  `cad-scene-seed-evidence-v0.1` records the six-hash chain. The seed
+  (`project_cad_seed_living_001`) built through the UNCHANGED
+  `build-scene` pipeline and passed fresh semantic verification against an
+  independently frozen manifest on 3ds Max 2025.3 compatibility mode.
+  Golden rev1-rev13 unchanged; no rev14; no render.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and
