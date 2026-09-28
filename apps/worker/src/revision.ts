@@ -11,11 +11,15 @@ import { evaluateAssetPlacement, evaluateAssetReplacement } from "@ai-archviz/sp
 import {
   type CanonicalCameraStateEvidence,
   type CanonicalMaterialStateEvidence,
+  type CirculationRequirementEvidence,
   type JobEnvelope,
   semanticJsonHash,
   validateCanonicalCameraStateEvidence,
+  validateCanonicalCameraStateEvidenceV02,
   validateCanonicalMaterialStateEvidence,
+  validateCanonicalMaterialStateEvidenceV02,
   validateCanonicalRenderStateEvidence,
+  validateCirculationRequirementEvidence,
   validateExecutionReport,
   validateJobEnvelope,
   validateSceneManifest,
@@ -33,6 +37,10 @@ import {
   deriveLookAtRotationEuler,
   targetDistanceMm,
 } from "./camera-policy.js";
+import {
+  circulationRequirementEvidence,
+  circulationRequirementGateFailure,
+} from "./circulation-requirement-evidence.js";
 import type { WorkerConfig } from "./config.js";
 import {
   coronaCanonicalAreaLightWidthMm,
@@ -154,6 +162,16 @@ interface SetCameraOperation {
   };
 }
 
+interface MigrateCirculationRequirementContractOperation {
+  operationId: string;
+  type: "MigrateCirculationRequirementContract";
+  targetId: string;
+  parameters: {
+    targetSceneSpecVersion: "0.4.0";
+    circulationRequirements: Array<Record<string, unknown>>;
+  };
+}
+
 type LockPropertyPath = "geometry" | "transform" | "material";
 type PropertyLockOperation = LockPropertyOperation | UnlockPropertyOperation;
 
@@ -166,10 +184,11 @@ type SupportedOperation =
   | SetRenderIntentOperation
   | AddLightOperation
   | MigrateMaterialAppearanceContractOperation
-  | SetCameraOperation;
+  | SetCameraOperation
+  | MigrateCirculationRequirementContractOperation;
 
 interface ChangeSetContract extends SceneChangeSet {
-  schemaVersion: "0.1.0" | "0.2.0" | "0.3.0";
+  schemaVersion: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0";
   changeSetId: string;
   projectId: string;
   sceneId: string;
@@ -249,6 +268,7 @@ interface SceneDocument extends Record<string, unknown> {
     transform: SemanticTransform;
     intensity: number;
   }>;
+  circulationRequirements?: Array<Record<string, unknown>>;
 }
 
 interface WallSegmentPlan {
@@ -359,8 +379,19 @@ interface SetCameraMutation {
   fovDegrees: number;
 }
 
+interface MigrateCirculationRequirementMutation {
+  operationId: string;
+  type: "MigrateCirculationRequirementContract";
+  targetId: string;
+  targetSceneSpecVersion: "0.4.0";
+  requirementCount: number;
+  requirementSetHash: string;
+  /** Carried for audit only; DCC never reinterprets requirement semantics. */
+  circulationRequirements: Array<Record<string, unknown>>;
+}
+
 export interface RevisionMutationPlan {
-  revisionPlanVersion: "0.1.0" | "0.2.0" | "0.3.0";
+  revisionPlanVersion: "0.1.0" | "0.2.0" | "0.3.0" | "0.4.0";
   changeSetId: string;
   projectId: string;
   sceneId: string;
@@ -375,7 +406,8 @@ export interface RevisionMutationPlan {
     | SetRenderIntentMutation
     | AddLightMutation
     | MigrateMaterialAppearanceMutation
-    | SetCameraMutation;
+    | SetCameraMutation
+    | MigrateCirculationRequirementMutation;
   expectedManagedLogicalIds: string[];
 }
 
@@ -435,6 +467,7 @@ export interface RevisionResult {
   materialStateEvidence: CanonicalMaterialStateEvidence | null;
   cameraStateVerificationProcess: ControlledProcessResult | null;
   cameraStateEvidence: CanonicalCameraStateEvidence | null;
+  circulationRequirementEvidence: CirculationRequirementEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   report: RevisionExecutionReport | null;
@@ -457,6 +490,36 @@ export class RevisionValidationError extends Error {
   ) {
     super(message);
     this.name = "RevisionValidationError";
+  }
+}
+
+export class CirculationRequirementUnsatisfiedError extends RevisionValidationError {
+  constructor(
+    readonly requirementId: string | null,
+    readonly failureCode: string,
+    message: string,
+  ) {
+    super("CIRCULATION_REQUIREMENT_UNSATISFIED", message);
+    this.name = "CirculationRequirementUnsatisfiedError";
+  }
+}
+
+/**
+ * Canonical circulation requirement gate (Spike 9D). Must be given the
+ * COMPLETE candidate target SceneSpec. v0.1-v0.3 targets are never gated; a
+ * v0.4 target whose canonical requirements are not all SATISFIED is rejected
+ * before any DCC discovery or process launch. No operation type is exempt.
+ */
+export function assertCanonicalCirculationRequirementsSatisfied(
+  targetSceneSpec: Record<string, unknown>,
+): void {
+  const failure = circulationRequirementGateFailure(targetSceneSpec);
+  if (failure) {
+    throw new CirculationRequirementUnsatisfiedError(
+      failure.requirementId,
+      failure.failureCode,
+      failure.message,
+    );
   }
 }
 
@@ -585,12 +648,13 @@ export function planSceneRevision(
           "AddLight",
           "MigrateMaterialAppearanceContract",
           "SetCamera",
+          "MigrateCirculationRequirementContract",
         ].includes(String((operation as { type?: unknown }).type)),
     )
   ) {
     throw new RevisionValidationError(
       "OPERATION_UNSUPPORTED",
-      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, AddLight, MigrateMaterialAppearanceContract, and SetCamera only",
+      "Revision runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, ReplaceAsset, SetRenderIntent, AddLight, MigrateMaterialAppearanceContract, SetCamera, and MigrateCirculationRequirementContract only",
     );
   }
   const baseValidation = validateSceneSpec(baseValue);
@@ -636,7 +700,8 @@ export function planSceneRevision(
     | SetRenderIntentMutation
     | AddLightMutation
     | MigrateMaterialAppearanceMutation
-    | SetCameraMutation;
+    | SetCameraMutation
+    | MigrateCirculationRequirementMutation;
   if (operation?.type === "SetRenderIntent") {
     if (operation.targetId !== base.scene.id) {
       throw new RevisionValidationError(
@@ -715,10 +780,10 @@ export function planSceneRevision(
         `Scene target ${operation.targetId} was not found`,
       );
     }
-    if (base.sceneSpecVersion === "0.3.0") {
+    if (base.sceneSpecVersion === "0.3.0" || base.sceneSpecVersion === "0.4.0") {
       throw new RevisionValidationError(
         "MATERIAL_APPEARANCE_ALREADY_CANONICAL",
-        "Base SceneSpec is already v0.3 canonical material appearance",
+        "Base SceneSpec already carries canonical material appearance",
       );
     }
     if (
@@ -817,6 +882,64 @@ export function planSceneRevision(
         targetId: assignment.targetId,
         materialId: assignment.materialId,
       })),
+    };
+  } else if (operation?.type === "MigrateCirculationRequirementContract") {
+    if (operation.targetId !== base.scene.id) {
+      throw new RevisionValidationError(
+        "TARGET_NOT_FOUND",
+        `Scene target ${operation.targetId} was not found`,
+      );
+    }
+    if (base.sceneSpecVersion === "0.4.0") {
+      throw new RevisionValidationError(
+        "CIRCULATION_REQUIREMENT_CONTRACT_ALREADY_CANONICAL",
+        "Base SceneSpec is already v0.4 with canonical circulation requirements",
+      );
+    }
+    if (
+      base.sceneSpecVersion !== "0.3.0" ||
+      operation.parameters.targetSceneSpecVersion !== "0.4.0"
+    ) {
+      throw new RevisionValidationError(
+        "SCENE_SPEC_VERSION_TRANSITION_UNSUPPORTED",
+        "Only an explicit v0.3 -> v0.4 circulation requirement transition is supported",
+      );
+    }
+    const requirements = structuredClone(operation.parameters.circulationRequirements);
+    targetSceneSpec.sceneSpecVersion = "0.4.0";
+    targetSceneSpec.circulationRequirements = requirements;
+    // Reuse the SceneSpec v0.4 contract validator (Spike 9C) for ordering,
+    // uniqueness, and reference coherence, mapped to explicit revision codes.
+    const contractValidation = validateSceneSpec(targetSceneSpec);
+    if (!contractValidation.ok) {
+      const keywords = new Set(contractValidation.errors.map((error) => error.keyword));
+      if (keywords.has("circulationRequirementOrder")) {
+        throw new RevisionValidationError(
+          "CIRCULATION_REQUIREMENT_SET_UNSORTED",
+          "Migration circulationRequirements must be sorted by id in code-point order",
+        );
+      }
+      if (keywords.has("uniqueCirculationRequirementId")) {
+        throw new RevisionValidationError(
+          "CIRCULATION_REQUIREMENT_ID_DUPLICATE",
+          "Migration circulationRequirements contain a duplicate id",
+        );
+      }
+      if ([...keywords].some((keyword) => keyword.startsWith("circulationRequirement"))) {
+        throw new RevisionValidationError(
+          "CIRCULATION_REQUIREMENT_REFERENCE_INVALID",
+          `Migration circulationRequirements are not referentially coherent: ${JSON.stringify(contractValidation.errors)}`,
+        );
+      }
+    }
+    mutation = {
+      operationId: operation.operationId,
+      type: "MigrateCirculationRequirementContract",
+      targetId: operation.targetId,
+      targetSceneSpecVersion: "0.4.0",
+      requirementCount: requirements.length,
+      requirementSetHash: semanticJsonHash(requirements),
+      circulationRequirements: structuredClone(requirements),
     };
   } else if (operation?.type === "SetCamera") {
     const cameraMatches = base.cameras.filter((camera) => camera.id === operation.targetId);
@@ -1167,16 +1290,21 @@ export function planSceneRevision(
     );
   }
   validateCanonicalCoronaRenderState(targetSceneSpec);
+  // Runs only after the operation is fully applied and revision metadata is
+  // appended, and after every operation-specific (lock, 9A, ...) check.
+  assertCanonicalCirculationRequirementsSatisfied(targetSceneSpec);
   return {
     changeSet,
     targetSceneSpec,
     plan: {
       revisionPlanVersion:
-        mutation.type === "SetCamera"
-          ? "0.3.0"
-          : mutation.type === "MigrateMaterialAppearanceContract"
-            ? "0.2.0"
-            : "0.1.0",
+        mutation.type === "MigrateCirculationRequirementContract"
+          ? "0.4.0"
+          : mutation.type === "SetCamera"
+            ? "0.3.0"
+            : mutation.type === "MigrateMaterialAppearanceContract"
+              ? "0.2.0"
+              : "0.1.0",
       changeSetId: changeSet.changeSetId,
       projectId: changeSet.projectId,
       sceneId: changeSet.sceneId,
@@ -1555,7 +1683,8 @@ export function assertRevisionDiff(diff: SemanticRevisionDiff, changeSet: Change
   if (
     operation?.type === "SetRenderIntent" ||
     operation?.type === "AddLight" ||
-    operation?.type === "MigrateMaterialAppearanceContract"
+    operation?.type === "MigrateMaterialAppearanceContract" ||
+    operation?.type === "MigrateCirculationRequirementContract"
   ) {
     // Material appearance (roughness/metalness) lives on SceneSpec's top-level
     // `materials` array, not on any per-node manifest entry, so this migration
@@ -1753,24 +1882,27 @@ export function canonicalMaterialStateExpectation(
   scene: Record<string, unknown>,
 ): Record<string, unknown> | null {
   const value = scene as unknown as SceneDocument;
-  if (value.sceneSpecVersion !== "0.3.0") return null;
+  if (value.sceneSpecVersion !== "0.3.0" && value.sceneSpecVersion !== "0.4.0") return null;
+  const sceneSpecVersion = value.sceneSpecVersion;
   const materials = [...value.materials].sort((left, right) => left.id.localeCompare(right.id));
   const assignments = [...value.materialAssignments].sort((left, right) =>
     left.targetId.localeCompare(right.targetId),
   );
   return {
-    materialStateVersion: "0.1.0",
+    // canonical-material-state-v0.1 is bound to SceneSpec v0.3; v0.2 carries
+    // identical physical fields for SceneSpec v0.4.
+    materialStateVersion: sceneSpecVersion === "0.4.0" ? "0.2.0" : "0.1.0",
     projectId: value.project.id,
     sceneId: value.scene.id,
     revisionId: value.scene.revisionId,
-    sceneSpecVersion: "0.3.0",
+    sceneSpecVersion,
     materials: materials.map((material) => {
       const roughness = material.roughness;
       const metalness = material.metalness;
       if (roughness === undefined || metalness === undefined) {
         throw new RevisionValidationError(
           "MATERIAL_APPEARANCE_SET_INCOMPLETE",
-          `SceneSpec v0.3 material ${material.id} is missing canonical appearance`,
+          `SceneSpec ${sceneSpecVersion} material ${material.id} is missing canonical appearance`,
         );
       }
       return {
@@ -1813,7 +1945,7 @@ export function canonicalCameraStateExpectation(
   if (!Array.isArray(value.cameras) || value.cameras.length === 0) return null;
   const cameras = [...value.cameras].sort((left, right) => left.id.localeCompare(right.id));
   return {
-    cameraStateVersion: "0.1.0",
+    cameraStateVersion: value.sceneSpecVersion === "0.4.0" ? "0.2.0" : "0.1.0",
     projectId: value.project.id,
     sceneId: value.scene.id,
     revisionId: value.scene.revisionId,
@@ -1842,6 +1974,49 @@ export function canonicalCameraStateExpectation(
     }),
     status: "PASS",
   };
+}
+
+function validateMaterialStateEvidenceFor(sceneSpecVersion: string, evidence: unknown) {
+  return sceneSpecVersion === "0.4.0"
+    ? validateCanonicalMaterialStateEvidenceV02(evidence)
+    : validateCanonicalMaterialStateEvidence(evidence);
+}
+
+function validateCameraStateEvidenceFor(sceneSpecVersion: string, evidence: unknown) {
+  return sceneSpecVersion === "0.4.0"
+    ? validateCanonicalCameraStateEvidenceV02(evidence)
+    : validateCanonicalCameraStateEvidence(evidence);
+}
+
+/**
+ * Promotion gate over the pure circulation-requirement evidence of a v0.4
+ * target: schema-valid, PASS, and exactly the evidence computed before DCC
+ * work. Returns the blocking error, or null when promotion may proceed.
+ */
+export function circulationEvidencePromotionFailure(
+  evidence: Record<string, unknown>,
+  expected: Record<string, unknown>,
+): { code: string; message: string } | null {
+  const validation = validateCirculationRequirementEvidence(evidence);
+  if (!validation.ok) {
+    return {
+      code: "CIRCULATION_REQUIREMENT_EVIDENCE_INVALID",
+      message: JSON.stringify(validation.errors),
+    };
+  }
+  if (evidence.status !== "PASS") {
+    return {
+      code: "CIRCULATION_REQUIREMENT_EVIDENCE_FAILED",
+      message: "Circulation requirement evidence is not PASS",
+    };
+  }
+  if (!isDeepStrictEqual(evidence, expected)) {
+    return {
+      code: "CIRCULATION_REQUIREMENT_EVIDENCE_MISMATCH",
+      message: "Circulation requirement evidence differs from the pre-DCC evaluation",
+    };
+  }
+  return null;
 }
 
 function findVerifiedBaseArtifact(
@@ -1939,6 +2114,7 @@ function noExecution(
     materialStateEvidence: null,
     cameraStateVerificationProcess: null,
     cameraStateEvidence: null,
+    circulationRequirementEvidence: null,
     comparison: null,
     semanticDiff: null,
     report: null,
@@ -1972,6 +2148,7 @@ interface RevisionContext {
   materialStateEvidence: CanonicalMaterialStateEvidence | null;
   cameraStateVerificationProcess: ControlledProcessResult | null;
   cameraStateEvidence: CanonicalCameraStateEvidence | null;
+  circulationRequirementEvidence: CirculationRequirementEvidence | null;
   comparison: ReturnType<typeof compareSceneManifests> | null;
   semanticDiff: SemanticRevisionDiff | null;
   baseArtifactPath: string;
@@ -2039,6 +2216,7 @@ function resultFor(context: RevisionContext, report: RevisionExecutionReport): R
     materialStateEvidence: context.materialStateEvidence,
     cameraStateVerificationProcess: context.cameraStateVerificationProcess,
     cameraStateEvidence: context.cameraStateEvidence,
+    circulationRequirementEvidence: context.circulationRequirementEvidence,
     comparison: context.comparison,
     semanticDiff: context.semanticDiff,
     report,
@@ -2131,6 +2309,7 @@ export async function applySceneChangeSet(
     expectedRenderState: Record<string, unknown> | null;
     expectedMaterialState: Record<string, unknown> | null;
     expectedCameraState: Record<string, unknown> | null;
+    expectedCirculationRequirementEvidence: Record<string, unknown> | null;
     baseArtifactPath: string;
     baseArtifactHash: string;
   };
@@ -2229,8 +2408,13 @@ export async function applySceneChangeSet(
       expectedRenderState: canonicalRenderStateExpectation(targetScene),
       expectedMaterialState: canonicalMaterialStateExpectation(targetScene),
       expectedCameraState:
-        planned.plan.operation.type === "SetCamera"
+        planned.plan.operation.type === "SetCamera" ||
+        planned.plan.operation.type === "MigrateCirculationRequirementContract"
           ? canonicalCameraStateExpectation(targetScene)
+          : null,
+      expectedCirculationRequirementEvidence:
+        targetScene.sceneSpecVersion === "0.4.0"
+          ? circulationRequirementEvidence(targetScene)
           : null,
       baseArtifactPath: verifiedBase.artifactPath,
       baseArtifactHash: verifiedBase.artifactHash,
@@ -2257,6 +2441,13 @@ export async function applySceneChangeSet(
     projectId: prepared.changeSet.projectId,
     sceneId: prepared.changeSet.sceneId,
     targetRevisionId: prepared.changeSet.targetRevisionId,
+    ...(prepared.expectedCirculationRequirementEvidence
+      ? {
+          expectedCirculationRequirementEvidenceHash: semanticJsonHash(
+            prepared.expectedCirculationRequirementEvidence,
+          ),
+        }
+      : {}),
     workerRequirements: {
       os: "windows",
       dcc: "3ds_max",
@@ -2294,7 +2485,14 @@ export async function applySceneChangeSet(
       );
     }
     if (decision === "REPLAY_SUCCESS" && previous) {
-      return replayRevision(config, previous, jobId, prepared.baseManifest, prepared.changeSet);
+      return replayRevision(
+        config,
+        previous,
+        jobId,
+        prepared.baseManifest,
+        prepared.changeSet,
+        String(prepared.targetScene.sceneSpecVersion),
+      );
     }
     if (decision === "REPLAY_FAILURE" && previous) {
       return noExecution(
@@ -2330,6 +2528,7 @@ export async function applySceneChangeSet(
       materialStateEvidence: null,
       cameraStateVerificationProcess: null,
       cameraStateEvidence: null,
+      circulationRequirementEvidence: null,
       comparison: null,
       semanticDiff: null,
       baseArtifactPath: prepared.baseArtifactPath,
@@ -2397,6 +2596,8 @@ export async function applySceneChangeSet(
             process.env.AI_ARCHVIZ_TEST_FORCE_MATERIAL_APPEARANCE_FAILURE,
           AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE:
             process.env.AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE,
+          AI_ARCHVIZ_TEST_FORCE_CIRCULATION_MIGRATION_FAILURE:
+            process.env.AI_ARCHVIZ_TEST_FORCE_CIRCULATION_MIGRATION_FAILURE,
           ...(prepared.expectedRenderState ||
           prepared.expectedMaterialState ||
           prepared.expectedCameraState
@@ -2452,6 +2653,8 @@ export async function applySceneChangeSet(
           AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
           AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
           AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
+          AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH:
+            process.env.AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH,
         },
       }),
       outputEncoding: "utf16le",
@@ -2523,6 +2726,8 @@ export async function applySceneChangeSet(
             AI_ARCHVIZ_EXPECTED_RENDER_STATE_PATH: workspace.expectedRenderStatePath,
             AI_ARCHVIZ_RENDER_STATE_PATH: workspace.renderStatePath,
             AI_ARCHVIZ_RENDER_STATE_RESULT_PATH: workspace.renderStateResultPath,
+            AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE:
+              process.env.AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE,
             AI_ARCHVIZ_REQUIRE_SAFE_SCENE: "1",
           },
         }),
@@ -2638,7 +2843,10 @@ export async function applySceneChangeSet(
         string,
         unknown
       >;
-      const materialStateValidation = validateCanonicalMaterialStateEvidence(materialStateEvidence);
+      const materialStateValidation = validateMaterialStateEvidenceFor(
+        String(prepared.targetScene.sceneSpecVersion),
+        materialStateEvidence,
+      );
       if (!materialStateValidation.ok) {
         return failRevision(
           config,
@@ -2724,7 +2932,10 @@ export async function applySceneChangeSet(
         );
       }
       const cameraStateEvidence = readJson(workspace.cameraStatePath) as Record<string, unknown>;
-      const cameraStateValidation = validateCanonicalCameraStateEvidence(cameraStateEvidence);
+      const cameraStateValidation = validateCameraStateEvidenceFor(
+        String(prepared.targetScene.sceneSpecVersion),
+        cameraStateEvidence,
+      );
       if (!cameraStateValidation.ok) {
         return failRevision(
           config,
@@ -2746,6 +2957,22 @@ export async function applySceneChangeSet(
         );
       }
       context.cameraStateEvidence = cameraStateEvidence;
+    }
+    if (prepared.expectedCirculationRequirementEvidence) {
+      let evidence: Record<string, unknown> = circulationRequirementEvidence(prepared.targetScene);
+      // Trusted test hook; it can only force a failure, never a pass.
+      const forced = process.env.AI_ARCHVIZ_TEST_FORCE_CIRCULATION_EVIDENCE_FAILURE;
+      if (forced === "invalid_evidence") evidence = { ...evidence, requirementSetHash: "invalid" };
+      if (forced === "status_failed") evidence = { ...evidence, status: "FAILED" };
+      const failure = circulationEvidencePromotionFailure(
+        evidence,
+        prepared.expectedCirculationRequirementEvidence,
+      );
+      if (failure) {
+        return failRevision(config, context, failure.code, failure.message, false, true);
+      }
+      writeDeterministicJson(workspace.circulationRequirementEvidencePath, evidence);
+      context.circulationRequirementEvidence = evidence;
     }
     if (rawFileHash(prepared.baseArtifactPath) !== prepared.baseArtifactHash) {
       return failRevision(
@@ -2795,6 +3022,7 @@ function replayRevision(
   currentJobId: string,
   baseManifest: Record<string, unknown>,
   changeSet: ChangeSetContract,
+  targetSceneSpecVersion: string,
 ): RevisionResult {
   if (!record.reportPath || !record.verifiedOutputPath || !record.manifestPath) {
     return noExecution(
@@ -2853,7 +3081,8 @@ function replayRevision(
     changeSet.operations[0]?.type === "SetRenderIntent" ||
     changeSet.operations[0]?.type === "AddLight" ||
     changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract" ||
-    changeSet.operations[0]?.type === "SetCamera"
+    changeSet.operations[0]?.type === "SetCamera" ||
+    changeSet.operations[0]?.type === "MigrateCirculationRequirementContract"
   ) {
     const renderStatePath = resolve(dirname(manifestPath), "canonical-render-state.json");
     if (!existsSync(renderStatePath)) {
@@ -2876,7 +3105,8 @@ function replayRevision(
   let materialStateEvidence: CanonicalMaterialStateEvidence | null = null;
   if (
     changeSet.operations[0]?.type === "MigrateMaterialAppearanceContract" ||
-    changeSet.operations[0]?.type === "SetCamera"
+    changeSet.operations[0]?.type === "SetCamera" ||
+    changeSet.operations[0]?.type === "MigrateCirculationRequirementContract"
   ) {
     const materialStatePath = resolve(dirname(manifestPath), "canonical-material-state.json");
     if (!existsSync(materialStatePath)) {
@@ -2887,7 +3117,7 @@ function replayRevision(
       );
     }
     const candidateMaterialEvidence = readJson(materialStatePath) as Record<string, unknown>;
-    if (!validateCanonicalMaterialStateEvidence(candidateMaterialEvidence).ok) {
+    if (!validateMaterialStateEvidenceFor(targetSceneSpecVersion, candidateMaterialEvidence).ok) {
       return noExecution(
         currentJobId,
         makeError("RECOVERY_REQUIRED", "Canonical material-state replay evidence invalid"),
@@ -2897,7 +3127,10 @@ function replayRevision(
     materialStateEvidence = candidateMaterialEvidence;
   }
   let cameraStateEvidence: CanonicalCameraStateEvidence | null = null;
-  if (changeSet.operations[0]?.type === "SetCamera") {
+  if (
+    changeSet.operations[0]?.type === "SetCamera" ||
+    changeSet.operations[0]?.type === "MigrateCirculationRequirementContract"
+  ) {
     const cameraStatePath = resolve(dirname(manifestPath), "canonical-camera-state.json");
     if (!existsSync(cameraStatePath)) {
       return noExecution(
@@ -2907,7 +3140,7 @@ function replayRevision(
       );
     }
     const candidateCameraEvidence = readJson(cameraStatePath) as Record<string, unknown>;
-    if (!validateCanonicalCameraStateEvidence(candidateCameraEvidence).ok) {
+    if (!validateCameraStateEvidenceFor(targetSceneSpecVersion, candidateCameraEvidence).ok) {
       return noExecution(
         currentJobId,
         makeError("RECOVERY_REQUIRED", "Canonical camera-state replay evidence invalid"),
@@ -2915,6 +3148,36 @@ function replayRevision(
       );
     }
     cameraStateEvidence = candidateCameraEvidence;
+  }
+  let circulationEvidence: CirculationRequirementEvidence | null = null;
+  if (targetSceneSpecVersion === "0.4.0") {
+    const circulationEvidencePath = resolve(
+      dirname(manifestPath),
+      "circulation-requirement-evidence.json",
+    );
+    if (!existsSync(circulationEvidencePath)) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Circulation requirement replay evidence missing"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    const candidateCirculationEvidence = readJson(circulationEvidencePath) as Record<
+      string,
+      unknown
+    >;
+    if (
+      !validateCirculationRequirementEvidence(candidateCirculationEvidence).ok ||
+      candidateCirculationEvidence.status !== "PASS" ||
+      candidateCirculationEvidence.revisionId !== changeSet.targetRevisionId
+    ) {
+      return noExecution(
+        currentJobId,
+        makeError("RECOVERY_REQUIRED", "Circulation requirement replay evidence invalid"),
+        { idempotencyKey: record.idempotencyKey, requestHash: record.requestHash },
+      );
+    }
+    circulationEvidence = candidateCirculationEvidence;
   }
   return {
     workerVersion: "0.1.0",
@@ -2932,6 +3195,7 @@ function replayRevision(
     materialStateEvidence,
     cameraStateVerificationProcess: null,
     cameraStateEvidence,
+    circulationRequirementEvidence: circulationEvidence,
     comparison: null,
     semanticDiff,
     report,

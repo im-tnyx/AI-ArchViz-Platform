@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "0.4.0",
+  "changeSetId": "chg_migrate_circulation_contract_r13",
+  "projectId": "project_golden_living_001",
+  "sceneId": "scene_golden_living_001",
+  "baseRevisionId": "rev_golden_0012",
+  "targetRevisionId": "rev_golden_0013",
+  "requestedBy": {
+    "type": "operator",
+    "id": "operator_golden_fixture"
+  },
+  "source": {
+    "type": "manual_edit",
+    "referenceIds": ["source_golden_fixture"]
+  },
+  "intent": "Migrate the canonical living-room golden scene to SceneSpec v0.4 with one explicit required circulation route.",
+  "riskLevel": "high",
+  "operations": [
+    {
+      "operationId": "op_migrate_circulation_contract_r13",
+      "type": "MigrateCirculationRequirementContract",
+      "targetId": "scene_golden_living_001",
+      "reason": "Declare hand-authored project intent: the entry door must stay connected to the clear east floor area.",
+      "riskLevel": "high",
+      "parameters": {
+        "targetSceneSpecVersion": "0.4.0",
+        "circulationRequirements": [
+          {
+            "id": "circulation_req_entry_to_east_clear_point",
+            "type": "same_space_route",
+            "spaceId": "space_living_main",
+            "evaluationPolicy": "circulation-policy-v0.1",
+            "start": {
+              "kind": "door_portal",
+              "openingId": "opening_d01"
+            },
+            "end": {
+              "kind": "point",
+              "pointXY": [5000, 1500]
+            }
+          }
+        ]
+      },
+      "preconditions": [],
+      "provenance": [],
+      "expectedImpact": {
+        "affectedLogicalIds": ["scene_golden_living_001"]
+      }
+    }
+  ],
+  "preconditions": [],
+  "metadata": {
+    "createdAt": "2026-09-27T06:00:00Z"
+  }
+}

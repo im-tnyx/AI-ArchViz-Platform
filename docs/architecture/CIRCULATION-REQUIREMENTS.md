@@ -16,8 +16,8 @@ SceneSpec v0.4 + circulationRequirements[]
   -> circulation-requirement-evidence-v0.1
 ```
 
-9C adds the contract and its evaluation only. It adds no revision gate, no
-Golden migration, and no rev13.
+9C added the contract and its evaluation only. Spike 9D then added revision
+enforcement and the Golden rev13 migration (sections 9-10).
 
 ## 2. Contract versioning
 
@@ -157,21 +157,83 @@ validates the SceneSpec as v0.4 (rejecting invalid or non-v0.4 scenes with
 No paths, node lists, DCC metadata, filesystem paths, or runtime data are
 recorded.
 
-## 9. No revision gate yet
+## 9. Revision enforcement (Spike 9D)
 
-`MoveObject`, `ReplaceAsset`, and `planSceneRevision()` do not enforce
-`circulationRequirements`. Contract capability and enforcement are proven
-separately; revision blocking belongs to a later spike.
+Spike 9C proved the contract; Spike 9D enforces it. Once a scene is
+SceneSpec v0.4, every candidate revision must keep all of its canonical
+requirements satisfied:
 
-## 10. No Golden migration
+```text
+validate ChangeSet -> validate base -> clone base -> apply the complete
+operation -> append target revision metadata -> validate target SceneSpec
+-> evaluate canonical circulation requirements -> only then any DCC work
+```
 
-Historical SceneSpecs (Golden rev1-rev12 and other fixtures) are not
-modified, and `circulationRequirements` is never injected into them: they
-never carried circulation intent. rev12 stays v0.3 and no rev13 exists.
-There is no automatic v0.3 to v0.4 migration and no SceneChangeSet
-operation for requirements. The dedicated fixture
-`tests/fixtures/circulation-requirements/scene-spec-v0.4.json` (a synthetic
-studio, not a Golden revision) exercises both endpoint kinds.
+- One shared gate, `circulationRequirementGateFailure()`
+  (`apps/worker/src/circulation-requirement-evidence.ts`), evaluates the
+  COMPLETE candidate target. `planSceneRevision()` calls it through
+  `assertCanonicalCirculationRequirementsSatisfied()` after target
+  validation; failures throw `CirculationRequirementUnsatisfiedError`
+  (`CIRCULATION_REQUIREMENT_UNSATISFIED`) carrying the first unsatisfied
+  `requirementId` and the underlying 9B `failureCode`
+  (`CIRCULATION_NO_ROUTE`, `CIRCULATION_ENDPOINT_BLOCKED`,
+  `CIRCULATION_PORTAL_BLOCKED`, ...).
+- Every v0.4 operation is gated (`MoveObject`, `UpdateOpening`,
+  `AssignMaterial`, lock operations, `ReplaceAsset`, `SetRenderIntent`,
+  `AddLight`, `SetCamera`, and the migration itself); there is no
+  operation-specific exemption. Enforcement is target-state based, so a door
+  narrowed by `UpdateOpening` is caught exactly like moved furniture.
+- SceneSpec v0.1-v0.3 targets are never gated; historical Golden behavior is
+  unchanged.
+- Existing structural, lock, and 9A placement checks run first, so an asset
+  collision still reports `SPATIAL_ASSET_COLLISION`, not a circulation code.
+- The controlled VERIFIED `external_max` `ReplaceAsset` path applies the
+  same gate to its complete v0.4 target after asset-trust and 9A checks.
+- A failure is raised inside the pure preflight, so the revision returns
+  BLOCKED with zero DCC discovery, zero process launch, no candidate, no
+  verifier, and no promotion. An unrelated blocked door portal never fails a
+  revision whose named requirements stay satisfied.
+- No automatic repair is attempted.
+
+## 10. Golden migration (rev13)
+
+SceneChangeSet v0.4 adds one scene-scoped, high-risk operation,
+`MigrateCirculationRequirementContract` (revision plan `0.4.0`), the only
+explicit SceneSpec v0.3 -> v0.4 transition. It rejects a v0.4 base
+(`CIRCULATION_REQUIREMENT_CONTRACT_ALREADY_CANONICAL`), any other version
+transition (`SCENE_SPEC_VERSION_TRANSITION_UNSUPPORTED`), and incoherent
+requirements (`CIRCULATION_REQUIREMENT_SET_UNSORTED`,
+`CIRCULATION_REQUIREMENT_ID_DUPLICATE`,
+`CIRCULATION_REQUIREMENT_REFERENCE_INVALID`, reusing the section 5
+validator). The migration may not introduce an already-failing requirement.
+
+`rev_golden_0013` is the first Golden SceneSpec v0.4. It differs from rev12
+only in `sceneSpecVersion`, `scene.revisionId`/`headRevisionId`, the
+appended revision entry, and one hand-authored requirement,
+`circulation_req_entry_to_east_clear_point` (door portal of `opening_d01`
+to point `[5000, 1500]` in `space_living_main`). Its routing graph hash equals
+rev12's: requirements add intent, not geometry. rev1-rev12 are unchanged,
+nothing is injected into them, and there is no rev14.
+
+In 3ds Max the migration writes nothing physical: it opens verified rev12,
+checks trusted identity, advances the worker-owned revision metadata on all
+14 managed nodes, and saves an isolated rev13 candidate (audit fields
+`circulationRequirementContractMigrated`, `circulationRequirementCount`,
+`circulationRequirementSetHash`). Promotion requires five gates: fresh
+semantic manifest (14 entries unchanged), canonical render-state v0.1,
+canonical material-state v0.2, canonical camera-state v0.2, and PASS
+`circulation-requirement-evidence-v0.1`, persisted as
+`verification/circulation-requirement-evidence.json` and bound into the
+request hash. Material- and camera-state evidence v0.1 stay bound to
+SceneSpec <= v0.3, so v0.2 versions (identical physical fields) exist for
+v0.4; render-state v0.1 is not version-bound and is reused. Replay returns
+the recorded evidence with no new DCC or verifier process. No render occurs
+in 9D.
+
+The dedicated 9C fixture
+(`tests/fixtures/circulation-requirements/scene-spec-v0.4.json`) stays
+independent of the Golden chain; 9D adds a separate synthetic enforcement
+fixture (`tests/fixtures/circulation-requirements/enforcement/`).
 
 ## 11. Not a building-code claim
 

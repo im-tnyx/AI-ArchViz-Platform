@@ -21,7 +21,8 @@ import verify_scene
 
 
 REVISION_RUNNER_VERSION = "0.1.0"
-SUPPORTED_REVISION_PLAN_VERSIONS = {"0.1.0", "0.2.0", "0.3.0"}
+SUPPORTED_REVISION_PLAN_VERSIONS = {"0.1.0", "0.2.0", "0.3.0", "0.4.0"}
+CIRCULATION_MIGRATION = "MigrateCirculationRequirementContract"
 LOCK_USER_PROPERTIES = {
     "geometry": "AIArchViz.LockGeometry",
     "transform": "AIArchViz.LockTransform",
@@ -61,6 +62,10 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
         newline="\n",
     )
     os.replace(temporary, path)
+
+
+def _circulation_force(code: str) -> bool:
+    return os.environ.get("AI_ARCHVIZ_TEST_FORCE_CIRCULATION_MIGRATION_FAILURE") == code
 
 
 def _user_prop(node: Any, key: str) -> str | None:
@@ -216,9 +221,19 @@ def apply_revision() -> dict[str, Any]:
     plan_path = _required_path("AI_ARCHVIZ_REVISION_PLAN_PATH")
     result_path = _required_path("AI_ARCHVIZ_MUTATION_RESULT_PATH")
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    if plan.get("revisionPlanVersion") not in SUPPORTED_REVISION_PLAN_VERSIONS:
+    if plan.get("revisionPlanVersion") not in SUPPORTED_REVISION_PLAN_VERSIONS or (
+        _circulation_force("unsupported_plan_version")
+    ):
         raise MutationError("REVISION_PLAN_UNSUPPORTED", "Unsupported revision plan version")
     operation = plan.get("operation")
+    # Revision plan 0.4.0 exists solely for the circulation-contract migration.
+    if isinstance(operation, dict) and (
+        (plan.get("revisionPlanVersion") == "0.4.0") != (operation.get("type") == CIRCULATION_MIGRATION)
+    ):
+        raise MutationError(
+            "REVISION_PLAN_UNSUPPORTED",
+            "Revision plan 0.4.0 is bound to MigrateCirculationRequirementContract only",
+        )
     if not isinstance(operation, dict) or operation.get("type") not in {
         "MoveObject",
         "UpdateOpening",
@@ -230,17 +245,21 @@ def apply_revision() -> dict[str, Any]:
         "AddLight",
         "MigrateMaterialAppearanceContract",
         "SetCamera",
+        CIRCULATION_MIGRATION,
     }:
         raise MutationError(
             "OPERATION_UNSUPPORTED",
             "Runner supports MoveObject, UpdateOpening, AssignMaterial, LockProperty, UnlockProperty, "
-            "ReplaceAsset, SetRenderIntent, AddLight, MigrateMaterialAppearanceContract, and SetCamera only",
+            "ReplaceAsset, SetRenderIntent, AddLight, MigrateMaterialAppearanceContract, SetCamera, and "
+            "MigrateCirculationRequirementContract only",
         )
     if not base_path.exists() or base_path.stat().st_size <= 0:
         raise MutationError("BASE_ARTIFACT_MISSING", "Verified base checkpoint is missing")
     if not rt.loadMaxFile(str(base_path), useFileUnits=True, quiet=True):
         raise MutationError("BASE_ARTIFACT_OPEN_FAILED", "Could not open verified base checkpoint")
     if os.environ.get("AI_ARCHVIZ_REQUIRE_SAFE_SCENE") == "1":
+        if _circulation_force("safe_scene"):
+            raise MutationError("SAFE_SCENE_REQUIRED", "Trusted test forced Safe Scene failure")
         if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "safe_scene":
             raise MutationError("SAFE_SCENE_REQUIRED", "Trusted test forced Safe Scene failure")
         try:
@@ -263,6 +282,8 @@ def apply_revision() -> dict[str, Any]:
         logical_nodes.setdefault(logical_id, []).append(node)
 
     expected_ids = sorted(str(value) for value in plan["expectedManagedLogicalIds"])
+    if _circulation_force("managed_id_mismatch"):
+        expected_ids = expected_ids[1:]
     actual_ids = sorted(logical_nodes.keys())
     if expected_ids != actual_ids:
         raise MutationError(
@@ -273,8 +294,15 @@ def apply_revision() -> dict[str, Any]:
     if duplicates:
         raise MutationError("DUPLICATE_LOGICAL_ID", f"Duplicate managed logical IDs: {duplicates}")
 
-    scene_scoped_operations = {"SetRenderIntent", "AddLight", "MigrateMaterialAppearanceContract"}
+    scene_scoped_operations = {
+        "SetRenderIntent",
+        "AddLight",
+        "MigrateMaterialAppearanceContract",
+        CIRCULATION_MIGRATION,
+    }
     target_id = str(operation["targetId"])
+    if _circulation_force("wrong_scene_target"):
+        target_id = "scene_forced_wrong_target"
     target = None
     if operation["type"] not in scene_scoped_operations:
         targets = logical_nodes.get(target_id, [])
@@ -299,6 +327,9 @@ def apply_revision() -> dict[str, Any]:
     added_light_id: str | None = None
     migrated_material_count: int | None = None
     set_camera_target_id: str | None = None
+    circulation_contract_migrated = False
+    circulation_requirement_count: int | None = None
+    circulation_requirement_set_hash: str | None = None
     if operation["type"] == "SetRenderIntent":
         if os.environ.get("AI_ARCHVIZ_TEST_FORCE_RENDER_STATE_FAILURE") == "corona_missing":
             raise MutationError("CORONA_NOT_FOUND", "Trusted test forced Corona absence")
@@ -505,6 +536,31 @@ def apply_revision() -> dict[str, Any]:
                         "instance",
                     )
         migrated_material_count = len(native_appearance_materials)
+    elif operation["type"] == CIRCULATION_MIGRATION:
+        # Canonical-intent-only migration: SceneSpec is the authority for the
+        # requirements, so nothing physical is written here. Only the shared
+        # revision-metadata advance below touches the scene.
+        if _circulation_force("timeout"):
+            import time
+
+            time.sleep(300)
+        requirement_count = operation.get("requirementCount")
+        requirement_set_hash = operation.get("requirementSetHash")
+        requirements = operation.get("circulationRequirements")
+        if (
+            operation.get("targetSceneSpecVersion") != "0.4.0"
+            or not isinstance(requirement_count, int)
+            or not isinstance(requirements, list)
+            or requirement_count != len(requirements)
+            or not isinstance(requirement_set_hash, str)
+            or not requirement_set_hash.startswith("sha256:")
+        ):
+            raise MutationError(
+                "REVISION_PLAN_INVALID", "MigrateCirculationRequirementContract plan is incomplete"
+            )
+        circulation_contract_migrated = True
+        circulation_requirement_count = requirement_count
+        circulation_requirement_set_hash = requirement_set_hash
     elif operation["type"] == "SetCamera":
         if os.environ.get("AI_ARCHVIZ_TEST_FORCE_CAMERA_REVISION_FAILURE") == "timeout":
             import time
@@ -811,6 +867,8 @@ def apply_revision() -> dict[str, Any]:
         )
 
     candidate_path.parent.mkdir(parents=True, exist_ok=True)
+    if _circulation_force("candidate_save_failure"):
+        raise MutationError("CANDIDATE_SAVE_FAILED", "Trusted test forced candidate save failure")
     if not rt.saveMaxFile(str(candidate_path), useNewFile=True, quiet=True):
         raise MutationError("CANDIDATE_SAVE_FAILED", "3ds Max did not save revised candidate")
     if not candidate_path.exists() or candidate_path.stat().st_size <= 0:
@@ -835,6 +893,9 @@ def apply_revision() -> dict[str, Any]:
         "addedLightId": added_light_id,
         "migratedMaterialCount": migrated_material_count,
         "setCameraTargetId": set_camera_target_id,
+        "circulationRequirementContractMigrated": circulation_contract_migrated,
+        "circulationRequirementCount": circulation_requirement_count,
+        "circulationRequirementSetHash": circulation_requirement_set_hash,
         "managedNodeCount": len(managed_nodes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,

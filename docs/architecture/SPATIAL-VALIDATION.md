@@ -14,7 +14,10 @@ Walkable circulation (Spike 9B) is a separate policy,
 `circulation-policy-v0.1`, documented in
 [CIRCULATION-ANALYSIS.md](CIRCULATION-ANALYSIS.md). It consumes this
 policy's footprints and doorway clearances but does not change
-spatial-policy-v0.1's frozen scope or its revision-gating behavior.
+spatial-policy-v0.1's frozen scope or its revision-gating behavior. From
+Spike 9D, SceneSpec v0.4 revisions are additionally gated on canonical
+circulation requirements, always after this policy's checks; see
+[CIRCULATION-REQUIREMENTS.md](CIRCULATION-REQUIREMENTS.md).
 
 ## 2. Package boundary
 

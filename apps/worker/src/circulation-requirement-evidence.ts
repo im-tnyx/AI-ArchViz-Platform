@@ -19,6 +19,40 @@ export class CirculationRequirementContractError extends Error {
   }
 }
 
+export interface CirculationRequirementGateFailure {
+  code: "CIRCULATION_REQUIREMENT_UNSATISFIED";
+  /** First unsatisfied requirement in canonical order; null only when 9A fails with no requirement declared. */
+  requirementId: string | null;
+  failureCode: string;
+  message: string;
+}
+
+/**
+ * The single shared canonical-circulation gate (Spike 9D). SceneSpec
+ * v0.1-v0.3 targets carry no circulation intent and are never gated; every
+ * v0.4 target must satisfy all of its canonical requirements. Callers pass
+ * the COMPLETE candidate target SceneSpec (operation applied and revision
+ * metadata appended) and convert a failure into their own boundary's error.
+ */
+export function circulationRequirementGateFailure(
+  targetSceneSpec: Record<string, unknown>,
+): CirculationRequirementGateFailure | null {
+  if (targetSceneSpec.sceneSpecVersion !== "0.4.0") return null;
+  const evaluation = evaluateCirculationRequirements(targetSceneSpec);
+  if (evaluation.status === "PASS") return null;
+  const first = evaluation.requirements.find((entry) => entry.status !== "SATISFIED");
+  const failureCode = first?.failureCode ?? "CIRCULATION_SOURCE_SPATIAL_INVALID";
+  const requirementId = first?.requirementId ?? null;
+  return {
+    code: "CIRCULATION_REQUIREMENT_UNSATISFIED",
+    requirementId,
+    failureCode,
+    message: requirementId
+      ? `Canonical circulation requirement ${requirementId} is UNSATISFIED (${failureCode})`
+      : `Canonical circulation requirements cannot be evaluated (${failureCode})`,
+  };
+}
+
 /**
  * Builds `circulation-requirement-evidence-v0.1` for a SceneSpec v0.4: validates
  * the canonical contract first (structural coherence), then evaluates

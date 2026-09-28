@@ -648,7 +648,7 @@ describe("Technical Spike 8I canonical camera revisions", () => {
 
   it("rejects an unsupported SceneChangeSet version outright", () => {
     const unsupported = cameraChangeSet();
-    unsupported.schemaVersion = "0.4.0";
+    unsupported.schemaVersion = "0.5.0";
     expect(validateSceneChangeSet(unsupported)).toMatchObject({ ok: false });
   });
 

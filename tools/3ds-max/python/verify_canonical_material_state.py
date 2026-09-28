@@ -25,6 +25,9 @@ import render_corona_material_appearance as material_appearance
 
 
 VERIFY_VERSION = "0.1.0"
+# canonical-material-state evidence version is bound to the SceneSpec version:
+# v0.1 <-> SceneSpec 0.3.0, v0.2 <-> SceneSpec 0.4.0 (identical physical fields).
+MATERIAL_STATE_VERSIONS = {"0.3.0": "0.1.0", "0.4.0": "0.2.0"}
 CORONA_PHYSICAL_MATERIAL_CLASS = "_CoronaPhysicalMtl"
 
 
@@ -145,8 +148,13 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
     if not rt.loadMaxFile(str(candidate_path), useFileUnits=True, quiet=True):
         raise MaterialStateError("CANDIDATE_OPEN_FAILED", "Could not open candidate scene")
     safe_scene = _safe_scene()
-    if expected.get("sceneSpecVersion") != "0.3.0":
-        raise MaterialStateError("MATERIAL_STATE_INVALID", "Expected material state is not SceneSpec v0.3")
+    scene_spec_version = expected.get("sceneSpecVersion")
+    material_state_version = MATERIAL_STATE_VERSIONS.get(str(scene_spec_version))
+    if material_state_version is None or expected.get("materialStateVersion") != material_state_version:
+        raise MaterialStateError(
+            "MATERIAL_STATE_INVALID",
+            "Expected material state version does not match a supported SceneSpec version",
+        )
     expected_materials = expected.get("materials")
     expected_assignments = expected.get("materialAssignments")
     if (
@@ -274,11 +282,11 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
         )
 
     evidence = {
-        "materialStateVersion": "0.1.0",
+        "materialStateVersion": material_state_version,
         "projectId": str(expected["projectId"]),
         "sceneId": str(expected["sceneId"]),
         "revisionId": str(expected["revisionId"]),
-        "sceneSpecVersion": "0.3.0",
+        "sceneSpecVersion": str(scene_spec_version),
         "materials": sorted(material_evidence, key=lambda entry: entry["materialId"]),
         "materialAssignments": sorted(assignment_evidence, key=lambda entry: entry["targetId"]),
         "deduplication": {

@@ -110,6 +110,10 @@ export const coronaMaterialAppearanceEvidenceSchema = readSchema(
 );
 export const canonicalMaterialStateSchema = readSchema("canonical-material-state-v0.1.schema.json");
 export const canonicalCameraStateSchema = readSchema("canonical-camera-state-v0.1.schema.json");
+export const canonicalMaterialStateV02Schema = readSchema(
+  "canonical-material-state-v0.2.schema.json",
+);
+export const canonicalCameraStateV02Schema = readSchema("canonical-camera-state-v0.2.schema.json");
 export const spatialValidationEvidenceSchema = readSchema(
   "spatial-validation-evidence-v0.1.schema.json",
 );
@@ -182,6 +186,12 @@ const canonicalMaterialStateValidator = ajv.compile(
 ) as ValidateFunction<CanonicalMaterialStateEvidence>;
 const canonicalCameraStateValidator = ajv.compile(
   canonicalCameraStateSchema,
+) as ValidateFunction<CanonicalCameraStateEvidence>;
+const canonicalMaterialStateV02Validator = ajv.compile(
+  canonicalMaterialStateV02Schema,
+) as ValidateFunction<CanonicalMaterialStateEvidence>;
+const canonicalCameraStateV02Validator = ajv.compile(
+  canonicalCameraStateV02Schema,
 ) as ValidateFunction<CanonicalCameraStateEvidence>;
 const spatialValidationEvidenceValidator = ajv.compile(
   spatialValidationEvidenceSchema,
@@ -313,6 +323,20 @@ export function validateCanonicalMaterialStateEvidence(
   value: unknown,
 ): ValidationResult<CanonicalMaterialStateEvidence> {
   return runValidation(canonicalMaterialStateValidator, value);
+}
+
+/** canonical-material-state-v0.2: identical physical fields, bound to SceneSpec v0.4. */
+export function validateCanonicalMaterialStateEvidenceV02(
+  value: unknown,
+): ValidationResult<CanonicalMaterialStateEvidence> {
+  return runValidation(canonicalMaterialStateV02Validator, value);
+}
+
+/** canonical-camera-state-v0.2: identical physical fields, bound to SceneSpec v0.4. */
+export function validateCanonicalCameraStateEvidenceV02(
+  value: unknown,
+): ValidationResult<CanonicalCameraStateEvidence> {
+  return runValidation(canonicalCameraStateV02Validator, value);
 }
 
 export function validateCanonicalCameraStateEvidence(

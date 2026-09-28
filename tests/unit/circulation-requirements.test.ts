@@ -265,13 +265,19 @@ describe("SceneSpec v0.4 contract versioning", () => {
     expect(keywords(unresolved)).toContain("assetDefinitionReference");
   });
 
-  it("keeps every historical SceneSpec valid, unmigrated, and without a rev13", () => {
+  it("keeps rev1-rev12 and other historical SceneSpecs valid and unmigrated (rev13 is the only v0.4 Golden)", () => {
     const revisions = readdirSync(resolve(goldenRoot, "revisions")).sort();
-    expect(revisions.at(-1)).toBe("rev_golden_0012");
-    expect(existsSync(resolve(goldenRoot, "revisions/rev_golden_0013"))).toBe(false);
+    // Spike 9D adds exactly rev13 through an explicit migration; there is no rev14.
+    expect(revisions.at(-1)).toBe("rev_golden_0013");
+    expect(existsSync(resolve(goldenRoot, "revisions/rev_golden_0014"))).toBe(false);
+    expect(
+      readJson(resolve(goldenRoot, "revisions/rev_golden_0013/scene-spec.json")).sceneSpecVersion,
+    ).toBe("0.4.0");
     const golden = [
       resolve(goldenRoot, "scene-spec.json"),
-      ...revisions.map((revision) => resolve(goldenRoot, "revisions", revision, "scene-spec.json")),
+      ...revisions
+        .filter((revision) => revision !== "rev_golden_0013")
+        .map((revision) => resolve(goldenRoot, "revisions", revision, "scene-spec.json")),
     ];
     for (const path of [
       ...golden,
@@ -649,12 +655,14 @@ describe("Technical Spike 9C: determinism, immutability, and scope", () => {
     );
   });
 
-  it("adds no circulation enforcement to the revision or external-ingestion paths", () => {
+  it("enforces requirements in revision/ingestion paths only through the shared v0.4 gate (Spike 9D)", () => {
     for (const path of [
       "apps/worker/src/revision.ts",
       "apps/worker/src/external-asset-ingestion.ts",
     ]) {
-      expect(readFileSync(resolve(path), "latin1")).not.toMatch(/circulation/iu);
+      const source = readFileSync(resolve(path), "latin1");
+      expect(source).toMatch(/circulationRequirementGateFailure\(/u);
+      expect(source).not.toMatch(/findCirculationRoute|analyzeCirculation/u);
     }
   });
 });

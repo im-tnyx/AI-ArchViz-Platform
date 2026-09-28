@@ -692,6 +692,20 @@ proves materialId-based (never value-based) deduplication in a fresh DCC
 process, and is validated by the independent `canonical-material-state-v0.1`
 evidence contract before promotion.
 
+### Technical Spike 9D canonical circulation requirement migration
+
+`SceneChangeSet` v0.4 (`scene-change-set-v0.4.schema.json`) is v0.3 plus
+one `high`-risk, scene-scoped operation,
+`MigrateCirculationRequirementContract`, the only explicit SceneSpec v0.3 ->
+v0.4 transition. Its parameters carry `targetSceneSpecVersion: "0.4.0"` and
+the canonical `circulationRequirements` array (see
+[CIRCULATION-REQUIREMENTS.md](CIRCULATION-REQUIREMENTS.md)); it uses revision
+plan `0.4.0`, performs no physical DCC mutation, and produced Golden
+`rev_golden_0013`. v0.4 keeps the one-operation invariant. From v0.4 on,
+every revision is gated before any DCC work on its complete target state
+satisfying all canonical circulation requirements. SceneChangeSet v0.1-v0.3
+are unchanged, and there is no add/remove/update requirement operation yet.
+
 ---
 
 ## 19. Light Operations

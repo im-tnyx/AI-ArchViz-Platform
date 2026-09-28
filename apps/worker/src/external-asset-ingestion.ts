@@ -10,6 +10,7 @@ import {
   resolveVerifiedAssetArtifact,
   validateAssetArtifactEligibility,
 } from "./asset-trust.js";
+import { circulationRequirementGateFailure } from "./circulation-requirement-evidence.js";
 import type { WorkerConfig } from "./config.js";
 import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
@@ -662,6 +663,11 @@ export function preflightExternalAssetIngestion({
       violation.assetBId === operation.targetId,
   );
   if (spatialViolation) fail(spatialViolation.code, spatialViolation.message);
+  // Canonical circulation requirements (Spike 9D): a SceneSpec v0.4 target
+  // may not break a required route, checked on the complete candidate state
+  // after asset trust and 9A, before any DCC discovery or process.
+  const circulationFailure = circulationRequirementGateFailure(targetSceneSpec);
+  if (circulationFailure) fail(circulationFailure.code, circulationFailure.message);
   const expectedManifest = targetManifest(
     baseManifest,
     contract.targetRevisionId,

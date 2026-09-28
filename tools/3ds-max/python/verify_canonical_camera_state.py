@@ -26,6 +26,8 @@ from pymxs import runtime as rt  # noqa: E402
 
 
 VERIFY_VERSION = "0.1.0"
+# canonical-camera-state v0.1 covers SceneSpec 0.1.0-0.3.0; v0.2 is bound to 0.4.0.
+CAMERA_STATE_VERSIONS = {"0.1.0": "0.1.0", "0.2.0": "0.1.0", "0.3.0": "0.1.0", "0.4.0": "0.2.0"}
 EXPECTED_CAMERA_CLASS = "Freecamera"
 POSITION_TOLERANCE = 0.01
 ANGLE_TOLERANCE = camera_policy.ROTATION_ANGLE_TOLERANCE
@@ -231,8 +233,14 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
             }
         )
 
+    camera_state_version = CAMERA_STATE_VERSIONS.get(str(expected.get("sceneSpecVersion")))
+    if camera_state_version is None or expected.get("cameraStateVersion") != camera_state_version:
+        raise CameraStateError(
+            "CAMERA_STATE_INVALID",
+            "Expected camera state version does not match a supported SceneSpec version",
+        )
     evidence = {
-        "cameraStateVersion": "0.1.0",
+        "cameraStateVersion": camera_state_version,
         "projectId": str(expected["projectId"]),
         "sceneId": str(expected["sceneId"]),
         "revisionId": str(expected["revisionId"]),

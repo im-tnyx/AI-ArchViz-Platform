@@ -44,6 +44,7 @@ export interface JobWorkspace {
   expectedCameraStatePath: string;
   cameraStatePath: string;
   cameraStateResultPath: string;
+  circulationRequirementEvidencePath: string;
   revisionPlanPath: string;
   mutationResultPath: string;
 }
@@ -95,6 +96,7 @@ export function createJobWorkspace(workspaceRoot: string, jobId: string): JobWor
     expectedCameraStatePath: join(input, "expected-camera-state.json"),
     cameraStatePath: join(verification, "canonical-camera-state.json"),
     cameraStateResultPath: join(logs, "camera-state-result.json"),
+    circulationRequirementEvidencePath: join(verification, "circulation-requirement-evidence.json"),
     revisionPlanPath: join(logs, "revision-plan.json"),
     mutationResultPath: join(logs, "mutation-result.json"),
   };
