@@ -13,6 +13,9 @@ from pymxs import runtime as rt
 
 
 BUILD_VERSION = "0.1.0"
+# v0.1 keeps its exact legacy meaning (bounding-box Plane surfaces). v0.2 adds
+# surfaceMeshes: exact canonical polygon floors/ceilings as editable meshes.
+SUPPORTED_BUILD_VERSIONS = {"0.1.0", "0.2.0"}
 
 
 def _required_path(key: str) -> Path:
@@ -140,6 +143,44 @@ def _create_surface(entry: dict[str, Any]) -> Any:
     return node
 
 
+def _bounding_box_mesh(mesh: dict[str, Any]) -> dict[str, Any]:
+    """Trusted test control only: the pre-v0.2 bounding-box surface (wrong for concave rooms)."""
+    xs = [float(vertex[0]) for vertex in mesh["vertices"]]
+    ys = [float(vertex[1]) for vertex in mesh["vertices"]]
+    z = float(mesh["vertices"][0][2])
+    return {
+        **mesh,
+        "vertices": [
+            [min(xs), min(ys), z],
+            [max(xs), min(ys), z],
+            [max(xs), max(ys), z],
+            [min(xs), max(ys), z],
+        ],
+        "triangles": [[0, 1, 2], [0, 2, 3]],
+    }
+
+
+def _create_surface_mesh(entry: dict[str, Any], mesh: dict[str, Any]) -> Any:
+    """One managed editable mesh per canonical surface, from the exact plan payload.
+
+    Vertices are node-local (canonical world boundary minus the canonical
+    transform position); the node is then placed at that position, so the
+    world-space vertices equal the canonical boundary at the surface elevation.
+    """
+    if mesh["logicalId"] != entry["logicalId"]:
+        raise RuntimeError(f"Surface mesh identity mismatch for {entry['logicalId']}")
+    vertices = [rt.Point3(float(x), float(y), float(z)) for x, y, z in mesh["vertices"]]
+    faces = [
+        rt.Point3(float(a + 1), float(b + 1), float(c + 1)) for a, b, c in mesh["triangles"]
+    ]
+    node = rt.mesh(vertices=vertices, faces=faces)
+    node.name = entry["nodeName"]
+    node.pos = _point(entry["transform"]["position"])
+    rt.update(node)
+    _set_metadata(node, entry, entry["type"])
+    return node
+
+
 def _create_proxy(entry: dict[str, Any]) -> Any:
     width, length, height = entry["dimensions"]
     transform = entry["transform"]
@@ -214,8 +255,18 @@ def build() -> dict[str, Any]:
     if os.environ.get("AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT") == "1":
         time.sleep(300)
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    if plan.get("buildPlanVersion") != BUILD_VERSION:
+    plan_version = plan.get("buildPlanVersion")
+    if plan_version not in SUPPORTED_BUILD_VERSIONS:
         raise RuntimeError("Unsupported build plan version")
+    surface_meshes: dict[str, dict[str, Any]] = {}
+    if plan_version == "0.2.0":
+        for mesh in plan["surfaceMeshes"]:
+            if mesh["logicalId"] in surface_meshes:
+                raise RuntimeError(f"Duplicate trusted surface mesh: {mesh['logicalId']}")
+            surface_meshes[mesh["logicalId"]] = mesh
+        if os.environ.get("AI_ARCHVIZ_TEST_FORCE_SURFACE_MISMATCH") == "1" and surface_meshes:
+            first = sorted(surface_meshes)[0]
+            surface_meshes[first] = _bounding_box_mesh(surface_meshes[first])
 
     rt.resetMaxFile(rt.Name("noPrompt"))
     _normalize_units()
@@ -245,7 +296,13 @@ def build() -> dict[str, Any]:
             node = _create_semantic_helper(entry, opening_positions.get(entry["logicalId"]))
             helpers[entry["logicalId"]] = node
         elif entity_type in {"floor", "ceiling"}:
-            node = _create_surface(entry)
+            if plan_version == "0.2.0":
+                mesh = surface_meshes.get(str(entry["logicalId"]))
+                if mesh is None:
+                    raise RuntimeError(f"Missing trusted surface mesh: {entry['logicalId']}")
+                node = _create_surface_mesh(entry, mesh)
+            else:
+                node = _create_surface(entry)
         elif entity_type == "proxy_asset":
             node = _create_proxy(entry)
         else:
@@ -276,8 +333,9 @@ def build() -> dict[str, Any]:
         raise RuntimeError("Candidate scene is missing or empty after save")
 
     result = {
-        "buildVersion": BUILD_VERSION,
+        "buildVersion": plan_version,
         "status": "SUCCESS",
+        "surfaceMeshCount": len(surface_meshes),
         "candidatePath": str(candidate_path),
         "candidateSizeBytes": candidate_path.stat().st_size,
         "managedNodeCount": len(plan["nodes"]) + len(plan["cameras"]),

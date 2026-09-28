@@ -210,11 +210,14 @@ manifest -> promotion), through the centralized batch policy, the sanitized
 DCC environment, and default-deny execution. No render occurs. No
 CAD-specific builder exists; the build path needed no SceneSpec v0.4 change.
 
-**Known build envelope:** the existing initial build realizes each
-floor/ceiling as a bounding-box plane anchored at the surface transform's XY,
-which is exact only for an axis-aligned rectangle whose minimum corner is
-that XY. `assertSeedBuildRealizable()` refuses any other seed before DCC
-(`CAD_SCENE_SEED_BUILD_UNSUPPORTED`) rather than building it approximately.
+**Build envelope:** since the post-10C polygon surface realization closure
+(build plan v0.2, [DCC-SURFACE-REALIZATION.md](DCC-SURFACE-REALIZATION.md)),
+the shared initial build realizes every floor/ceiling as an exact editable
+polygon mesh, so translated, non-axis-aligned, and concave simple rooms are
+buildable. `assertSeedBuildRealizable()` runs the same `compileSurfaceMesh`
+as the build and refuses, before DCC (`CAD_SCENE_SEED_BUILD_UNSUPPORTED`),
+only what v0.2 cannot realize exactly: surface rotation/scale and non-simple
+or non-coplanar boundaries.
 
 ## 12. Out of scope
 

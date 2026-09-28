@@ -1,4 +1,5 @@
 import { wallFrame as sharedWallFrame } from "@ai-archviz/spatial-engine";
+import { compileSurfaceMesh, type SurfaceMesh } from "./surface-mesh.js";
 
 export type Vector3 = [number, number, number];
 
@@ -512,4 +513,27 @@ export function compileGoldenBuildPlan(value: Record<string, unknown>): GoldenBu
     materials: materialResolution.materials,
     materialAssignments: materialResolution.assignments,
   };
+}
+
+/**
+ * Build plan v0.2 (post-10C closure): the v0.1 semantic content unchanged,
+ * plus `surfaceMeshes`, the exact physical payload for every floor/ceiling
+ * compiled from the surface's own canonical boundary and elevation. In v0.2
+ * the semantic surface `dimensions` remain the XY bounding box for manifest
+ * compatibility only and are NEVER used to create physical geometry. v0.1
+ * (`compileGoldenBuildPlan`) keeps its exact legacy meaning.
+ */
+export interface BuildPlanV02 extends Omit<GoldenBuildPlan, "buildPlanVersion"> {
+  buildPlanVersion: "0.2.0";
+  surfaceMeshes: SurfaceMesh[];
+}
+
+export function compileBuildPlanV02(value: Record<string, unknown>): BuildPlanV02 {
+  const legacy = compileGoldenBuildPlan(value);
+  const scene = value as unknown as SceneSpecSubset;
+  const surfaceMeshes = scene.geometry
+    .filter((entry) => entry.type === "floor" || entry.type === "ceiling")
+    .map((surface) => compileSurfaceMesh(surface))
+    .sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+  return { ...legacy, buildPlanVersion: "0.2.0", surfaceMeshes };
 }

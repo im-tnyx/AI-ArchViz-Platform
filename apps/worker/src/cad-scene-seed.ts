@@ -18,6 +18,7 @@ import {
   resolveExistingFileWithinRoot,
   resolveOutputPathWithinRoot,
 } from "./paths.js";
+import { compileSurfaceMesh, SurfaceMeshError } from "./surface-mesh.js";
 import { writeDeterministicJson } from "./workspace.js";
 
 /**
@@ -148,33 +149,25 @@ export function createCadSceneSeed(extraction: unknown, approval: unknown): CadS
 }
 
 /**
- * The existing initial build realizes each floor/ceiling surface as a
- * bounding-box plane anchored at the surface transform's XY. That is exact
- * only for an axis-aligned rectangle whose minimum corner equals that XY.
- * A seed outside this envelope is a valid SceneSpec but is refused BEFORE
+ * Pre-DCC realizability check against the SHARED initial build (build plan
+ * v0.2). Every floor/ceiling is compiled with the same `compileSurfaceMesh`
+ * the build uses, so translated, non-axis-aligned, and concave simple
+ * polygons are accepted; only what v0.2 cannot realize exactly (surface
+ * rotation/scale, non-simple or non-coplanar boundaries) is refused before
  * any DCC launch rather than built approximately.
  */
 export function assertSeedBuildRealizable(sceneSpec: SceneSpec): void {
   for (const surface of (sceneSpec.geometry as Record<string, unknown>[]).filter(
     (entry) => entry.type === "floor" || entry.type === "ceiling",
   )) {
-    const boundary = surface.boundary as [number, number, number][];
-    const position = (surface.transform as { position: [number, number, number] }).position;
-    const xs = [...new Set(boundary.map((point) => point[0]))];
-    const ys = [...new Set(boundary.map((point) => point[1]))];
-    const rectangle =
-      boundary.length === 4 &&
-      xs.length === 2 &&
-      ys.length === 2 &&
-      boundary.every((point, index) => {
-        const next = boundary[(index + 1) % boundary.length] as number[];
-        return point[0] === next[0] || point[1] === next[1];
-      });
-    if (!rectangle || Math.min(...xs) !== position[0] || Math.min(...ys) !== position[1]) {
+    try {
+      compileSurfaceMesh(surface);
+    } catch (error) {
+      if (!(error instanceof SurfaceMeshError)) throw error;
       throw new CadSceneSeedWorkerError(
         "CAD_SCENE_SEED_BUILD_UNSUPPORTED",
-        `Surface ${String(surface.id)} is not an origin-anchored axis-aligned rectangle; the current initial build cannot realize it exactly`,
-        { surfaceId: surface.id },
+        `Surface ${String(surface.id)} cannot be realized exactly by the initial build: ${error.message}`,
+        { surfaceId: surface.id, reason: error.code },
       );
     }
   }

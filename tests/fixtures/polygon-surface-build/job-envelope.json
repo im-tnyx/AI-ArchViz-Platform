@@ -1,0 +1,27 @@
+{
+  "jobEnvelopeVersion": "0.1.0",
+  "jobId": "job_polygon_surface_build_0001",
+  "idempotencyKey": "polygon-surface-build.build.rev_polygon_surface_0001",
+  "requestHash": "sha256:c8e553b5a3f67271ca7b01d19a9d5214b30ef3d25afae81a50945f5199d6a5a0",
+  "projectId": "project_polygon_surface_001",
+  "sceneId": "scene_polygon_surface_001",
+  "jobType": "buildScene",
+  "baseRevisionId": null,
+  "requestedRevisionId": "rev_polygon_surface_0001",
+  "inputs": {
+    "sceneSpecPath": "input/scene-spec.json",
+    "sceneSpecHash": "sha256:20003e6e3e57900975099082af997d5025b8efad0626ff70405799f9039eacd4",
+    "expectedManifestPath": "input/expected-scene-manifest.json",
+    "expectedManifestHash": "sha256:d729b4f5e895d7d472174b4a26902d6d415a2c68ebb397693f6e764bc06fc3b6"
+  },
+  "workerRequirements": {
+    "os": "windows",
+    "dcc": "3ds_max",
+    "renderer": "none"
+  },
+  "policy": {
+    "mode": "batch",
+    "timeoutSeconds": 900,
+    "retryPolicy": "safe"
+  }
+}

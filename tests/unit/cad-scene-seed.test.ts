@@ -586,21 +586,24 @@ describe("non-CAD state and pre-DCC validation", () => {
     );
   });
 
-  it("refuses seeds the current initial build cannot realize exactly, before any DCC", () => {
+  it("accepts translated and concave surfaces now that the shared build realizes exact polygons", () => {
     expect(() => assertSeedBuildRealizable(expectedSceneSpec)).not.toThrow();
+    const surfacesOf = (scene: { geometry: { type: string }[] }) =>
+      scene.geometry.filter((g) => g.type !== "wall") as unknown as {
+        boundary: number[][];
+        transform: Record<string, number[]>;
+      }[];
     const shifted = structuredClone(expectedSceneSpec);
-    for (const surface of shifted.geometry.filter((g: { type: string }) => g.type !== "wall")) {
-      surface.boundary = surface.boundary.map(([x, y, z]: [number, number, number]) => [
-        x + 1000,
-        y,
-        z,
+    for (const surface of surfacesOf(shifted)) {
+      surface.boundary = surface.boundary.map(([x, y, z]) => [
+        (x as number) + 1000,
+        y as number,
+        z as number,
       ]);
     }
-    expect(workerFailure(() => assertSeedBuildRealizable(shifted)).code).toBe(
-      "CAD_SCENE_SEED_BUILD_UNSUPPORTED",
-    );
+    expect(() => assertSeedBuildRealizable(shifted)).not.toThrow();
     const lShape = structuredClone(expectedSceneSpec);
-    for (const surface of lShape.geometry.filter((g: { type: string }) => g.type !== "wall")) {
+    for (const surface of surfacesOf(lShape)) {
       surface.boundary = [
         [0, 0, 0],
         [6000, 0, 0],
@@ -610,9 +613,150 @@ describe("non-CAD state and pre-DCC validation", () => {
         [0, 4500, 0],
       ];
     }
-    expect(workerFailure(() => assertSeedBuildRealizable(lShape)).code).toBe(
-      "CAD_SCENE_SEED_BUILD_UNSUPPORTED",
+    expect(() => assertSeedBuildRealizable(lShape)).not.toThrow();
+  });
+
+  it.each([
+    [
+      "a rotated surface",
+      (surface: Record<string, unknown>) => {
+        (surface.transform as Record<string, number[]>).rotationEuler = [0, 0, 90];
+      },
+    ],
+    [
+      "a scaled surface",
+      (surface: Record<string, unknown>) => {
+        (surface.transform as Record<string, number[]>).scale = [2, 1, 1];
+      },
+    ],
+    [
+      "a self-intersecting surface",
+      (surface: Record<string, unknown>) => {
+        surface.boundary = [
+          [0, 0, 0],
+          [6000, 4500, 0],
+          [6000, 0, 0],
+          [0, 4500, 0],
+        ];
+      },
+    ],
+  ])("still refuses %s before any DCC", (_name, mutate) => {
+    const scene = structuredClone(expectedSceneSpec);
+    mutate(scene.geometry.find((g: { type: string }) => g.type === "floor"));
+    const failure = workerFailure(() => assertSeedBuildRealizable(scene));
+    expect(failure.code).toBe("CAD_SCENE_SEED_BUILD_UNSUPPORTED");
+    expect(String(failure.details.reason)).toMatch(/^SURFACE_/);
+  });
+
+  it("seeds a concave (L-shaped) CAD room end to end and it is build-realizable", () => {
+    const lRoom = [
+      [0, 0],
+      [6000, 0],
+      [6000, 2000],
+      [3500, 2000],
+      [3500, 4500],
+      [0, 4500],
+    ];
+    const pairs: [number, string | number][] = [
+      [0, "SECTION"],
+      [2, "HEADER"],
+      [9, "$INSUNITS"],
+      [70, 4],
+      [0, "ENDSEC"],
+      [0, "SECTION"],
+      [2, "TABLES"],
+      [0, "TABLE"],
+      [2, "LAYER"],
+      ...["0", "A-ROOM", "A-SPACE-TEXT", "A-DOOR", "A-WINDOW"].flatMap(
+        (name): [number, string | number][] => [
+          [0, "LAYER"],
+          [2, name],
+          [70, 0],
+        ],
+      ),
+      [0, "ENDTAB"],
+      [0, "ENDSEC"],
+      [0, "SECTION"],
+      [2, "BLOCKS"],
+      [0, "BLOCK"],
+      [8, "0"],
+      [2, "DOOR_900_LH_IN"],
+      [70, 0],
+      [10, 0],
+      [20, 0],
+      [0, "ENDBLK"],
+      [8, "0"],
+      [0, "ENDSEC"],
+      [0, "SECTION"],
+      [2, "ENTITIES"],
+      [0, "LWPOLYLINE"],
+      [5, "A0"],
+      [8, "A-ROOM"],
+      [90, 6],
+      [70, 1],
+      ...lRoom.flatMap(([x, y]): [number, number][] => [
+        [10, x as number],
+        [20, y as number],
+      ]),
+      [0, "TEXT"],
+      [5, "A1"],
+      [8, "A-SPACE-TEXT"],
+      [10, 1500],
+      [20, 2500],
+      [40, 200],
+      [1, "LIVING ROOM"],
+      [0, "INSERT"],
+      [5, "A2"],
+      [8, "A-DOOR"],
+      [2, "DOOR_900_LH_IN"],
+      [10, 1500],
+      [20, 0],
+      [0, "ENDSEC"],
+      [0, "EOF"],
+    ];
+    const bytes = new TextEncoder().encode(
+      `${pairs.map(([code, value]) => `${code}\n${value}`).join("\n")}\n`,
     );
+    const cadDocument = new DxfSourceAdapter().parse({ bytes });
+    const profile = read(join(interpretationDirectory, "profile-v0.1.json"));
+    const lExtraction = interpretCadDocument(cadDocument, profile);
+    expect(lExtraction.walls).toHaveLength(6);
+    const wallNames = ["wall_l_s", "wall_l_e1", "wall_l_n1", "wall_l_e2", "wall_l_n2", "wall_l_w"];
+    const lApproval = structuredClone(approval) as Mutable;
+    lApproval.approvalId = "approval_cad_l_seed_001";
+    lApproval.extraction = {
+      ...lApproval.extraction,
+      architecturalExtractionHash: semanticJsonHash(lExtraction),
+      sourceHash: lExtraction.source.sourceHash,
+      cadDocumentHash: lExtraction.source.cadDocumentHash,
+      profileHash: lExtraction.profileHash,
+    };
+    lApproval.canonical = {
+      project: { id: "project_cad_seed_l_001", name: "CAD Seed L Room" },
+      scene: {
+        id: "scene_cad_seed_l_001",
+        revisionId: "rev_cad_seed_l_0001",
+        createdAt: "2026-09-28T15:00:00Z",
+      },
+    };
+    lApproval.mappings.walls = lExtraction.walls.map((wall, index) => ({
+      candidateId: wall.candidateId,
+      logicalId: wallNames[index] as string,
+    }));
+    lApproval.mappings.openings = [
+      { candidateId: "opening_candidate_0000", logicalId: "opening_l_d01" },
+    ];
+    (lApproval.nonCadState.sources[0] as { uri: string }).uri =
+      `urn:sha256:${lExtraction.source.sourceHash.slice("sha256:".length)}`;
+    (lApproval.nonCadState.assets[0] as { transform: { position: number[] } }).transform.position =
+      [1500, 3500, 0];
+    const seed = createCadSceneSeed(lExtraction, lApproval);
+    expect(seed.evidence.status).toBe("PASS");
+    expect(() => assertSeedBuildRealizable(seed.sceneSpec)).not.toThrow();
+    const floor = (seed.sceneSpec.geometry as Record<string, unknown>[]).find(
+      (g) => g.type === "floor",
+    );
+    expect(floor?.boundary).toEqual(lRoom.map(([x, y]) => [x, y, 0]));
   });
 });
 

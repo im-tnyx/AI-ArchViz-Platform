@@ -250,9 +250,182 @@ def _validate_proxy(node: Any, entry: dict[str, Any], errors: list[str]) -> None
     )
 
 
+class SurfaceVerificationFailed(RuntimeError):
+    """Physical surface verification failed; the detailed result is already written."""
+
+
+def _observe_mesh(node: Any) -> tuple[list[list[float]], list[list[int]]]:
+    """World-space vertices and faces of the reopened node, observation only.
+
+    snapshotAsMesh returns a detached world-state TriMesh copy; the node and
+    the candidate file are never edited, welded, converted, or saved.
+    """
+    snapshot = rt.snapshotAsMesh(node)
+    try:
+        vertices = []
+        for index in range(1, int(rt.getNumVerts(snapshot)) + 1):
+            vertex = rt.getVert(snapshot, index)
+            vertices.append([float(vertex.x), float(vertex.y), float(vertex.z)])
+        faces = []
+        for index in range(1, int(rt.getNumFaces(snapshot)) + 1):
+            face = rt.getFace(snapshot, index)
+            faces.append([int(face.x) - 1, int(face.y) - 1, int(face.z) - 1])
+    finally:
+        rt.delete(snapshot)
+    return vertices, faces
+
+
+def _polygon_area(points: list[list[float]]) -> float:
+    twice = 0.0
+    for index, point in enumerate(points):
+        following = points[(index + 1) % len(points)]
+        twice += point[0] * following[1] - following[0] * point[1]
+    return twice / 2.0
+
+
+def _same_xy(left: list[float], right: list[float]) -> bool:
+    return _close(left[0], right[0]) and _close(left[1], right[1])
+
+
+def _verify_surface_physical(
+    node: Any, logical_id: str, expected: dict[str, Any], errors: list[str]
+) -> dict[str, Any]:
+    """Independent physical check of one surface against the canonical SceneSpec.
+
+    Observed state comes only from the reopened mesh (world-space vertices and
+    faces). Expected state comes only from the canonical SceneSpec surface.
+    """
+    failures: list[str] = []
+    vertices, faces = _observe_mesh(node)
+    expected_boundary = [[float(point[0]), float(point[1])] for point in expected["boundary"]]
+    expected_elevation = float(expected["elevation"])
+    expected_area = abs(_polygon_area(expected_boundary))
+    count = len(expected_boundary)
+    perimeter = 0.0
+    for index, point in enumerate(expected_boundary):
+        following = expected_boundary[(index + 1) % count]
+        perimeter += ((following[0] - point[0]) ** 2 + (following[1] - point[1]) ** 2) ** 0.5
+    # Merge coincident observed vertices by position (independent of index layout).
+    canonical: list[int] = []
+    representatives: list[int] = []
+    for index, vertex in enumerate(vertices):
+        match = None
+        for representative in representatives:
+            other = vertices[representative]
+            if all(abs(vertex[axis] - other[axis]) <= 1e-6 for axis in range(3)):
+                match = representative
+                break
+        if match is None:
+            representatives.append(index)
+            match = index
+        canonical.append(match)
+    elevations = [vertex[2] for vertex in vertices]
+    if not vertices or any(not _close(z, expected_elevation) for z in elevations):
+        failures.append(
+            f"elevation expected {expected_elevation}, observed {sorted(set(elevations))}"
+        )
+    observed_area = 0.0
+    orientations: set[int] = set()
+    edge_counts: dict[tuple[int, int], int] = {}
+    triangles_xy: list[list[list[float]]] = []
+    for face in faces:
+        if len(set(face)) != 3 or any(index < 0 or index >= len(vertices) for index in face):
+            failures.append(f"invalid face index {face}")
+            continue
+        a, b, c = (vertices[index] for index in face)
+        signed = ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2.0
+        if abs(signed) <= 1e-6:
+            failures.append(f"zero-area face {face}")
+            continue
+        orientations.add(1 if signed > 0 else -1)
+        observed_area += abs(signed)
+        triangles_xy.append([[a[0], a[1]], [b[0], b[1]], [c[0], c[1]]])
+        ids = [canonical[index] for index in face]
+        for left, right in ((ids[0], ids[1]), (ids[1], ids[2]), (ids[2], ids[0])):
+            key = (min(left, right), max(left, right))
+            edge_counts[key] = edge_counts.get(key, 0) + 1
+    if len(orientations) > 1:
+        failures.append("faces have inconsistent winding (overlap or flipped face)")
+    if any(value > 2 for value in edge_counts.values()):
+        failures.append("non-manifold edge")
+    # Outer boundary = edges referenced by exactly one face; must be one loop.
+    boundary_edges = [key for key, value in edge_counts.items() if value == 1]
+    adjacency: dict[int, list[int]] = {}
+    for left, right in boundary_edges:
+        adjacency.setdefault(left, []).append(right)
+        adjacency.setdefault(right, []).append(left)
+    observed_loop: list[list[float]] = []
+    if not boundary_edges or any(len(neighbors) != 2 for neighbors in adjacency.values()):
+        failures.append("boundary edges do not form a simple closed loop")
+    else:
+        start = min(adjacency)
+        loop = [start]
+        previous, current = start, adjacency[start][0]
+        while current != start and len(loop) <= len(adjacency):
+            loop.append(current)
+            neighbors = adjacency[current]
+            following = neighbors[0] if neighbors[0] != previous else neighbors[1]
+            previous, current = current, following
+        if len(loop) != len(adjacency):
+            failures.append("more than one boundary loop (hole or disconnected island)")
+        observed_loop = [[vertices[index][0], vertices[index][1]] for index in loop]
+    # Same geometric polygon: allow a cyclic start offset and either orientation.
+    matched: list[list[float]] | None = None
+    if len(observed_loop) == count:
+        for candidate in (observed_loop, list(reversed(observed_loop))):
+            for offset in range(count):
+                rotated = candidate[offset:] + candidate[:offset]
+                if all(_same_xy(rotated[i], expected_boundary[i]) for i in range(count)):
+                    matched = rotated
+                    break
+            if matched is not None:
+                break
+    if matched is None:
+        failures.append(
+            f"observed boundary {observed_loop} does not equal canonical boundary {expected_boundary}"
+        )
+    if abs(observed_area - expected_area) > TOLERANCE * max(1.0, perimeter):
+        failures.append(f"area expected {expected_area}, observed {observed_area}")
+    for failure in failures:
+        errors.append(f"{logical_id}: SURFACE_GEOMETRY_MISMATCH {failure}")
+    return {
+        "logicalId": logical_id,
+        "type": expected["type"],
+        "expectedBoundary": expected_boundary,
+        "observedBoundary": matched if matched is not None else observed_loop,
+        "expectedElevation": expected_elevation,
+        "observedElevation": sum(elevations) / len(elevations) if elevations else None,
+        "expectedAreaMm2": expected_area,
+        "observedAreaMm2": observed_area,
+        "observedVertexCount": len(vertices),
+        "observedFaceCount": len(faces),
+        "observedTrianglesXY": triangles_xy,
+        "status": "PASS" if not failures else "FAILED",
+    }
+
+
 def _validate_surface(node: Any, entry: dict[str, Any], errors: list[str]) -> None:
-    if str(rt.classOf(node)).lower() != "plane":
-        errors.append(f"{entry['logicalId']}: surface is not a Plane")
+    class_name = str(rt.classOf(node)).lower()
+    if class_name == "editable_mesh":
+        # Build plan v0.2: semantic checks on the observed world geometry.
+        vertices, _ = _observe_mesh(node)
+        xs = [vertex[0] for vertex in vertices]
+        ys = [vertex[1] for vertex in vertices]
+        _check_vector(
+            errors,
+            f"{entry['logicalId']}.dimensions",
+            entry["dimensions"][:2],
+            [max(xs) - min(xs), max(ys) - min(ys)] if vertices else [],
+        )
+        _check_vector(
+            errors,
+            f"{entry['logicalId']}.position",
+            entry["transform"]["position"],
+            _vector(node.pos),
+        )
+        return
+    if class_name != "plane":
+        errors.append(f"{entry['logicalId']}: surface is neither an editable mesh nor a legacy Plane")
         return
     expected = entry["dimensions"]
     _check_vector(
@@ -383,6 +556,19 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
             f"UNIT_MISMATCH: {rt.units.SystemType} at scale {rt.units.SystemScale}"
         )
 
+    # Optional canonical EXPECTED state for exact physical surface verification
+    # (the initial build always supplies it; the verifier never trusts
+    # build-written geometry metadata for surfaces).
+    expected_surfaces: dict[str, dict[str, Any]] | None = None
+    scene_spec_path = os.environ.get("AI_ARCHVIZ_SCENE_SPEC_PATH")
+    if scene_spec_path:
+        scene_spec = json.loads(Path(scene_spec_path).read_text(encoding="utf-8"))
+        expected_surfaces = {
+            str(entry["id"]): entry
+            for entry in scene_spec.get("geometry", [])
+            if entry.get("type") in {"floor", "ceiling"}
+        }
+
     all_nodes = list(rt.objects)
     managed_nodes = [
         node for node in all_nodes if (_user_prop(node, "AIArchViz.Managed") or "").lower() == "true"
@@ -424,6 +610,39 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
                 errors.append(f"{entry.get('logicalId')}: unsupported managed entity type")
             nodes.append(entry)
 
+    surface_verification: dict[str, Any] | None = None
+    if expected_surfaces is not None:
+        reports: list[dict[str, Any]] = []
+        for logical_id in sorted(expected_surfaces):
+            matches = [
+                node
+                for node, entry in entries
+                if entry.get("logicalId") == logical_id
+                and entry.get("type") in {"floor", "ceiling"}
+            ]
+            if len(matches) != 1:
+                errors.append(
+                    f"{logical_id}: SURFACE_GEOMETRY_MISMATCH expected exactly one managed surface node"
+                )
+                continue
+            if str(rt.classOf(matches[0])).lower() != "editable_mesh":
+                errors.append(
+                    f"{logical_id}: SURFACE_GEOMETRY_MISMATCH surface is not an editable mesh"
+                )
+                continue
+            reports.append(
+                _verify_surface_physical(
+                    matches[0], logical_id, expected_surfaces[logical_id], errors
+                )
+            )
+        surface_verification = {
+            "status": "PASS"
+            if len(reports) == len(expected_surfaces)
+            and all(report["status"] == "PASS" for report in reports)
+            else "FAILED",
+            "surfaces": reports,
+        }
+
     nodes.sort(key=lambda entry: entry["logicalId"])
     cameras.sort(key=lambda entry: entry["logicalId"])
     if not entries:
@@ -444,6 +663,19 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
         "cameras": cameras,
     }
     if errors:
+        if surface_verification is not None:
+            # Persist the physical observation even on failure (diagnostics only).
+            _write_json(
+                result_path,
+                {
+                    "verificationVersion": VERIFY_VERSION,
+                    "status": "FAILED",
+                    "errorCode": "VERIFICATION_FAILED",
+                    "message": "; ".join(sorted(errors)),
+                    "surfaceVerification": surface_verification,
+                },
+            )
+            raise SurfaceVerificationFailed("; ".join(sorted(errors)))
         raise RuntimeError("; ".join(sorted(errors)))
     if os.environ.get("AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH") == "1":
         manifest["revisionId"] = "rev_forced_manifest_mismatch"
@@ -456,6 +688,11 @@ def verify() -> tuple[dict[str, Any], dict[str, Any]]:
         "managedNodeCount": len(nodes) + len(cameras),
         "semanticNodeCount": len(nodes),
         "cameraCount": len(cameras),
+        **(
+            {"surfaceVerification": surface_verification}
+            if surface_verification is not None
+            else {}
+        ),
         "units": {
             "systemType": str(rt.units.SystemType),
             "systemScale": float(rt.units.SystemScale),
@@ -472,6 +709,14 @@ def main() -> int:
         _, result = verify()
         print("AI_ARCHVIZ_VERIFY_RESULT=" + json.dumps(result, separators=(",", ":")), flush=True)
         return 0
+    except SurfaceVerificationFailed as error:
+        # The detailed FAILED result (with surfaceVerification) is already written.
+        print(
+            "AI_ARCHVIZ_VERIFY_RESULT="
+            + json.dumps({"status": "FAILED", "message": str(error)}, separators=(",", ":")),
+            flush=True,
+        )
+        return 2
     except Exception as error:
         result = {
             "verificationVersion": VERIFY_VERSION,

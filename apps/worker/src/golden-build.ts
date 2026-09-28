@@ -11,7 +11,7 @@ import {
   validateSceneManifest,
   verifyJobHashes,
 } from "@ai-archviz/worker-contracts";
-import { compileGoldenBuildPlan } from "./build-plan.js";
+import { compileBuildPlanV02 } from "./build-plan.js";
 import type { WorkerConfig } from "./config.js";
 import { threeDsMaxBatchArguments } from "./dcc-batch.js";
 import { buildDccChildEnvironment } from "./dcc-environment.js";
@@ -28,6 +28,7 @@ import { acquireExecutionLock, ExecutionLockedError } from "./lock.js";
 import { compareSceneManifests, type ManifestTolerances } from "./manifest.js";
 import { resolveWithinRoot } from "./paths.js";
 import { type ControlledProcessResult, runControlledProcess } from "./process.js";
+import { SurfaceMeshError } from "./surface-mesh.js";
 import {
   createJobWorkspace,
   type JobWorkspace,
@@ -88,6 +89,8 @@ export interface TrustedFailureControls {
   forceVerificationFailure: boolean;
   forceManifestMismatch: boolean;
   forceDccTimeout: boolean;
+  /** Builder realizes the first surface as its bounding box (the pre-v0.2 bug). */
+  forceSurfaceMismatch: boolean;
 }
 
 export interface GoldenBuildExecutionOptions {
@@ -322,13 +325,18 @@ async function executeGoldenAttempt(
     );
   }
 
-  let buildPlan: ReturnType<typeof compileGoldenBuildPlan>;
+  let buildPlan: ReturnType<typeof compileBuildPlanV02>;
   try {
-    buildPlan = compileGoldenBuildPlan(sceneSpec);
+    // Build plan v0.2: exact polygon surfaces (surfaceMeshes); fails closed
+    // before any DCC on an unrealizable surface.
+    buildPlan = compileBuildPlanV02(sceneSpec);
   } catch (error) {
-    return fail(context, "SCHEMA_INVALID", error instanceof Error ? error.message : String(error), {
-      validationFailed: true,
-    });
+    return fail(
+      context,
+      error instanceof SurfaceMeshError ? error.code : "SCHEMA_INVALID",
+      error instanceof Error ? error.message : String(error),
+      { validationFailed: true },
+    );
   }
   writeDeterministicJson(workspace.jobPath, job);
   writeDeterministicJson(workspace.sceneSpecPath, sceneSpec);
@@ -381,6 +389,7 @@ async function executeGoldenAttempt(
         AI_ARCHVIZ_CANDIDATE_PATH: workspace.candidatePath,
         AI_ARCHVIZ_TEST_FORCE_BUILD_FAILURE: controls.forceBuildFailure ? "1" : "0",
         AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT: controls.forceDccTimeout ? "1" : "0",
+        AI_ARCHVIZ_TEST_FORCE_SURFACE_MISMATCH: controls.forceSurfaceMismatch ? "1" : "0",
         AI_ARCHVIZ_BUILD_PLAN_PATH: workspace.buildPlanPath,
         AI_ARCHVIZ_BUILD_RESULT_PATH: workspace.buildResultPath,
       },
@@ -429,6 +438,9 @@ async function executeGoldenAttempt(
         AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE: controls.forceVerificationFailure ? "1" : "0",
         AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH: controls.forceManifestMismatch ? "1" : "0",
         AI_ARCHVIZ_MANIFEST_PATH: workspace.manifestPath,
+        // Canonical EXPECTED surface state; the verifier observes the actual
+        // reopened geometry independently of any build-written metadata.
+        AI_ARCHVIZ_SCENE_SPEC_PATH: workspace.sceneSpecPath,
         AI_ARCHVIZ_VERIFY_RESULT_PATH: workspace.verificationResultPath,
       },
     }),
@@ -442,6 +454,7 @@ async function executeGoldenAttempt(
     const verificationResult = readJson(workspace.verificationResultPath) as {
       status?: unknown;
       message?: unknown;
+      surfaceVerification?: { status?: unknown; surfaces?: unknown[] };
     };
     if (verificationResult.status !== "SUCCESS") {
       return fail(
@@ -457,6 +470,23 @@ async function executeGoldenAttempt(
     return fail(context, "VERIFICATION_FAILED", "Fresh-process verification result is missing", {
       verificationFailed: true,
     });
+  }
+  // Promotion gate: exact physical polygon-surface verification is mandatory.
+  const surfaceVerification = (
+    readJson(workspace.verificationResultPath) as {
+      surfaceVerification?: { status?: unknown; surfaces?: unknown[] };
+    }
+  ).surfaceVerification;
+  if (
+    surfaceVerification?.status !== "PASS" ||
+    surfaceVerification.surfaces?.length !== buildPlan.surfaceMeshes.length
+  ) {
+    return fail(
+      context,
+      "SURFACE_GEOMETRY_MISMATCH",
+      "Fresh-process physical surface verification did not PASS for every canonical surface",
+      { verificationFailed: true },
+    );
   }
   if (!existsSync(workspace.manifestPath)) {
     return fail(context, "VERIFICATION_FAILED", "Fresh process did not produce a manifest", {
@@ -500,6 +530,7 @@ export function readTrustedFailureControls(
     forceVerificationFailure: enabled("AI_ARCHVIZ_TEST_FORCE_VERIFICATION_FAILURE"),
     forceManifestMismatch: enabled("AI_ARCHVIZ_TEST_FORCE_MANIFEST_MISMATCH"),
     forceDccTimeout: enabled("AI_ARCHVIZ_TEST_FORCE_DCC_TIMEOUT"),
+    forceSurfaceMismatch: enabled("AI_ARCHVIZ_TEST_FORCE_SURFACE_MISMATCH"),
   };
 }
 

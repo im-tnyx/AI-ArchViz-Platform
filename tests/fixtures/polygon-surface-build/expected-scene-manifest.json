@@ -1,0 +1,368 @@
+{
+  "manifestVersion": "0.1.0",
+  "projectId": "project_polygon_surface_001",
+  "sceneId": "scene_polygon_surface_001",
+  "revisionId": "rev_polygon_surface_0001",
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right"
+  },
+  "nodes": [
+    {
+      "logicalId": "asset_polygon_table_main",
+      "nodeName": "AVZ_asset_polygon_table_main",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_polygon_table_v1",
+      "transform": {
+        "position": [
+          1500,
+          1000,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        1200,
+        650,
+        380
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "asset_polygon_table_main",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001",
+        "AIArchViz.AssetDefinitionId": "assetdef_polygon_table_v1"
+      }
+    },
+    {
+      "logicalId": "opening_l_w01",
+      "nodeName": "AVZ_opening_l_w01",
+      "type": "window_opening",
+      "transform": {
+        "position": [
+          2000,
+          0,
+          900
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        1500,
+        150,
+        1200
+      ],
+      "hostGeometryId": "wall_l_south",
+      "offset": 2000,
+      "sill": 900,
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "opening_l_w01",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "surface_l_ceiling",
+      "nodeName": "AVZ_surface_l_ceiling",
+      "type": "ceiling",
+      "transform": {
+        "position": [
+          0,
+          0,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        4500,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_l_ceiling",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "surface_l_floor",
+      "nodeName": "AVZ_surface_l_floor",
+      "type": "floor",
+      "materialId": "material_floor_oak",
+      "materialBaseColorRgb": [
+        0.6,
+        0.45098039215686275,
+        0.30196078431372547
+      ],
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        4500,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_l_floor",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "surface_offset_ceiling",
+      "nodeName": "AVZ_surface_offset_ceiling",
+      "type": "ceiling",
+      "transform": {
+        "position": [
+          8000,
+          1000,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        4000,
+        3000,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_offset_ceiling",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "surface_offset_floor",
+      "nodeName": "AVZ_surface_offset_floor",
+      "type": "floor",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        4000,
+        3000,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_offset_floor",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "surface_trapezoid_ceiling",
+      "nodeName": "AVZ_surface_trapezoid_ceiling",
+      "type": "ceiling",
+      "transform": {
+        "position": [
+          0,
+          0,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        5000,
+        3000,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_trapezoid_ceiling",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "surface_trapezoid_floor",
+      "nodeName": "AVZ_surface_trapezoid_floor",
+      "type": "floor",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        5000,
+        3000,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "surface_trapezoid_floor",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    },
+    {
+      "logicalId": "wall_l_south",
+      "nodeName": "AVZ_wall_l_south",
+      "type": "wall",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "dimensions": [
+        6000,
+        150,
+        3000
+      ],
+      "start": [
+        0,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        0,
+        0
+      ],
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "wall_l_south",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    }
+  ],
+  "cameras": [
+    {
+      "logicalId": "camera_polygon_a",
+      "nodeName": "AVZ_camera_polygon_a",
+      "transform": {
+        "position": [
+          1200,
+          3800,
+          1500
+        ],
+        "rotationEuler": [
+          -2.84471,
+          0,
+          206.565051
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "target": [
+        3000,
+        200,
+        1300
+      ],
+      "focalLengthMm": 28,
+      "sensorWidthMm": 36,
+      "embeddedMetadata": {
+        "AIArchViz.LogicalObjectId": "camera_polygon_a",
+        "AIArchViz.ProjectId": "project_polygon_surface_001",
+        "AIArchViz.SceneId": "scene_polygon_surface_001",
+        "AIArchViz.RevisionId": "rev_polygon_surface_0001"
+      }
+    }
+  ]
+}
