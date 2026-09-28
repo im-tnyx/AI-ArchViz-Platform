@@ -1,5 +1,53 @@
 # Latest Validation Evidence
 
+## Post-10C polygon surface realization closure (local commit `a3bea86`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 598/598 (22 new in `tests/unit/polygon-surface-build.test.ts`,
+  4 new/updated in `tests/unit/cad-scene-seed.test.ts`), run twice after the
+  final code was settled, 598/598 both times with no failure.
+- New tests: v0.1 plan hashes frozen and unchanged; v0.2 = v0.1 semantic
+  content + `surfaceMeshes` keyed by logicalId; Golden rectangle, concave L
+  (frozen triangles `[[5,0,1],[1,2,3],[5,1,3],[3,4,5]]`, area 20,750,000,
+  notch uncovered), translated rectangle (pivot at origin and at min
+  corner, transform applied once), non-axis-aligned trapezoid; N - 2 CCW
+  triangles with exact coverage for concave, collinear, C-shaped, and
+  clockwise inputs; bounding-box regression (polygon area != AABB area);
+  determinism and immutability; fail-closed boundary/transform cases;
+  static guards on the shared pipeline, builder, and observation-only
+  verifier. 10C now accepts translated and L-shaped seeds (incl. a real
+  L-room DXF -> 10B -> 10C seed) and refuses only rotation/scale/non-simple.
+- Mutation checks (source, restored): last-ear selection fails 3 tests; a
+  dropped triangle fails 12; flipped winding fails 12; bounding-box
+  surfaces (old implementation) fail 4.
+- `pnpm test:asset-trust` — 7/7. The 10C six-hash chain is unchanged.
+
+DCC gates on 3ds Max 2025 compatibility mode (2025.3 install), all PASS:
+
+- `test:3dsmax:polygon-surfaces` (new): default-deny; forced bounding-box L
+  ceiling (27,000,000 mm2) fails fresh verification with zero promotion;
+  shared build-scene SUCCESS with one editable mesh per surface; physical
+  boundary/elevation/area PASS for all 6 surfaces (L 6 vertices/4 faces,
+  20,750,000 mm2; rectangles/trapezoid 4/2, 12,000,000 mm2; elevations
+  0/3000); L notch probe [4750,3250] not covered by the observed
+  triangles on floor and ceiling; material identity on the L floor mesh;
+  replay without a new DCC process and with an unchanged .max; no render.
+- Old implementation proof: with v0.2 surfaces realized as the legacy
+  bounding-box Plane, the fresh verifier rejected all 6 surfaces ("not an
+  editable mesh"), nothing was promoted, and the suite failed.
+- Regressions: `test:3dsmax:cad-scene-seed` (same six hashes and manifest),
+  fresh Golden `build-scene` (no replay; plan v0.2; SUCCESS; both surfaces
+  physically PASS at 27,000,000 mm2), `test:3dsmax:revision`,
+  `test:3dsmax:materials`, `test:3dsmax:canonical-material-appearance-revision`,
+  `test:3dsmax:canonical-camera-revision`,
+  `test:3dsmax:canonical-circulation-requirement-revision`,
+  `test:3dsmax:canonical-golden-corona-preview-rev12`. No test-owned
+  3dsmaxbatch process remained.
+
+Target 3ds Max 2026 was not tested.
+
 ## Spike 10C reviewed CAD -> canonical SceneSpec seed (local commit `f00f743`)
 
 Static gates, all PASS:

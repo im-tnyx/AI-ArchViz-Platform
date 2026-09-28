@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `f00f743` (`feat: seed canonical scenes from reviewed cad`),
-  on top of `8a3e555` (`feat: add deterministic cad interpretation`).
+- Local baseline HEAD: `a3bea86` (`fix: realize canonical polygon surfaces`),
+  on top of `f00f743` (`feat: seed canonical scenes from reviewed cad`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -352,6 +352,17 @@
   `build-scene` pipeline and passed fresh semantic verification against an
   independently frozen manifest on 3ds Max 2025.3 compatibility mode.
   Golden rev1-rev13 unchanged; no rev14; no render.
+- Post-10C polygon surface realization closure: the shared initial build now
+  compiles build plan v0.2 (v0.1 unchanged and still used by revision and
+  renderer paths), which carries `surfaceMeshes` deterministically
+  ear-clipped from each surface's own canonical boundary and elevation;
+  `build_scene.py` realizes every floor/ceiling as one editable mesh, and
+  the fresh verifier observes the reopened world-space mesh against the
+  canonical SceneSpec (boundary loop, elevation, face validity, area).
+  Promotion requires that physical PASS. Translated, non-axis-aligned, and
+  concave simple rooms are now buildable; 10C only refuses surface
+  rotation/scale and non-simple boundaries. No SceneSpec, manifest, 10A,
+  10B, or 10C contract changed; the 10C six-hash chain is unchanged.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

@@ -6,6 +6,11 @@ and verified on 3ds Max 2025.3 compatibility mode; see
 [STATUS.md](STATUS.md) and [VALIDATION.md](VALIDATION.md). Target 3ds Max
 2026 verification is still required.
 
+The post-10C polygon surface realization closure is also complete: the
+shared initial build now realizes exact canonical polygon floors/ceilings
+(translated, non-axis-aligned, concave), verified physically before
+promotion.
+
 ## No committed next spike
 
 There is no authorized next spike. The architecture should be evaluated as

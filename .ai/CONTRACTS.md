@@ -801,3 +801,28 @@
   cannot realize exactly. The seed enters the existing `build-scene`
   pipeline unchanged; it is not a SceneChangeSet revision.
 - See [../docs/architecture/CAD-SCENE-SEED.md](../docs/architecture/CAD-SCENE-SEED.md).
+
+## Polygon surface realization (post-10C closure)
+
+- Build plan v0.1 (`compileGoldenBuildPlan`) is immutable: bounding-box
+  surface `dimensions`, legacy `Plane` realization. Build plan v0.2
+  (`compileBuildPlanV02`, used by the initial build) = identical semantic
+  content + `surfaceMeshes[{logicalId, type, vertices, triangles,
+  elevationMm, areaMm2}]`; physical geometry comes only from
+  `surfaceMeshes`, never from the semantic dimensions.
+- `compileSurfaceMesh` (`apps/worker/src/surface-mesh.ts`): surface
+  `boundary` is the world-space shape authority and `elevation` the Z
+  authority; vertices in canonical order, node-local = world - canonical
+  transform position; rotation must be [0,0,0] and scale [1,1,1]; one simple
+  coplanar outer loop (10B `polygonDefect` rules), no holes; frozen
+  first-valid-ear clipping, N - 2 CCW (+Z) triangles whose area equals the
+  polygon area. Failures: `SURFACE_BOUNDARY_INVALID`,
+  `SURFACE_TRANSFORM_UNSUPPORTED`, `SURFACE_TRIANGULATION_FAILED` (before DCC).
+- Fresh verification with `AI_ARCHVIZ_SCENE_SPEC_PATH`: exactly one
+  editable-mesh node per canonical surface; observed world vertices at the
+  canonical elevation; valid non-degenerate consistently wound faces; one
+  boundary loop from single-face edges equal to the canonical boundary
+  (cyclic/orientation-tolerant); physical area equal to the canonical area.
+  The initial build promotes only on `surfaceVerification.status: PASS` for
+  every surface (`SURFACE_GEOMETRY_MISMATCH`). Scene manifest stays v0.1.
+- See [../docs/architecture/DCC-SURFACE-REALIZATION.md](../docs/architecture/DCC-SURFACE-REALIZATION.md).
