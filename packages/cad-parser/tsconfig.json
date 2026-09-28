@@ -6,11 +6,5 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
-  "references": [
-    { "path": "../../packages/cad-parser" },
-    { "path": "../../packages/scene-spec" },
-    { "path": "../../packages/spatial-engine" },
-    { "path": "../../packages/worker-contracts" }
-  ],
   "include": ["src/**/*.ts"]
 }

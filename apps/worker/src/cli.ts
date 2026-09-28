@@ -8,6 +8,7 @@ import {
   validateJobEnvelope,
   verifyJobHashes,
 } from "@ai-archviz/worker-contracts";
+import { CadExtractionError, extractCadDocument, writeCadExtraction } from "./cad-extraction.js";
 import { loadWorkerConfig } from "./config.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { WorkerError } from "./errors.js";
@@ -84,6 +85,29 @@ async function execute(argv: string[]): Promise<CliResult> {
       });
       return { exitCode: result.status === "SUCCESS" ? 0 : 1, output: result };
     }
+    case "extract-cad": {
+      const [sourcePath, outputPath] = args;
+      if (!sourcePath || !outputPath) {
+        return usage(
+          "extract-cad requires a repository-relative .dxf source and an output .json path",
+        );
+      }
+      const config = loadWorkerConfig(repositoryRoot);
+      try {
+        const extraction = extractCadDocument({ repositoryRoot, sourcePath });
+        const paths = writeCadExtraction(extraction, config.workspaceRoot, outputPath);
+        return {
+          exitCode: 0,
+          output: { ok: true, ...paths, evidence: extraction.evidence },
+        };
+      } catch (error) {
+        if (!(error instanceof CadExtractionError)) throw error;
+        return {
+          exitCode: 1,
+          output: { ok: false, errorCode: error.code, message: error.message },
+        };
+      }
+    }
     case "validate-scene": {
       const [path] = args;
       if (!path) return usage("validate-scene requires a JSON path");
@@ -134,6 +158,7 @@ function usage(error?: string): CliResult {
         "build-scene <job-envelope-path>",
         "inspect-ledger <idempotency-key>",
         "apply-change-set <base-job> <scene-change-set>",
+        "extract-cad <repository-relative-source.dxf> <workspace-relative-output.json>",
         "validate-scene <path>",
         "validate-job <path>",
         "verify-hashes <job> <scene-spec> <expected-manifest>",

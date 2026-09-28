@@ -8,6 +8,7 @@
   "files": {
     "includes": [
       "**",
+      "!!packages/cad-parser/schema",
       "!!packages/scene-spec/schema",
       "!!packages/worker-contracts/schema",
       "!!tests/fixtures"

@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-document-v0.1.schema.json",
+  "title": "AI ArchViz normalized CAD source document v0.1",
+  "description": "Deterministic source evidence extracted from a CAD file. Not SceneSpec: contains no inferred architecture and no source path. All lengths are millimeters.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cadDocumentVersion", "sourceFormat", "sourceHash", "header", "sourceUnits", "canonicalUnits", "layers", "blocks", "entities", "unsupportedEntities", "summary"],
+  "properties": {
+    "cadDocumentVersion": { "const": "0.1.0" },
+    "sourceFormat": { "const": "dxf" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acadVersion", "insunitsCode", "dwgCodePage"],
+      "properties": {
+        "acadVersion": { "type": ["string", "null"] },
+        "insunitsCode": { "enum": [1, 2, 4, 5, 6] },
+        "dwgCodePage": { "type": ["string", "null"] }
+      }
+    },
+    "sourceUnits": { "$ref": "#/$defs/sourceUnits" },
+    "canonicalUnits": { "const": "millimeters" },
+    "layers": { "type": "array", "items": { "$ref": "#/$defs/layer" } },
+    "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } },
+    "entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } },
+    "unsupportedEntities": { "type": "array", "items": { "$ref": "#/$defs/unsupportedEntity" } },
+    "summary": { "$ref": "#/$defs/summary" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "real": { "type": "number" },
+    "point3": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+    "handle": { "type": ["string", "null"] },
+    "name": { "type": "string", "minLength": 1 },
+    "sourceUnits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["insunitsCode", "name", "scaleToMillimeters"],
+      "oneOf": [
+        { "properties": { "insunitsCode": { "const": 1 }, "name": { "const": "inches" }, "scaleToMillimeters": { "const": 25.4 } } },
+        { "properties": { "insunitsCode": { "const": 2 }, "name": { "const": "feet" }, "scaleToMillimeters": { "const": 304.8 } } },
+        { "properties": { "insunitsCode": { "const": 4 }, "name": { "const": "millimeters" }, "scaleToMillimeters": { "const": 1 } } },
+        { "properties": { "insunitsCode": { "const": 5 }, "name": { "const": "centimeters" }, "scaleToMillimeters": { "const": 10 } } },
+        { "properties": { "insunitsCode": { "const": 6 }, "name": { "const": "meters" }, "scaleToMillimeters": { "const": 1000 } } }
+      ],
+      "properties": {
+        "insunitsCode": { "type": "integer" },
+        "name": { "type": "string" },
+        "scaleToMillimeters": { "type": "number" }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "colorIndex", "lineType", "flags"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "colorIndex": { "type": ["integer", "null"] },
+        "lineType": { "type": ["string", "null"] },
+        "flags": { "type": ["integer", "null"] }
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "flags", "basePoint", "externalReference", "entityCount"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "flags": { "type": ["integer", "null"] },
+        "basePoint": { "$ref": "#/$defs/point3" },
+        "externalReference": { "type": "boolean" },
+        "entityCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "entity": {
+      "oneOf": [
+        { "$ref": "#/$defs/lineEntity" },
+        { "$ref": "#/$defs/lwPolylineEntity" },
+        { "$ref": "#/$defs/insertEntity" },
+        { "$ref": "#/$defs/textEntity" }
+      ]
+    },
+    "lineEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceOrdinal", "sourceHandle", "type", "layer", "start", "end"],
+      "properties": {
+        "sourceOrdinal": { "$ref": "#/$defs/count" },
+        "sourceHandle": { "$ref": "#/$defs/handle" },
+        "type": { "const": "LINE" },
+        "layer": { "$ref": "#/$defs/name" },
+        "start": { "$ref": "#/$defs/point3" },
+        "end": { "$ref": "#/$defs/point3" }
+      }
+    },
+    "lwPolylineEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceOrdinal", "sourceHandle", "type", "layer", "closed", "flags", "elevation", "vertices"],
+      "properties": {
+        "sourceOrdinal": { "$ref": "#/$defs/count" },
+        "sourceHandle": { "$ref": "#/$defs/handle" },
+        "type": { "const": "LWPOLYLINE" },
+        "layer": { "$ref": "#/$defs/name" },
+        "closed": { "type": "boolean" },
+        "flags": { "type": "integer" },
+        "elevation": { "$ref": "#/$defs/real" },
+        "vertices": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "bulge"],
+            "properties": {
+              "x": { "$ref": "#/$defs/real" },
+              "y": { "$ref": "#/$defs/real" },
+              "bulge": { "$ref": "#/$defs/real" }
+            }
+          }
+        }
+      }
+    },
+    "insertEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceOrdinal", "sourceHandle", "type", "layer", "blockName", "insertionPoint", "scale", "rotationDegrees", "hasAttributes"],
+      "properties": {
+        "sourceOrdinal": { "$ref": "#/$defs/count" },
+        "sourceHandle": { "$ref": "#/$defs/handle" },
+        "type": { "const": "INSERT" },
+        "layer": { "$ref": "#/$defs/name" },
+        "blockName": { "$ref": "#/$defs/name" },
+        "insertionPoint": { "$ref": "#/$defs/point3" },
+        "scale": { "$ref": "#/$defs/point3" },
+        "rotationDegrees": { "$ref": "#/$defs/real" },
+        "hasAttributes": { "type": "boolean" }
+      }
+    },
+    "textEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceOrdinal", "sourceHandle", "type", "layer", "text", "insertionPoint", "alignmentPoint", "height", "rotationDegrees", "horizontalJustification", "verticalJustification"],
+      "properties": {
+        "sourceOrdinal": { "$ref": "#/$defs/count" },
+        "sourceHandle": { "$ref": "#/$defs/handle" },
+        "type": { "const": "TEXT" },
+        "layer": { "$ref": "#/$defs/name" },
+        "text": { "type": "string" },
+        "insertionPoint": { "$ref": "#/$defs/point3" },
+        "alignmentPoint": { "oneOf": [{ "$ref": "#/$defs/point3" }, { "type": "null" }] },
+        "height": { "type": ["number", "null"] },
+        "rotationDegrees": { "$ref": "#/$defs/real" },
+        "horizontalJustification": { "type": "integer" },
+        "verticalJustification": { "type": "integer" }
+      }
+    },
+    "unsupportedEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceOrdinal", "sourceHandle", "type", "layer", "reason"],
+      "properties": {
+        "sourceOrdinal": { "$ref": "#/$defs/count" },
+        "sourceHandle": { "$ref": "#/$defs/handle" },
+        "type": { "$ref": "#/$defs/name" },
+        "layer": { "$ref": "#/$defs/name" },
+        "reason": { "enum": ["UNSUPPORTED_ENTITY_TYPE", "UNSUPPORTED_OCS_EXTRUSION", "UNSUPPORTED_INSERT_ARRAY"] }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layerCount", "blockCount", "entityCount", "supportedEntityCount", "unsupportedEntityCount", "entityTypeCounts"],
+      "properties": {
+        "layerCount": { "$ref": "#/$defs/count" },
+        "blockCount": { "$ref": "#/$defs/count" },
+        "entityCount": { "$ref": "#/$defs/count" },
+        "supportedEntityCount": { "$ref": "#/$defs/count" },
+        "unsupportedEntityCount": { "$ref": "#/$defs/count" },
+        "entityTypeCounts": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

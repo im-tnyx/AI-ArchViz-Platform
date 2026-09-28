@@ -1,0 +1,602 @@
+999
+AI ArchViz synthetic DXF fixture (Spike 10A) - not a real project drawing
+  0
+SECTION
+  2
+HEADER
+  9
+$ACADVER
+  1
+AC1027
+  9
+$DWGCODEPAGE
+  3
+ANSI_1252
+  9
+$INSUNITS
+ 70
+4
+  9
+$EXTMIN
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  9
+$EXTMAX
+ 10
+6000.0
+ 20
+4000.0
+ 30
+2700.0
+  0
+ENDSEC
+  0
+SECTION
+  2
+TABLES
+  0
+TABLE
+  2
+LTYPE
+  5
+5
+ 70
+1
+  0
+LTYPE
+  5
+14
+  2
+CONTINUOUS
+ 70
+0
+  3
+Solid line
+ 72
+65
+ 73
+0
+ 40
+0.0
+  0
+ENDTAB
+  0
+TABLE
+  2
+LAYER
+  5
+2
+ 70
+6
+  0
+LAYER
+  5
+10
+  2
+A-WALL
+ 70
+0
+ 62
+7
+  6
+CONTINUOUS
+  0
+LAYER
+  5
+11
+  2
+0
+ 70
+0
+ 62
+7
+  6
+CONTINUOUS
+  0
+LAYER
+  5
+12
+102
+{ACAD_XDICTIONARY
+360
+1A
+102
+}
+  2
+A-DOOR
+ 70
+0
+ 62
+3
+  6
+CONTINUOUS
+  0
+LAYER
+  5
+13
+  2
+A-ÉTUDE
+ 70
+1
+ 62
+-8
+  6
+CONTINUOUS
+  0
+LAYER
+  5
+15
+  2
+a-notes
+ 70
+0
+ 62
+1
+  0
+LAYER
+  5
+16
+  2
+A-ANNO
+ 70
+0
+ 62
+2
+  6
+CONTINUOUS
+  0
+ENDTAB
+  0
+ENDSEC
+  0
+SECTION
+  2
+BLOCKS
+  0
+BLOCK
+  5
+20
+  8
+0
+  2
+*Model_Space
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+*Model_Space
+  0
+ENDBLK
+  5
+21
+  8
+0
+  0
+BLOCK
+  5
+22
+  8
+0
+  2
+DOOR_900
+ 70
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+DOOR_900
+  0
+LINE
+  5
+23
+  8
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 11
+0.0
+ 21
+900.0
+ 31
+0.0
+  0
+ARC
+  5
+24
+  8
+0
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 40
+900.0
+ 50
+0.0
+ 51
+90.0
+  0
+ENDBLK
+  5
+25
+  8
+0
+  0
+BLOCK
+  5
+26
+  8
+0
+  2
+XREF_SITE
+ 70
+4
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+  3
+XREF_SITE
+  1
+C:\Users\someone\secret-site.dwg
+  0
+ENDBLK
+  5
+27
+  8
+0
+  0
+ENDSEC
+  0
+SECTION
+  2
+ENTITIES
+  0
+LWPOLYLINE
+  5
+1F0
+100
+AcDbEntity
+  8
+A-WALL
+100
+AcDbPolyline
+ 90
+4
+ 70
+1
+ 43
+0.0
+ 10
+0.0
+ 20
+0.0
+ 10
+6000.0
+ 20
+0.0
+ 10
+6000.0
+ 20
+4000.0
+ 10
+0.0
+ 20
+4000.0
+  0
+LINE
+  5
+1F1
+100
+AcDbEntity
+  8
+A-WALL
+100
+AcDbLine
+ 10
+3000.0
+ 20
+0.0
+ 30
+0.0
+ 11
+3000.0
+ 21
+1200.5
+ 31
+0.0
+  0
+INSERT
+  5
+1F2
+100
+AcDbEntity
+  8
+A-DOOR
+100
+AcDbBlockReference
+  2
+DOOR_900
+ 10
+900.0
+ 20
+0.0
+ 30
+0.0
+ 50
+90.0
+  0
+TEXT
+  5
+1F3
+100
+AcDbEntity
+  8
+A-ANNO
+100
+AcDbText
+ 10
+2500.0
+ 20
+2000.0
+ 30
+0.0
+ 40
+250.0
+  1
+LIVING ROOM
+100
+AcDbText
+  0
+LWPOLYLINE
+  5
+1F4
+102
+{ACAD_REACTORS
+330
+99
+102
+}
+100
+AcDbEntity
+  8
+A-WALL
+100
+AcDbPolyline
+ 90
+3
+ 70
+128
+ 38
+0.0
+ 10
+6000.0
+ 20
+1000.0
+ 42
+0.414213562373095
+ 10
+6500.0
+ 20
+1500.0
+ 10
+6000.0
+ 20
+2000.0
+  0
+MTEXT
+  5
+1F5
+100
+AcDbEntity
+  8
+A-ANNO
+100
+AcDbMText
+ 10
+500.0
+ 20
+3500.0
+ 30
+0.0
+ 40
+180.0
+  1
+\fArial|b0;General notes
+  0
+DIMENSION
+  5
+1F6
+100
+AcDbEntity
+  8
+A-ANNO
+100
+AcDbDimension
+  2
+*D1
+ 10
+6000.0
+ 20
+-500.0
+ 30
+0.0
+  1
+6000
+ 70
+32
+  0
+LINE
+100
+AcDbEntity
+  8
+0
+100
+AcDbLine
+ 10
+0.0
+ 20
+0.0
+ 30
+0.0
+ 11
+0.0
+ 21
+0.0
+ 31
+2700.0
+  0
+TEXT
+  5
+1F8
+100
+AcDbEntity
+  8
+A-ANNO
+100
+AcDbText
+ 10
+100.0
+ 20
+100.0
+ 30
+0.0
+ 40
+100.0
+  1
+Ø %%c100 ${HOME} && rm -rf / ; =1+1
+ 50
+15.0
+ 72
+1
+ 11
+1500.0
+ 21
+100.0
+ 31
+0.0
+100
+AcDbText
+ 73
+2
+  0
+INSERT
+  5
+1F9
+100
+AcDbEntity
+  8
+A-DOOR
+100
+AcDbBlockReference
+ 66
+1
+  2
+DOOR_900
+ 10
+5100.0
+ 20
+4000.0
+ 30
+0.0
+ 41
+-1.0
+ 42
+1.0
+ 43
+1.0
+ 50
+270.0
+  0
+ATTRIB
+  5
+1FA
+100
+AcDbEntity
+  8
+A-DOOR
+100
+AcDbText
+ 10
+5100.0
+ 20
+4000.0
+ 30
+0.0
+ 40
+100.0
+  1
+D02
+100
+AcDbAttribute
+  2
+TAG
+ 70
+0
+  0
+SEQEND
+  5
+1FB
+100
+AcDbEntity
+  8
+A-DOOR
+  0
+CIRCLE
+  5
+1FC
+100
+AcDbEntity
+  8
+a-notes
+100
+AcDbCircle
+ 10
+4500.0
+ 20
+3000.0
+ 30
+0.0
+ 40
+300.0
+  0
+ENDSEC
+  0
+SECTION
+  2
+OBJECTS
+  0
+DICTIONARY
+  5
+C
+100
+AcDbDictionary
+  3
+ACAD_GROUP
+350
+D
+  0
+ENDSEC
+  0
+EOF

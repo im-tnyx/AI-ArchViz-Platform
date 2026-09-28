@@ -1,0 +1,311 @@
+{
+  "cadDocumentVersion": "0.1.0",
+  "sourceFormat": "dxf",
+  "sourceHash": "sha256:f761c38d250e167bdd98a29befd8a4bb9a21a1190ebedfe9848192668489156f",
+  "header": {
+    "acadVersion": "AC1027",
+    "insunitsCode": 4,
+    "dwgCodePage": "ANSI_1252"
+  },
+  "sourceUnits": {
+    "insunitsCode": 4,
+    "name": "millimeters",
+    "scaleToMillimeters": 1
+  },
+  "canonicalUnits": "millimeters",
+  "layers": [
+    {
+      "name": "0",
+      "colorIndex": 7,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-ANNO",
+      "colorIndex": 2,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-DOOR",
+      "colorIndex": 3,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-WALL",
+      "colorIndex": 7,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-ÉTUDE",
+      "colorIndex": -8,
+      "lineType": "CONTINUOUS",
+      "flags": 1
+    },
+    {
+      "name": "a-notes",
+      "colorIndex": 1,
+      "lineType": null,
+      "flags": 0
+    }
+  ],
+  "blocks": [
+    {
+      "name": "*Model_Space",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 0
+    },
+    {
+      "name": "DOOR_900",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    },
+    {
+      "name": "XREF_SITE",
+      "flags": 4,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": true,
+      "entityCount": 0
+    }
+  ],
+  "entities": [
+    {
+      "sourceOrdinal": 0,
+      "sourceHandle": "1F0",
+      "layer": "A-WALL",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 0,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 4000,
+          "bulge": 0
+        },
+        {
+          "x": 0,
+          "y": 4000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 1,
+      "sourceHandle": "1F1",
+      "layer": "A-WALL",
+      "type": "LINE",
+      "start": [
+        3000,
+        0,
+        0
+      ],
+      "end": [
+        3000,
+        1200.5,
+        0
+      ]
+    },
+    {
+      "sourceOrdinal": 2,
+      "sourceHandle": "1F2",
+      "layer": "A-DOOR",
+      "type": "INSERT",
+      "blockName": "DOOR_900",
+      "insertionPoint": [
+        900,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 90,
+      "hasAttributes": false
+    },
+    {
+      "sourceOrdinal": 3,
+      "sourceHandle": "1F3",
+      "layer": "A-ANNO",
+      "type": "TEXT",
+      "text": "LIVING ROOM",
+      "insertionPoint": [
+        2500,
+        2000,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 250,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 4,
+      "sourceHandle": "1F4",
+      "layer": "A-WALL",
+      "type": "LWPOLYLINE",
+      "closed": false,
+      "flags": 128,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 6000,
+          "y": 1000,
+          "bulge": 0.414213562373095
+        },
+        {
+          "x": 6500,
+          "y": 1500,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 2000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 7,
+      "sourceHandle": null,
+      "layer": "0",
+      "type": "LINE",
+      "start": [
+        0,
+        0,
+        0
+      ],
+      "end": [
+        0,
+        0,
+        2700
+      ]
+    },
+    {
+      "sourceOrdinal": 8,
+      "sourceHandle": "1F8",
+      "layer": "A-ANNO",
+      "type": "TEXT",
+      "text": "Ø %%c100 ${HOME} && rm -rf / ; =1+1",
+      "insertionPoint": [
+        100,
+        100,
+        0
+      ],
+      "alignmentPoint": [
+        1500,
+        100,
+        0
+      ],
+      "height": 100,
+      "rotationDegrees": 15,
+      "horizontalJustification": 1,
+      "verticalJustification": 2
+    },
+    {
+      "sourceOrdinal": 9,
+      "sourceHandle": "1F9",
+      "layer": "A-DOOR",
+      "type": "INSERT",
+      "blockName": "DOOR_900",
+      "insertionPoint": [
+        5100,
+        4000,
+        0
+      ],
+      "scale": [
+        -1,
+        1,
+        1
+      ],
+      "rotationDegrees": 270,
+      "hasAttributes": true
+    }
+  ],
+  "unsupportedEntities": [
+    {
+      "sourceOrdinal": 5,
+      "sourceHandle": "1F5",
+      "layer": "A-ANNO",
+      "type": "MTEXT",
+      "reason": "UNSUPPORTED_ENTITY_TYPE"
+    },
+    {
+      "sourceOrdinal": 6,
+      "sourceHandle": "1F6",
+      "layer": "A-ANNO",
+      "type": "DIMENSION",
+      "reason": "UNSUPPORTED_ENTITY_TYPE"
+    },
+    {
+      "sourceOrdinal": 10,
+      "sourceHandle": "1FA",
+      "layer": "A-DOOR",
+      "type": "ATTRIB",
+      "reason": "UNSUPPORTED_ENTITY_TYPE"
+    },
+    {
+      "sourceOrdinal": 11,
+      "sourceHandle": "1FB",
+      "layer": "A-DOOR",
+      "type": "SEQEND",
+      "reason": "UNSUPPORTED_ENTITY_TYPE"
+    },
+    {
+      "sourceOrdinal": 12,
+      "sourceHandle": "1FC",
+      "layer": "a-notes",
+      "type": "CIRCLE",
+      "reason": "UNSUPPORTED_ENTITY_TYPE"
+    }
+  ],
+  "summary": {
+    "layerCount": 6,
+    "blockCount": 3,
+    "entityCount": 13,
+    "supportedEntityCount": 8,
+    "unsupportedEntityCount": 5,
+    "entityTypeCounts": {
+      "ATTRIB": 1,
+      "CIRCLE": 1,
+      "DIMENSION": 1,
+      "INSERT": 2,
+      "LINE": 2,
+      "LWPOLYLINE": 2,
+      "MTEXT": 1,
+      "SEQEND": 1,
+      "TEXT": 2
+    }
+  }
+}

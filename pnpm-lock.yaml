@@ -20,6 +20,9 @@ importers:
 
   .:
     devDependencies:
+      '@ai-archviz/cad-parser':
+        specifier: workspace:*
+        version: link:packages/cad-parser
       '@ai-archviz/scene-spec':
         specifier: workspace:*
         version: link:packages/scene-spec
@@ -41,12 +44,27 @@ importers:
 
   apps/worker:
     dependencies:
+      '@ai-archviz/cad-parser':
+        specifier: workspace:*
+        version: link:../../packages/cad-parser
       '@ai-archviz/scene-spec':
         specifier: workspace:*
         version: link:../../packages/scene-spec
+      '@ai-archviz/spatial-engine':
+        specifier: workspace:*
+        version: link:../../packages/spatial-engine
       '@ai-archviz/worker-contracts':
         specifier: workspace:*
         version: link:../../packages/worker-contracts
+
+  packages/cad-parser:
+    dependencies:
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      ajv-formats:
+        specifier: 'catalog:'
+        version: 3.0.1(ajv@8.20.0)
 
   packages/scene-spec:
     dependencies:
@@ -56,6 +74,8 @@ importers:
       ajv-formats:
         specifier: 'catalog:'
         version: 3.0.1(ajv@8.20.0)
+
+  packages/spatial-engine: {}
 
   packages/worker-contracts:
     dependencies:

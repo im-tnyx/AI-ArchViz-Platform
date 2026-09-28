@@ -66,6 +66,26 @@ export type SpatialValidationEvidence = Record<string, unknown>;
 export type CirculationAnalysisEvidence = Record<string, unknown>;
 export type CirculationRequirementEvidence = Record<string, unknown>;
 
+/** Identity proof for one cad-document-v0.1 extraction (no path, no entities). */
+export interface CadExtractionEvidence {
+  evidenceVersion: "0.1.0";
+  sourceFormat: "dxf";
+  sourceHash: string;
+  cadDocumentVersion: "0.1.0";
+  cadDocumentHash: string;
+  sourceUnits: { insunitsCode: number; name: string; scaleToMillimeters: number };
+  canonicalUnits: "millimeters";
+  summary: {
+    layerCount: number;
+    blockCount: number;
+    entityCount: number;
+    supportedEntityCount: number;
+    unsupportedEntityCount: number;
+    entityTypeCounts: Record<string, number>;
+  };
+  status: "PASS";
+}
+
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
 function readSchema(name: string): Record<string, unknown> {
@@ -123,6 +143,7 @@ export const circulationAnalysisEvidenceSchema = readSchema(
 export const circulationRequirementEvidenceSchema = readSchema(
   "circulation-requirement-evidence-v0.1.schema.json",
 );
+export const cadExtractionEvidenceSchema = readSchema("cad-extraction-evidence-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -202,6 +223,9 @@ const circulationAnalysisEvidenceValidator = ajv.compile(
 const circulationRequirementEvidenceValidator = ajv.compile(
   circulationRequirementEvidenceSchema,
 ) as ValidateFunction<CirculationRequirementEvidence>;
+const cadExtractionEvidenceValidator = ajv.compile(
+  cadExtractionEvidenceSchema,
+) as ValidateFunction<CadExtractionEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -361,6 +385,12 @@ export function validateCirculationRequirementEvidence(
   value: unknown,
 ): ValidationResult<CirculationRequirementEvidence> {
   return runValidation(circulationRequirementEvidenceValidator, value);
+}
+
+export function validateCadExtractionEvidence(
+  value: unknown,
+): ValidationResult<CadExtractionEvidence> {
+  return runValidation(cadExtractionEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

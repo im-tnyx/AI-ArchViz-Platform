@@ -1,0 +1,2 @@
+# DXF fixtures are byte-hashed (cad-document sourceHash); never convert line endings.
+*.dxf -text

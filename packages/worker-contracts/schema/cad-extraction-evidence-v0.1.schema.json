@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-extraction-evidence-v0.1.schema.json",
+  "title": "AI ArchViz CAD extraction evidence v0.1",
+  "description": "Identity proof for one cad-document-v0.1 extraction: raw source byte hash plus RFC 8785 semantic document hash. Contains no file path and no entity array.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "sourceFormat", "sourceHash", "cadDocumentVersion", "cadDocumentHash", "sourceUnits", "canonicalUnits", "summary", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "sourceFormat": { "const": "dxf" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "cadDocumentVersion": { "const": "0.1.0" },
+    "cadDocumentHash": { "$ref": "#/$defs/hash" },
+    "sourceUnits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["insunitsCode", "name", "scaleToMillimeters"],
+      "properties": {
+        "insunitsCode": { "enum": [1, 2, 4, 5, 6] },
+        "name": { "enum": ["inches", "feet", "millimeters", "centimeters", "meters"] },
+        "scaleToMillimeters": { "enum": [25.4, 304.8, 1, 10, 1000] }
+      }
+    },
+    "canonicalUnits": { "const": "millimeters" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layerCount", "blockCount", "entityCount", "supportedEntityCount", "unsupportedEntityCount", "entityTypeCounts"],
+      "properties": {
+        "layerCount": { "$ref": "#/$defs/count" },
+        "blockCount": { "$ref": "#/$defs/count" },
+        "entityCount": { "$ref": "#/$defs/count" },
+        "supportedEntityCount": { "$ref": "#/$defs/count" },
+        "unsupportedEntityCount": { "$ref": "#/$defs/count" },
+        "entityTypeCounts": {
+          "type": "object",
+          "propertyNames": { "minLength": 1 },
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "status": { "const": "PASS" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 }
+  }
+}
