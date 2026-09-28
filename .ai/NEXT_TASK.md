@@ -1,18 +1,15 @@
 # Next Allowed Task
 
-Technical Spike 9C (SceneSpec v0.4 canonical `circulationRequirements[]`
-contract, pure 9B-backed requirement evaluation, and
-`circulation-requirement-evidence-v0.1`; no revision gate) is complete and
+Technical Spike 9D (SceneChangeSet v0.4, the `MigrateCirculationRequirementContract`
+rev12 -> rev13 Golden migration to SceneSpec v0.4, and pre-DCC enforcement of
+canonical circulation requirements on every v0.4 revision) is complete and
 verified; see [STATUS.md](STATUS.md) and [VALIDATION.md](VALIDATION.md).
 
 ## No committed next spike
 
-There is no authorized or provisional next spike at this time. A plausible
-future candidate is Technical Spike 9D — Canonical Circulation Requirement
-Revision & Pre-DCC Gate (explicit v0.3 to v0.4 migration, a canonical
-Golden requirement, revision enforcement after candidate-state
-construction, and zero-DCC rejection when a required route breaks), but it
-is NOT authorized and must not be started automatically. Do not start
-Spike 9D or any other new spike, renderer, AI integration, download, or
-production external `ReplaceAsset` path without explicit user
-authorization and a separate scope description.
+There is no authorized or provisional next spike at this time. Before a next
+product milestone is selected, the architecture should be evaluated as a
+whole (see [../docs/architecture/PROJECT-PLAN.md](../docs/architecture/PROJECT-PLAN.md)
+phases). Do not start any new spike, renderer, AI integration, download, or
+production external `ReplaceAsset` path without explicit user authorization
+and a separate scope description.

@@ -651,3 +651,43 @@
   v0.3 to v0.4 migration, Golden rev1-rev12 unchanged (rev12 stays v0.3),
   no rev13. Requirements express project intent under a named policy, not
   building-code or accessibility compliance.
+
+## Canonical circulation requirement enforcement (Spike 9D)
+
+- SceneChangeSet v0.4 (`scene-change-set-v0.4.schema.json`) is v0.3 plus one
+  high-risk, scene-scoped operation, `MigrateCirculationRequirementContract`
+  (`targetSceneSpecVersion: "0.4.0"`, `circulationRequirements[]`), with the
+  one-operation invariant kept. `validateSceneChangeSet()` dispatches exactly
+  0.1.0-0.4.0. SceneSpec v0.1-v0.4 and SceneChangeSet v0.1-v0.3 are unchanged.
+- The migration is the only explicit SceneSpec v0.3 -> v0.4 transition
+  (revision plan `0.4.0`, bound to this operation only in Python). It rejects
+  a v0.4 base (`CIRCULATION_REQUIREMENT_CONTRACT_ALREADY_CANONICAL`), other
+  transitions (`SCENE_SPEC_VERSION_TRANSITION_UNSUPPORTED`), and incoherent
+  requirements (`CIRCULATION_REQUIREMENT_SET_UNSORTED`,
+  `CIRCULATION_REQUIREMENT_ID_DUPLICATE`,
+  `CIRCULATION_REQUIREMENT_REFERENCE_INVALID`, via the 9C v0.4 validator),
+  and it may not introduce an already-failing requirement. In 3ds Max it
+  writes nothing physical: only worker-owned revision metadata advances.
+- Golden `rev_golden_0013` (SceneSpec v0.4) differs from rev12 only in
+  version, revision identity, history, and one hand-authored requirement,
+  `circulation_req_entry_to_east_clear_point` (`opening_d01` portal ->
+  `[5000, 1500]`). Its graph hash equals rev12's. No rev14.
+- Enforcement: one shared gate, `circulationRequirementGateFailure()`
+  (`apps/worker/src/circulation-requirement-evidence.ts`), runs on the
+  COMPLETE candidate target (operation applied, revision metadata appended,
+  target validated) and after all structural/lock/9A checks, for every
+  operation on a v0.4 target, and never for v0.1-v0.3 targets. It throws
+  `CIRCULATION_REQUIREMENT_UNSATISFIED` (`CirculationRequirementUnsatisfiedError`
+  carries the first unsatisfied `requirementId` and the underlying 9B
+  `failureCode`) inside the pure preflight, so no DCC discovery or process
+  occurs. The controlled VERIFIED `external_max` `ReplaceAsset` path applies
+  the same gate after its asset-trust and 9A checks.
+- New evidence versions `canonical-material-state-v0.2` and
+  `canonical-camera-state-v0.2` carry identical physical fields bound to
+  SceneSpec 0.4.0 (the v0.1 contracts stay bound to <= v0.3); worker and
+  Python verifiers dispatch by SceneSpec version. `canonical-render-state-v0.1`
+  is reused. A v0.4 revision is promoted only after semantic manifest,
+  render-state, material-state v0.2, camera-state v0.2, and PASS
+  `circulation-requirement-evidence-v0.1` (persisted as
+  `verification/circulation-requirement-evidence.json`, hash bound into the
+  request hash, required on replay).

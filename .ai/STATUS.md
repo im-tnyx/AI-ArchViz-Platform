@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `40e1c38` (`feat: add canonical circulation requirement contract`),
-  on top of `8e5808b` (`fix: scope circulation obstacles by space`).
+- Local baseline HEAD: `d0263aa` (`feat: enforce canonical circulation requirements`),
+  on top of `40e1c38` (`feat: add canonical circulation requirement contract`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -273,6 +273,24 @@
   requirements. Not yet enforced: no revision gate, no SceneChangeSet
   operation, no v0.3 to v0.4 migration; Golden rev1-rev12 unchanged (rev12
   stays v0.3), no rev13.
+- Spike 9D enforces those requirements. SceneChangeSet v0.4 adds one
+  scene-scoped, high-risk operation, `MigrateCirculationRequirementContract`
+  (the only v0.3 to v0.4 transition, revisionPlanVersion 0.4.0), and Golden
+  `rev_golden_0013` (SceneSpec v0.4) migrates rev12 with exactly one
+  hand-authored requirement,
+  `circulation_req_entry_to_east_clear_point` (`opening_d01` portal to
+  `[5000,1500]`); the migration performs no physical mutation, only
+  advances revision metadata (14 semantic entries unchanged, graph hash
+  equal to rev12). Every SceneSpec v0.4 revision target, and the controlled
+  external `ReplaceAsset` path, passes a shared pre-DCC gate after full
+  candidate construction and after the 9A spatial checks; an UNSATISFIED
+  requirement fails `CIRCULATION_REQUIREMENT_UNSATISFIED` (with the
+  underlying 9B/9C code) with zero DCC processes. v0.4 targets use new
+  `canonical-material-state-v0.2` and `canonical-camera-state-v0.2`
+  evidence (v0.1 unchanged; render-state v0.1 reused), and persisted
+  `circulation-requirement-evidence` is a fifth promotion gate required on
+  replay. rev1-rev12 byte-identical, no rev14, no render, no automatic
+  repair.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

@@ -1,5 +1,55 @@
 # Latest Validation Evidence
 
+## Spike 9D canonical circulation requirement enforcement (local commit `d0263aa`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 385/385, including 30 new in
+  `tests/unit/circulation-requirement-revision.test.ts`: ChangeSet v0.4
+  contract and single-op invariant; exact Golden requirement; rev12 to rev13
+  exact transition with frozen `requirementSetHash`; plan v0.1-v0.3
+  compatibility; zero semantic diff; migration failure codes; frozen rev13
+  evidence (graph hash equal to rev12); rev1-rev12 hashes frozen; no rev14;
+  enforcement fixture gate cases (NO_ROUTE, ENDPOINT_BLOCKED,
+  PORTAL_BLOCKED, unrelated portal plans, spatial collision still wins);
+  UpdateOpening narrowing blocked; window/SetCamera edits plan; a move that
+  plans on v0.3 rev12 is ENDPOINT_BLOCKED on rev13; `applySceneChangeSet`
+  and external preflight reject with zero DCC; material/camera evidence
+  v0.1 vs v0.2 dispatch; circulation promotion-failure mapping. Mutation
+  checks: removing the planner gate fails 7 tests, removing the external
+  gate fails 2.
+- `pnpm test:asset-trust` — 7/7
+- SceneSpec v0.1-v0.4 schemas, SceneChangeSet v0.1-v0.3 schemas, material/
+  camera-state v0.1 schemas, and Golden rev1-rev12 fixtures show no diff.
+
+DCC gates, all PASS on 3ds Max 2025 compatibility mode (2025.3 install),
+run sequentially with `AI_ARCHVIZ_ALLOW_DCC_TESTS=1`:
+
+- `test:3dsmax:canonical-circulation-requirement-revision` (new): r1-r12
+  built through the real pipeline, r13 promoted after fresh semantic,
+  render-state v0.1, material-state v0.2, camera-state v0.2, and
+  circulation evidence gates; rev12 artifact unchanged; replay with zero
+  processes; 12 forced failures (unsupported plan, wrong scene target,
+  managed-ID mismatch, Safe Scene, candidate save, mutation timeout,
+  manifest, render-state, material-state v0.2, camera-state v0.2,
+  circulation evidence invalid/failed) all fail closed.
+- `test:3dsmax:canonical-camera-revision`,
+  `test:3dsmax:canonical-golden-corona-preview-rev12`,
+  `test:3dsmax:revision`, `test:3dsmax:replace-asset`,
+  `test:3dsmax:external-asset-ingestion`,
+  `test:3dsmax:canonical-material-appearance-revision`,
+  `test:3dsmax:canonical-golden-corona-preview-rev11`.
+
+The first matrix run was stopped by the operator after the first two
+suites (interactive 3ds Max sessions were hanging; the machine was
+restarted); the remaining six suites were then re-run from scratch and
+passed first time. The interrupted rev12 preview's non-zero exit was the
+deliberate stop, not a test failure. Interactive user 3ds Max sessions
+were not touched.
+
+Target 3ds Max 2026 was not tested.
+
 ## Spike 9C canonical circulation requirement contract (local commit `40e1c38`)
 
 Static gates, all PASS:
