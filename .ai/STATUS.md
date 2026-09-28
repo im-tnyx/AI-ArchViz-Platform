@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `d0263aa` (`feat: enforce canonical circulation requirements`),
-  on top of `40e1c38` (`feat: add canonical circulation requirement contract`).
+- Local baseline HEAD: `af96b94` (`feat: add deterministic dxf extraction`),
+  on top of `d0263aa` (`feat: enforce canonical circulation requirements`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -291,6 +291,20 @@
   `circulation-requirement-evidence` is a fifth promotion gate required on
   replay. rev1-rev12 byte-identical, no rev14, no render, no automatic
   repair.
+- Spike 10A started the upstream CAD input side with a pure
+  `@ai-archviz/cad-parser` package and the `cad-document-v0.1` contract:
+  ASCII DXF bytes -> pre-parse safety (10 MiB, binary/NUL, strict UTF-8)
+  -> project-owned DXF adapter (no third-party parser) -> millimeter
+  normalization under `$INSUNITS` authority (in/ft/mm/cm/m; unitless or
+  other codes fail closed) -> schema-validated document. LINE, LWPOLYLINE
+  (bulge preserved), INSERT (never exploded), and inert TEXT are
+  normalized; every other entity is recorded as unsupported with its
+  source ordinal, handle, and layer. `sourceHash` is the raw byte SHA-256
+  and `cadDocumentHash` the RFC 8785 semantic hash; no path appears in
+  either. New `cad-extraction-evidence-v0.1`, a worker
+  `extractCadDocument` boundary, and an `extract-cad` CLI. It produces no
+  SceneSpec and infers no architecture; no DCC, AutoCAD, AI, or network is
+  involved, and no DCC path changed.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

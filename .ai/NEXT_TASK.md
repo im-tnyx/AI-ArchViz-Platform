@@ -1,15 +1,22 @@
 # Next Allowed Task
 
-Technical Spike 9D (SceneChangeSet v0.4, the `MigrateCirculationRequirementContract`
-rev12 -> rev13 Golden migration to SceneSpec v0.4, and pre-DCC enforcement of
-canonical circulation requirements on every v0.4 revision) is complete and
-verified; see [STATUS.md](STATUS.md) and [VALIDATION.md](VALIDATION.md).
+Technical Spike 10A (pure `@ai-archviz/cad-parser`, `cad-document-v0.1`,
+deterministic ASCII DXF extraction with millimeter normalization, and
+`cad-extraction-evidence-v0.1`) is complete and verified; see
+[STATUS.md](STATUS.md) and [VALIDATION.md](VALIDATION.md).
 
 ## No committed next spike
 
-There is no authorized or provisional next spike at this time. Before a next
-product milestone is selected, the architecture should be evaluated as a
-whole (see [../docs/architecture/PROJECT-PLAN.md](../docs/architecture/PROJECT-PLAN.md)
-phases). Do not start any new spike, renderer, AI integration, download, or
-production external `ReplaceAsset` path without explicit user authorization
-and a separate scope description.
+There is no authorized next spike at this time. Do not start any new spike,
+renderer, AI integration, download, DWG/AutoCAD integration, or production
+external `ReplaceAsset` path without explicit user authorization and a
+separate scope description.
+
+A plausible future candidate, **not authorized**:
+
+- Technical Spike 10B — Deterministic CAD Architectural Interpretation:
+  normalized cad-document -> explicit layer mapping and source evidence ->
+  wall/opening/space candidates -> human-verifiable architectural
+  extraction -> SceneSpec candidate.
+
+Do not start 10B automatically.

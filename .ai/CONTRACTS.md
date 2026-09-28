@@ -691,3 +691,36 @@
   `circulation-requirement-evidence-v0.1` (persisted as
   `verification/circulation-requirement-evidence.json`, hash bound into the
   request hash, required on replay).
+
+## Deterministic DXF extraction (Spike 10A)
+
+- `cad-document-v0.1` (`packages/cad-parser/schema/cad-document-v0.1.schema.json`,
+  `validateCadDocument`) is normalized CAD SOURCE EVIDENCE, not SceneSpec:
+  `cadDocumentVersion: "0.1.0"`, `sourceFormat: "dxf"`, byte `sourceHash`,
+  raw `header` (`acadVersion`/`dwgCodePage` null when absent,
+  `insunitsCode`), `sourceUnits`, `canonicalUnits: "millimeters"`,
+  code-point-sorted `layers` and `blocks` (inventory only), source-ordered
+  `entities` and `unsupportedEntities`, and `summary` counts. No path, no
+  inferred architecture, no confidence.
+- `CadSourceAdapter.parse({ bytes })` is the trusted adapter boundary;
+  `DxfSourceAdapter` is the only implementation and the only code that knows
+  DXF group codes. A future DWG adapter must emit the same contract.
+- Failure codes: `CAD_SOURCE_TOO_LARGE` (> 10 MiB, checked first),
+  `CAD_BINARY_DXF_UNSUPPORTED`, `CAD_DXF_PARSE_FAILED` (all malformed input,
+  including invalid UTF-8), `CAD_NUMERIC_NON_FINITE`, `CAD_UNITS_UNSPECIFIED`
+  (`$INSUNITS` absent or 0), `CAD_UNITS_UNSUPPORTED`. No partial document.
+- Units: `$INSUNITS` only; 1/2/4/5/6 -> x25.4/304.8/1/10/1000 to mm, one
+  multiplication, no rounding, WCS preserved; bulge, INSERT scale, and angles
+  are never scaled.
+- Entities: LINE, LWPOLYLINE (`closed`, `flags`, `elevation`, per-vertex
+  `bulge`), INSERT (not exploded), TEXT (inert). Everything else is
+  recorded with `UNSUPPORTED_ENTITY_TYPE`, `UNSUPPORTED_OCS_EXTRUSION`, or
+  `UNSUPPORTED_INSERT_ARRAY`; nothing is dropped. `sourceOrdinal` and
+  `sourceHandle` are provenance, never SceneSpec identity.
+- `cad-extraction-evidence-v0.1` (worker-contracts,
+  `validateCadExtractionEvidence`) carries `sourceHash`, `cadDocumentHash`
+  (`semanticJsonHash` of the document), units, summary, and `status:
+  "PASS"`; no path, no entity array. `apps/worker/src/cad-extraction.ts`
+  (`extractCadDocument`, `writeCadExtraction`) and `extract-cad` enforce
+  root-relative `.dxf` sources and root-bounded `.json` outputs.
+- See [../docs/architecture/CAD-INGESTION.md](../docs/architecture/CAD-INGESTION.md).

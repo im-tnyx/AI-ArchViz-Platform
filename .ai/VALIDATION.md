@@ -1,5 +1,40 @@
 # Latest Validation Evidence
 
+## Spike 10A deterministic DXF extraction (local commit `af96b94`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 437/437, including 52 new in
+  `tests/unit/cad-dxf-extraction.test.ts`: the synthetic
+  `tests/fixtures/cad/dxf/simple-room-mm.dxf` deep-equals the frozen
+  `expected-cad-document-v0.1.json` (frozen `sourceHash` and
+  `cadDocumentHash`); byte hash vs semantic hash; one-byte change; header
+  provenance with null for absent values; code-point layer order; LINE,
+  LWPOLYLINE bulge, INSERT (no explosion), inert TEXT; MTEXT/DIMENSION/
+  ATTRIB/SEQEND/CIRCLE recorded as unsupported; every ordinal accounted
+  for; XREF recorded without its path; no architectural keys; repeated
+  extraction; input bytes unchanged; line-ending independence apart from
+  the byte hash; entity-order and layer-order behavior; two different
+  source paths give deep-equal output with no path; inches/feet/cm/m
+  convert to the exact mm geometry, dimensionless values unscaled;
+  unitless/absent/unsupported units; 13 malformed-input cases, invalid
+  UTF-8, non-finite numbers; binary signature and NUL; oversize input
+  rejected before parsing; OCS extrusion and INSERT arrays unsupported;
+  evidence schema, worker error mapping, source/output path policy, and
+  static purity guards (cad-parser and the worker CAD boundary import no
+  DCC, process, network, or renderer module). Mutation checks: removing
+  unit scaling, dropping unsupported entities, removing the NUL check, or
+  removing layer sorting fails 6, 8, 1, and 8 tests respectively.
+- `pnpm test:asset-trust` — 7/7
+- `extract-cad` CLI: the fixture writes document + evidence under
+  `.workspace/`; `..` source and escaping output paths fail with
+  `CAD_SOURCE_PATH_INVALID` / `CAD_OUTPUT_PATH_INVALID`.
+
+DCC: NO DCC TEST REQUIRED — DCC PATH UNCHANGED. No Python, DCC execution,
+revision, render, or asset-ingestion module changed; `cli.ts` and
+worker-contracts gained additive entries only.
+
 ## Spike 9D canonical circulation requirement enforcement (local commit `d0263aa`)
 
 Static gates, all PASS:
