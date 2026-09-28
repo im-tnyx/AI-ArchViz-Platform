@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `f51ea5a` (`fix: harden cad path containment`),
-  on top of `af96b94` (`feat: add deterministic dxf extraction`).
+- Local baseline HEAD: `8a3e555` (`feat: add deterministic cad interpretation`),
+  on top of `f51ea5a` (`fix: harden cad path containment`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -314,6 +314,25 @@
   both output destinations are validated before any write. The generic
   `resolveWithinRoot()` and its DCC-era callers are unchanged, and the
   10A contracts, parser, and frozen oracle hashes are unchanged.
+- Spike 10B added the pure `@ai-archviz/cad-interpreter` package:
+  `cad-document-v0.1` + an explicit human-authored
+  `cad-interpretation-profile-v0.1` under the software-owned
+  `cad-interpretation-policy-v0.1` -> `architectural-extraction-v0.1`
+  (status `READY_FOR_REVIEW`). Exact case-sensitive layer roles; closed,
+  straight, simple boundaries (curves fail closed; clockwise reversed to
+  CCW and recorded; exact overlap rejection); walls only from boundary
+  edges; exact label and block rules; openings need identity scale, a
+  non-XREF block, exactly one host within the fixed 1 mm tolerance, and a
+  derived offset inside it. Field-level provenance separates cad, profile,
+  and derived authority; candidate IDs are non-canonical; every source
+  entity is consumed, unconsumed, or blocking. New
+  `cad-interpretation-evidence-v0.1` completes the hash chain
+  `sourceHash -> cadDocumentHash -> profileHash ->
+  architecturalExtractionHash`; worker `cadInterpretationEvidence` and an
+  `interpret-cad` CLI use physical path containment. The dedicated
+  simple-living-room fixture recovers the Golden rev13 room, walls, door,
+  and window geometry (test-only comparison). No SceneSpec, AI, DCC, or
+  network; no DCC path changed.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

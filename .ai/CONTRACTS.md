@@ -732,3 +732,43 @@
   entry or escaping ancestor is `CAD_OUTPUT_PATH_INVALID`; both output
   destinations are validated before any write.
 - See [../docs/architecture/CAD-INGESTION.md](../docs/architecture/CAD-INGESTION.md).
+
+## Deterministic CAD interpretation (Spike 10B)
+
+- `cad-interpretation-policy-v0.1` is the software-owned algorithm;
+  `cad-interpretation-profile-v0.1`
+  (`packages/cad-interpreter/schema`, `validateCadInterpretationProfile`)
+  is declarative human-authored configuration: `profileId`,
+  `cadDocumentVersion: "0.1.0"`, exact `interpretationPolicy`, exact
+  case-sensitive layer roles (`spaceBoundary`, `spaceLabel`, `door`,
+  `window`; one role per layer), one `level`,
+  `wallDefaults.wallThicknessMm`, exact label rules, door rules (sill 0,
+  `anchorPolicy: "center"`, hinge/swing) and window rules.
+- `interpretCadDocument(cadDocument, profile)` is pure, validates both
+  inputs first, and returns `architectural-extraction-v0.1`
+  (`validateArchitecturalExtraction`): `profileId`, `profileHash`,
+  `source.{cadDocumentVersion, sourceFormat, sourceHash, cadDocumentHash}`,
+  `level`, `spaces`, `walls`, `openings`, `unconsumedEntities`,
+  `summary`, `status: "READY_FOR_REVIEW"`. Never SceneSpec.
+- Every candidate field carries provenance of exactly one authority:
+  `cad` (`sourceOrdinal`, `sourceHandle`, `role`), `profile` (`field`,
+  `ruleId`), or `derived` (`derivation`). Candidate IDs
+  (`space_candidate_NNNN`, `wall_candidate_SSSS_EEEE`,
+  `opening_candidate_NNNN`) are not SceneSpec logical IDs.
+- Policy rules: closed zero-bulge simple positive-area boundaries at the
+  profile elevation, normalized to CCW (reversal recorded); positive-area
+  overlap fails; one wall per CCW edge (`interior_face`,
+  `exterior_right_of_u`); a label is owned only when strictly inside
+  exactly one space; openings need a defined non-XREF block, an exact rule
+  for that layer, scale [1,1,1], exactly one host within
+  `CAD_INTERPRET_HOST_TOLERANCE_MM = 1`, and offset = centerDistance -
+  width/2 within the host. Unsupported entities or wrong entity types on
+  mapped layers fail closed; unmapped-layer source is recorded as
+  unconsumed.
+- `cad-interpretation-evidence-v0.1` (worker-contracts,
+  `validateCadInterpretationEvidence`) carries `sourceHash`,
+  `cadDocumentHash`, `profileId`, `profileHash`,
+  `architecturalExtractionHash`, summary, and `status:
+  "READY_FOR_REVIEW"`; no arrays, no paths. The worker recomputes the
+  input hashes with `semanticJsonHash` (`CAD_INTERPRET_HASH_MISMATCH`).
+- See [../docs/architecture/CAD-INTERPRETATION.md](../docs/architecture/CAD-INTERPRETATION.md).

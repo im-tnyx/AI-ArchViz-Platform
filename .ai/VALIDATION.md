@@ -1,5 +1,47 @@
 # Latest Validation Evidence
 
+## Spike 10B deterministic CAD interpretation (local commit `8a3e555`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 514/514, including 61 new in
+  `tests/unit/cad-interpretation.test.ts`: the dedicated
+  `tests/fixtures/cad/interpretation/simple-living-room/` DXF extracts to
+  the frozen cad-document and interprets to the frozen extraction; the full
+  hash chain (`sourceHash` `sha256:dad0ab0a…096d`, `cadDocumentHash`
+  `sha256:0c89f758…7f26`, `profileHash` `sha256:8a442960…a40f`,
+  `architecturalExtractionHash` `sha256:b249055f…3f8a`); 6000 x 4500 room,
+  4 walls, 900 x 2100 door at offset 2400, 2400 x 1500 sill 900 window at
+  offset 1800; cad/profile/derived authority assertions; a test-only
+  projection equal to Golden rev13 (boundary, 4 walls, thickness, height,
+  ceiling, both openings); non-canonical IDs; unconsumed A-WALL/notes
+  source; no SceneSpec keys; clockwise normalization; concave room;
+  7 invalid-boundary cases, curved, elevation mismatch, no boundary; label
+  matrix (missing, unmapped, case-different, duplicate, on boundary,
+  orphaned, overlap precedence); host matrix (exact, +/-0.5 mm, 1.5 mm,
+  interior, junction, outside host, too wide); unknown/undefined/XREF
+  blocks, mirrored/scaled inserts; mapped-layer unsupported entity and
+  role mismatches; unrelated unsupported source kept; two adjacent spaces
+  with space-local hosts, ordinal ordering, shared-wall ambiguity; partial,
+  identical, and contained overlap; determinism across layer/block table
+  order; semantic profile hashing; frozen-input immutability; invalid
+  documents/profiles; worker boundary incl. junction escapes; static
+  purity and dependency-direction guards.
+- Mutation checks (injected into the built interpreter, then restored):
+  wall thickness labeled CAD fails 5 tests; nearest-host instead of unique
+  fails 2; ignoring a mapped-layer unsupported entity fails 1; removing
+  clockwise normalization fails 1.
+- `pnpm test:asset-trust` — 7/7
+- Real CLI chain: `extract-cad` on the fixture DXF, then `interpret-cad`
+  on its output, reproduces all four frozen hashes; an escaping input path
+  fails with `CAD_INTERPRET_INPUT_PATH_INVALID`.
+- One full-suite run reported a single transient failure that was not
+  captured; seven subsequent full runs were 514/514.
+
+DCC: NO DCC TEST REQUIRED — DCC PATH UNCHANGED. No Python, revision,
+render, Corona, or asset-ingestion file changed.
+
 ## Post-10A CAD path containment closure (local commit `f51ea5a`)
 
 Static gates, all PASS:
