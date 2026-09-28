@@ -213,9 +213,10 @@ Everything else is recorded in `unsupportedEntities` with `sourceOrdinal`,
 `apps/worker/src/cad-extraction.ts`:
 
 - `extractCadDocument({ repositoryRoot, sourcePath })` resolves a
-  root-relative `.dxf` path (no `..`, no absolute path), requires a regular
-  file (a symbolic-link source is rejected), checks its size before reading,
-  reads the bytes, and runs the pure adapter.
+  root-relative `.dxf` path that is contained both lexically and
+  physically (section 12.1), requires a regular file, checks its size
+  before reading, reads the bytes from the verified physical path, and runs
+  the pure adapter.
 - The document is validated against `cad-document-v0.1`, hashed with
   `semanticJsonHash`, and summarized as `cad-extraction-evidence-v0.1`
   (`packages/worker-contracts`): `evidenceVersion`, `sourceFormat`,
@@ -224,7 +225,57 @@ Everything else is recorded in `unsupportedEntities` with `sourceOrdinal`,
   path and no entity array; the full document is the extraction artifact.
 - `writeCadExtraction()` writes `<name>.json` and `<name>.evidence.json`
   under the worker-owned output root. Output paths must be root-relative
-  and end in `.json`, and may never escape the root or overwrite the source.
+  and end in `.json`, and may never escape the root (lexically or
+  physically, section 12.1) or overwrite the source.
+
+### 12.1 Path containment (lexical + physical)
+
+Lexical containment (`resolveWithinRoot()`: non-empty, relative, no `..`
+escape, no absolute path) is kept and always runs first. It cannot see a
+symbolic link or Windows directory junction/reparse point *inside* the
+root that redirects *outside* it, so the CAD boundary adds a physical check
+through two helpers in `apps/worker/src/paths.ts`
+(`resolveExistingFileWithinRoot`, `resolveOutputPathWithinRoot`). Both
+compare the filesystem `realpath` (`fs.realpathSync.native`) of the
+trusted root with the `realpath` of the target, so any link type the OS
+resolves (POSIX symlinks, Windows symlinks, junctions) is covered without
+enumerating reparse tags, and a root that is itself reached through a link
+or an OS canonical path is compared as its real location.
+
+- **Source:** the final entry must exist and be a regular file; the real
+  source path must lie inside the real root. A parent link or junction
+  that escapes is `CAD_SOURCE_PATH_INVALID`, and the outside bytes are
+  never read. Reads use the verified physical path.
+- **Final source link:** a source whose final entry is itself a link is
+  rejected (`CAD_SOURCE_PATH_INVALID`) even if its target is inside the
+  root; it is never followed.
+- **Intermediate links:** allowed only when the physical result stays
+  inside the physical root. The invariant is "no physical root escape",
+  identical on every OS.
+- **Broken links:** a route that traverses a link whose target does not
+  resolve is `CAD_SOURCE_PATH_INVALID`; a plain missing file is
+  `CAD_SOURCE_NOT_FOUND`.
+- **Output:** destinations normally do not exist yet, so the check resolves
+  the nearest existing ancestor physically and appends the not-yet-existing
+  tail (which no link can redirect). The result must stay inside the
+  physical output root. An existing final output entry must be a regular
+  file, never a link. Both the document and evidence destinations are
+  validated before either is written, so a rejected write creates nothing
+  (no partial write, no outside file). Missing directories are created
+  only after validation. The output root is trusted configuration
+  (`config.workspaceRoot`) and cannot be chosen by the command argument.
+- **Errors:** filesystem failures surface only as the product-owned
+  `CAD_SOURCE_PATH_INVALID` / `CAD_SOURCE_NOT_FOUND` /
+  `CAD_OUTPUT_PATH_INVALID`; raw `ENOENT`/`ELOOP`/`EPERM` are never
+  public codes.
+- **TOCTOU:** validation runs immediately before the read or write. A
+  local process that swaps a directory for a link between validation and
+  access is outside this local-worker trust boundary (this is not a
+  hostile multi-tenant filesystem), so no platform-specific secure-open
+  layer exists.
+
+`resolveWithinRoot()` itself is unchanged, so its historical (DCC, revision,
+render, ingestion) callers keep their existing semantics.
 
 CLI:
 

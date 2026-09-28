@@ -13,7 +13,11 @@ import {
   semanticJsonHash,
   validateCadExtractionEvidence,
 } from "@ai-archviz/worker-contracts";
-import { resolveWithinRoot } from "./paths.js";
+import {
+  PathContainmentError,
+  resolveExistingFileWithinRoot,
+  resolveOutputPathWithinRoot,
+} from "./paths.js";
 import { writeDeterministicJson } from "./workspace.js";
 
 /**
@@ -125,17 +129,9 @@ export interface CadExtraction extends CadExtractionResult {
 
 export function extractCadDocument(options: ExtractCadDocumentOptions): CadExtraction {
   const maxSourceBytes = options.maxSourceBytes ?? CAD_SOURCE_MAX_BYTES;
+  // Physical (realpath) location, validated immediately before the read.
   const sourceAbsolutePath = resolveSourcePath(options.repositoryRoot, options.sourcePath);
-  let stats: ReturnType<typeof lstatSync>;
-  try {
-    stats = lstatSync(sourceAbsolutePath);
-  } catch {
-    throw new CadExtractionError("CAD_SOURCE_NOT_FOUND", "CAD source file does not exist");
-  }
-  if (!stats.isFile()) {
-    // Symbolic links, directories, and devices are rejected, never followed.
-    throw new CadExtractionError("CAD_SOURCE_PATH_INVALID", "CAD source must be a regular file");
-  }
+  const stats = lstatSync(sourceAbsolutePath);
   if (stats.size > maxSourceBytes) {
     // Checked before reading so an oversized file is never loaded.
     throw new CadExtractionError(
@@ -148,20 +144,37 @@ export function extractCadDocument(options: ExtractCadDocumentOptions): CadExtra
   return { ...extractCadDocumentFromBytes(bytes, { maxSourceBytes }), sourceAbsolutePath };
 }
 
+const SOURCE_PATH_MESSAGES: Record<string, string> = {
+  LEXICAL_ESCAPE: "CAD source path must be non-empty, relative, and inside the trusted root",
+  NOT_REGULAR_FILE: "CAD source must be a regular file (a final link is never followed)",
+  BROKEN_LINK_TRAVERSAL: "CAD source path traverses a link whose target does not resolve",
+  PHYSICAL_ESCAPE: "CAD source resolves outside the trusted root through a link or junction",
+  UNRESOLVABLE: "CAD source path cannot be resolved on the filesystem",
+};
+
+/**
+ * Lexical AND physical containment: the caller path must stay inside the
+ * trusted root as written, and its filesystem realpath must stay inside the
+ * root's realpath (no parent symlink/junction escape). Returns the physical
+ * path to read from.
+ */
 function resolveSourcePath(root: string, sourcePath: string): string {
-  let resolved: string;
-  try {
-    resolved = resolveWithinRoot(root, sourcePath);
-  } catch {
-    throw new CadExtractionError(
-      "CAD_SOURCE_PATH_INVALID",
-      "CAD source path must be non-empty, relative, and inside the trusted root",
-    );
-  }
-  if (extname(resolved).toLowerCase() !== ".dxf") {
+  if (extname(sourcePath).toLowerCase() !== ".dxf") {
     throw new CadExtractionError("CAD_SOURCE_PATH_INVALID", "CAD source must be a .dxf file");
   }
-  return resolved;
+  try {
+    return resolveExistingFileWithinRoot(root, sourcePath);
+  } catch (error) {
+    if (!(error instanceof PathContainmentError)) throw error;
+    if (error.reason === "NOT_FOUND") {
+      throw new CadExtractionError("CAD_SOURCE_NOT_FOUND", "CAD source file does not exist");
+    }
+    throw new CadExtractionError(
+      "CAD_SOURCE_PATH_INVALID",
+      SOURCE_PATH_MESSAGES[error.reason] ?? "CAD source path is invalid",
+      { reason: error.reason },
+    );
+  }
 }
 
 export interface CadExtractionOutputPaths {
@@ -172,7 +185,8 @@ export interface CadExtractionOutputPaths {
 /**
  * Writes the document and its evidence under the worker-owned output root.
  * The output path is root-relative, must end in `.json`, and may never
- * escape the root or overwrite the source.
+ * escape the root (lexically, or physically through an existing
+ * symlink/junction ancestor) or overwrite the source.
  */
 export function writeCadExtraction(
   extraction: CadExtraction,
@@ -186,16 +200,24 @@ export function writeCadExtraction(
       "CAD output path must end in .json (and not .evidence.json)",
     );
   }
+  // Both destinations are validated (lexically and physically) before either
+  // is written, so an escaping path never produces a partial write.
   let documentPath: string;
+  let evidencePath: string;
   try {
-    documentPath = resolveWithinRoot(outputRoot, outputPath);
-  } catch {
+    documentPath = resolveOutputPathWithinRoot(outputRoot, outputPath);
+    evidencePath = resolveOutputPathWithinRoot(
+      outputRoot,
+      `${outputPath.slice(0, -".json".length)}.evidence.json`,
+    );
+  } catch (error) {
+    if (!(error instanceof PathContainmentError)) throw error;
     throw new CadExtractionError(
       "CAD_OUTPUT_PATH_INVALID",
-      "CAD output path must be non-empty, relative, and inside the worker output root",
+      "CAD output path must stay inside the worker output root, lexically and physically",
+      { reason: error.reason },
     );
   }
-  const evidencePath = `${documentPath.slice(0, -".json".length)}.evidence.json`;
   const source = resolve(extraction.sourceAbsolutePath).toLowerCase();
   if ([documentPath, evidencePath].some((path) => resolve(path).toLowerCase() === source)) {
     throw new CadExtractionError("CAD_OUTPUT_PATH_INVALID", "CAD output must not overwrite source");
