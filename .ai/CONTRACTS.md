@@ -723,4 +723,12 @@
   "PASS"`; no path, no entity array. `apps/worker/src/cad-extraction.ts`
   (`extractCadDocument`, `writeCadExtraction`) and `extract-cad` enforce
   root-relative `.dxf` sources and root-bounded `.json` outputs.
+- Path containment (post-10A closure): CAD source and output paths must be
+  contained lexically (`resolveWithinRoot`) AND physically (realpath of the
+  target, or of the nearest existing output ancestor, inside the realpath of
+  the trusted root). A final source link is never followed; intermediate
+  links are allowed only if they stay physically inside the root; a broken
+  link in the route is `CAD_SOURCE_PATH_INVALID`; an existing output link
+  entry or escaping ancestor is `CAD_OUTPUT_PATH_INVALID`; both output
+  destinations are validated before any write.
 - See [../docs/architecture/CAD-INGESTION.md](../docs/architecture/CAD-INGESTION.md).

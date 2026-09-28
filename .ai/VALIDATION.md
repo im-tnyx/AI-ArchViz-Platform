@@ -1,5 +1,40 @@
 # Latest Validation Evidence
 
+## Post-10A CAD path containment closure (local commit `f51ea5a`)
+
+Static gates, all PASS:
+
+- `pnpm build`, `pnpm typecheck`, `pnpm lint`, `git diff --check`
+- `pnpm test` — 453/453, including 16 new in
+  `tests/unit/cad-path-containment.test.ts` using REAL links (Windows
+  directory junctions on this workstation; directory symlinks on POSIX; not
+  skipped): nested real source PASS with frozen hashes; parent-junction
+  source escape, garbage outside bytes never parsed, deeper intermediate
+  escape; inside-root intermediate link allowed; root reached through a
+  link compared by realpath; final-entry link rejected (file symlink where
+  the OS permits it; unelevated Windows refuses file symlinks with EPERM,
+  so the final entry here was a junction reparse point); broken link
+  (`CAD_SOURCE_PATH_INVALID`) vs plain missing (`CAD_SOURCE_NOT_FOUND`);
+  lexical checks kept; nonexistent nested output and output root created;
+  parent-junction output escape with nothing created outside; escape
+  through a nested output link; evidence destination validated before any
+  write; inside-root output link allowed; no raw errno codes exposed.
+- Old-code proof: with the pre-closure lexical-only `cad-extraction.ts`
+  restored, 11 of the 16 tests fail, including the source and output
+  parent-junction escapes; restoring the fix returns 16/16.
+- `pnpm test:asset-trust` — 7/7
+- Frozen 10A oracle unchanged: `sourceHash`
+  `sha256:f761c38d…156f`, `cadDocumentHash` `sha256:95f0c90d…8b70`,
+  the expected document, and the evidence (52/52 10A tests unchanged).
+- Real `extract-cad` CLI: the fixture PASSes into `.workspace/` with the
+  frozen hashes; live junction probes under `.workspace/` fail with
+  `CAD_OUTPUT_PATH_INVALID` (output) and `CAD_SOURCE_PATH_INVALID`
+  (source), the outside directory stays empty, and the probe links were
+  removed.
+
+DCC: NO DCC TEST REQUIRED — DCC PATH UNCHANGED. `resolveWithinRoot()` is
+byte-identical; the new helpers are used only by the CAD boundary.
+
 ## Spike 10A deterministic DXF extraction (local commit `af96b94`)
 
 Static gates, all PASS:

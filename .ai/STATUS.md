@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `af96b94` (`feat: add deterministic dxf extraction`),
-  on top of `d0263aa` (`feat: enforce canonical circulation requirements`).
+- Local baseline HEAD: `f51ea5a` (`fix: harden cad path containment`),
+  on top of `af96b94` (`feat: add deterministic dxf extraction`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -305,6 +305,15 @@
   `extractCadDocument` boundary, and an `extract-cad` CLI. It produces no
   SceneSpec and infers no architecture; no DCC, AutoCAD, AI, or network is
   involved, and no DCC path changed.
+- Post-10A CAD path containment closure: the CAD source/output boundary
+  now proves physical, not only lexical, root containment. New
+  `resolveExistingFileWithinRoot`/`resolveOutputPathWithinRoot` compare
+  realpaths of the trusted root and the target (outputs: nearest existing
+  ancestor), so a parent symlink or Windows junction cannot redirect a
+  read or write outside the root; a final source link is never followed;
+  both output destinations are validated before any write. The generic
+  `resolveWithinRoot()` and its DCC-era callers are unchanged, and the
+  10A contracts, parser, and frozen oracle hashes are unchanged.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and
