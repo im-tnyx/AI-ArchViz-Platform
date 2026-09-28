@@ -1,0 +1,573 @@
+{
+  "architecturalExtractionVersion": "0.1.0",
+  "interpretationPolicyVersion": "cad-interpretation-policy-v0.1",
+  "profileId": "golden_living_dxf_profile",
+  "profileHash": "sha256:8a4429606d348add059c358cb21853f246fa90a85af78b94eca62e351439a40f",
+  "source": {
+    "cadDocumentVersion": "0.1.0",
+    "sourceFormat": "dxf",
+    "sourceHash": "sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+    "cadDocumentHash": "sha256:0c89f758b39c0b6312912a34aed7ec4bc46f24be86c56244a029cef5628f7f26"
+  },
+  "canonicalUnits": "millimeters",
+  "level": {
+    "levelCandidateId": "level_candidate_ground",
+    "name": "Ground Floor",
+    "elevationMm": 0,
+    "defaultCeilingHeightMm": 3000,
+    "provenance": {
+      "name": [
+        {
+          "authority": "profile",
+          "field": "level.name",
+          "ruleId": null
+        }
+      ],
+      "elevationMm": [
+        {
+          "authority": "profile",
+          "field": "level.elevationMm",
+          "ruleId": null
+        }
+      ],
+      "defaultCeilingHeightMm": [
+        {
+          "authority": "profile",
+          "field": "level.defaultCeilingHeightMm",
+          "ruleId": null
+        }
+      ]
+    }
+  },
+  "spaces": [
+    {
+      "candidateId": "space_candidate_0000",
+      "levelCandidateId": "level_candidate_ground",
+      "spaceType": "living_room",
+      "labelText": "LIVING ROOM",
+      "boundary": [
+        [
+          0,
+          0
+        ],
+        [
+          6000,
+          0
+        ],
+        [
+          6000,
+          4500
+        ],
+        [
+          0,
+          4500
+        ]
+      ],
+      "boundaryWinding": "counter_clockwise",
+      "sourceWinding": "counter_clockwise",
+      "normalization": "none",
+      "floorElevationMm": 0,
+      "ceilingHeightMm": 3000,
+      "provenance": {
+        "boundary": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 0,
+            "sourceHandle": "100",
+            "role": "space_boundary"
+          },
+          {
+            "authority": "derived",
+            "derivation": "boundary_winding_normalization_v0.1"
+          }
+        ],
+        "spaceType": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 1,
+            "sourceHandle": "101",
+            "role": "space_label"
+          },
+          {
+            "authority": "profile",
+            "field": "spaceLabelRules.spaceType",
+            "ruleId": "living_room_exact"
+          }
+        ],
+        "floorElevationMm": [
+          {
+            "authority": "profile",
+            "field": "level.elevationMm",
+            "ruleId": null
+          }
+        ],
+        "ceilingHeightMm": [
+          {
+            "authority": "profile",
+            "field": "level.defaultCeilingHeightMm",
+            "ruleId": null
+          }
+        ]
+      }
+    }
+  ],
+  "walls": [
+    {
+      "candidateId": "wall_candidate_0000_0000",
+      "spaceCandidateId": "space_candidate_0000",
+      "levelCandidateId": "level_candidate_ground",
+      "edgeIndex": 0,
+      "start": [
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        0
+      ],
+      "lengthMm": 6000,
+      "baseElevationMm": 0,
+      "heightMm": 3000,
+      "thicknessMm": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "provenance": {
+        "geometry": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 0,
+            "sourceHandle": "100",
+            "role": "space_boundary"
+          },
+          {
+            "authority": "derived",
+            "derivation": "space_boundary_edge_v0.1"
+          }
+        ],
+        "baseElevationMm": [
+          {
+            "authority": "profile",
+            "field": "level.elevationMm",
+            "ruleId": null
+          }
+        ],
+        "heightMm": [
+          {
+            "authority": "profile",
+            "field": "level.defaultCeilingHeightMm",
+            "ruleId": null
+          }
+        ],
+        "thicknessMm": [
+          {
+            "authority": "profile",
+            "field": "wallDefaults.wallThicknessMm",
+            "ruleId": null
+          }
+        ],
+        "referenceConvention": [
+          {
+            "authority": "derived",
+            "derivation": "wall_reference_convention_v0.1"
+          }
+        ]
+      }
+    },
+    {
+      "candidateId": "wall_candidate_0000_0001",
+      "spaceCandidateId": "space_candidate_0000",
+      "levelCandidateId": "level_candidate_ground",
+      "edgeIndex": 1,
+      "start": [
+        6000,
+        0
+      ],
+      "end": [
+        6000,
+        4500
+      ],
+      "lengthMm": 4500,
+      "baseElevationMm": 0,
+      "heightMm": 3000,
+      "thicknessMm": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "provenance": {
+        "geometry": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 0,
+            "sourceHandle": "100",
+            "role": "space_boundary"
+          },
+          {
+            "authority": "derived",
+            "derivation": "space_boundary_edge_v0.1"
+          }
+        ],
+        "baseElevationMm": [
+          {
+            "authority": "profile",
+            "field": "level.elevationMm",
+            "ruleId": null
+          }
+        ],
+        "heightMm": [
+          {
+            "authority": "profile",
+            "field": "level.defaultCeilingHeightMm",
+            "ruleId": null
+          }
+        ],
+        "thicknessMm": [
+          {
+            "authority": "profile",
+            "field": "wallDefaults.wallThicknessMm",
+            "ruleId": null
+          }
+        ],
+        "referenceConvention": [
+          {
+            "authority": "derived",
+            "derivation": "wall_reference_convention_v0.1"
+          }
+        ]
+      }
+    },
+    {
+      "candidateId": "wall_candidate_0000_0002",
+      "spaceCandidateId": "space_candidate_0000",
+      "levelCandidateId": "level_candidate_ground",
+      "edgeIndex": 2,
+      "start": [
+        6000,
+        4500
+      ],
+      "end": [
+        0,
+        4500
+      ],
+      "lengthMm": 6000,
+      "baseElevationMm": 0,
+      "heightMm": 3000,
+      "thicknessMm": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "provenance": {
+        "geometry": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 0,
+            "sourceHandle": "100",
+            "role": "space_boundary"
+          },
+          {
+            "authority": "derived",
+            "derivation": "space_boundary_edge_v0.1"
+          }
+        ],
+        "baseElevationMm": [
+          {
+            "authority": "profile",
+            "field": "level.elevationMm",
+            "ruleId": null
+          }
+        ],
+        "heightMm": [
+          {
+            "authority": "profile",
+            "field": "level.defaultCeilingHeightMm",
+            "ruleId": null
+          }
+        ],
+        "thicknessMm": [
+          {
+            "authority": "profile",
+            "field": "wallDefaults.wallThicknessMm",
+            "ruleId": null
+          }
+        ],
+        "referenceConvention": [
+          {
+            "authority": "derived",
+            "derivation": "wall_reference_convention_v0.1"
+          }
+        ]
+      }
+    },
+    {
+      "candidateId": "wall_candidate_0000_0003",
+      "spaceCandidateId": "space_candidate_0000",
+      "levelCandidateId": "level_candidate_ground",
+      "edgeIndex": 3,
+      "start": [
+        0,
+        4500
+      ],
+      "end": [
+        0,
+        0
+      ],
+      "lengthMm": 4500,
+      "baseElevationMm": 0,
+      "heightMm": 3000,
+      "thicknessMm": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "provenance": {
+        "geometry": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 0,
+            "sourceHandle": "100",
+            "role": "space_boundary"
+          },
+          {
+            "authority": "derived",
+            "derivation": "space_boundary_edge_v0.1"
+          }
+        ],
+        "baseElevationMm": [
+          {
+            "authority": "profile",
+            "field": "level.elevationMm",
+            "ruleId": null
+          }
+        ],
+        "heightMm": [
+          {
+            "authority": "profile",
+            "field": "level.defaultCeilingHeightMm",
+            "ruleId": null
+          }
+        ],
+        "thicknessMm": [
+          {
+            "authority": "profile",
+            "field": "wallDefaults.wallThicknessMm",
+            "ruleId": null
+          }
+        ],
+        "referenceConvention": [
+          {
+            "authority": "derived",
+            "derivation": "wall_reference_convention_v0.1"
+          }
+        ]
+      }
+    }
+  ],
+  "openings": [
+    {
+      "candidateId": "opening_candidate_0000",
+      "hostWallCandidateId": "wall_candidate_0000_0003",
+      "spaceCandidateId": "space_candidate_0000",
+      "blockName": "DOOR_900_LH_IN",
+      "sourceCenter": [
+        0,
+        1650
+      ],
+      "sourceRotationDegrees": 270,
+      "hostDistanceMm": 0,
+      "offsetMm": 2400,
+      "widthMm": 900,
+      "heightMm": 2100,
+      "sillMm": 0,
+      "type": "door",
+      "hingeSide": "start_jamb",
+      "swingDirection": "into_room",
+      "provenance": {
+        "center": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 2,
+            "sourceHandle": "102",
+            "role": "door_insert"
+          }
+        ],
+        "host": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 2,
+            "sourceHandle": "102",
+            "role": "door_insert"
+          },
+          {
+            "authority": "derived",
+            "derivation": "opening_host_projection_v0.1"
+          }
+        ],
+        "offsetMm": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 2,
+            "sourceHandle": "102",
+            "role": "door_insert"
+          },
+          {
+            "authority": "profile",
+            "field": "doorRules.widthMm",
+            "ruleId": "door_900_lh_in"
+          },
+          {
+            "authority": "derived",
+            "derivation": "opening_offset_v0.1"
+          }
+        ],
+        "widthMm": [
+          {
+            "authority": "profile",
+            "field": "doorRules.widthMm",
+            "ruleId": "door_900_lh_in"
+          }
+        ],
+        "heightMm": [
+          {
+            "authority": "profile",
+            "field": "doorRules.heightMm",
+            "ruleId": "door_900_lh_in"
+          }
+        ],
+        "sillMm": [
+          {
+            "authority": "profile",
+            "field": "doorRules.sillMm",
+            "ruleId": "door_900_lh_in"
+          }
+        ],
+        "hingeSide": [
+          {
+            "authority": "profile",
+            "field": "doorRules.hingeSide",
+            "ruleId": "door_900_lh_in"
+          }
+        ],
+        "swingDirection": [
+          {
+            "authority": "profile",
+            "field": "doorRules.swingDirection",
+            "ruleId": "door_900_lh_in"
+          }
+        ]
+      }
+    },
+    {
+      "candidateId": "opening_candidate_0001",
+      "hostWallCandidateId": "wall_candidate_0000_0002",
+      "spaceCandidateId": "space_candidate_0000",
+      "blockName": "WINDOW_2400",
+      "sourceCenter": [
+        3000,
+        4500
+      ],
+      "sourceRotationDegrees": 180,
+      "hostDistanceMm": 0,
+      "offsetMm": 1800,
+      "widthMm": 2400,
+      "heightMm": 1500,
+      "sillMm": 900,
+      "type": "window",
+      "provenance": {
+        "center": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 3,
+            "sourceHandle": "103",
+            "role": "window_insert"
+          }
+        ],
+        "host": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 3,
+            "sourceHandle": "103",
+            "role": "window_insert"
+          },
+          {
+            "authority": "derived",
+            "derivation": "opening_host_projection_v0.1"
+          }
+        ],
+        "offsetMm": [
+          {
+            "authority": "cad",
+            "sourceOrdinal": 3,
+            "sourceHandle": "103",
+            "role": "window_insert"
+          },
+          {
+            "authority": "profile",
+            "field": "windowRules.widthMm",
+            "ruleId": "window_2400"
+          },
+          {
+            "authority": "derived",
+            "derivation": "opening_offset_v0.1"
+          }
+        ],
+        "widthMm": [
+          {
+            "authority": "profile",
+            "field": "windowRules.widthMm",
+            "ruleId": "window_2400"
+          }
+        ],
+        "heightMm": [
+          {
+            "authority": "profile",
+            "field": "windowRules.heightMm",
+            "ruleId": "window_2400"
+          }
+        ],
+        "sillMm": [
+          {
+            "authority": "profile",
+            "field": "windowRules.sillMm",
+            "ruleId": "window_2400"
+          }
+        ]
+      }
+    }
+  ],
+  "unconsumedEntities": [
+    {
+      "sourceOrdinal": 4,
+      "sourceHandle": "104",
+      "type": "LINE",
+      "layer": "A-WALL",
+      "reason": "UNMAPPED_LAYER"
+    },
+    {
+      "sourceOrdinal": 5,
+      "sourceHandle": "105",
+      "type": "LWPOLYLINE",
+      "layer": "A-WALL",
+      "reason": "UNMAPPED_LAYER"
+    },
+    {
+      "sourceOrdinal": 6,
+      "sourceHandle": "106",
+      "type": "CIRCLE",
+      "layer": "A-NOTES",
+      "reason": "UNSUPPORTED_SOURCE_ENTITY"
+    },
+    {
+      "sourceOrdinal": 7,
+      "sourceHandle": "107",
+      "type": "TEXT",
+      "layer": "A-NOTES",
+      "reason": "UNMAPPED_LAYER"
+    }
+  ],
+  "summary": {
+    "spaceCount": 1,
+    "wallCount": 4,
+    "openingCount": 2,
+    "doorCount": 1,
+    "windowCount": 1,
+    "sourceEntityCount": 8,
+    "consumedEntityCount": 4,
+    "unconsumedEntityCount": 4
+  },
+  "status": "READY_FOR_REVIEW"
+}

@@ -1,0 +1,254 @@
+{
+  "cadDocumentVersion": "0.1.0",
+  "sourceFormat": "dxf",
+  "sourceHash": "sha256:dad0ab0a7863d811d0968dcfad3572337eb33a61cddf06df51df16ce754b096d",
+  "header": {
+    "acadVersion": "AC1027",
+    "insunitsCode": 4,
+    "dwgCodePage": "ANSI_1252"
+  },
+  "sourceUnits": {
+    "insunitsCode": 4,
+    "name": "millimeters",
+    "scaleToMillimeters": 1
+  },
+  "canonicalUnits": "millimeters",
+  "layers": [
+    {
+      "name": "0",
+      "colorIndex": 7,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-DOOR",
+      "colorIndex": 3,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-NOTES",
+      "colorIndex": 1,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-ROOM",
+      "colorIndex": 4,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-SPACE-TEXT",
+      "colorIndex": 2,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-WALL",
+      "colorIndex": 7,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-WINDOW",
+      "colorIndex": 5,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    }
+  ],
+  "blocks": [
+    {
+      "name": "DOOR_900_LH_IN",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    },
+    {
+      "name": "WINDOW_2400",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    }
+  ],
+  "entities": [
+    {
+      "sourceOrdinal": 0,
+      "sourceHandle": "100",
+      "layer": "A-ROOM",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 0,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 4500,
+          "bulge": 0
+        },
+        {
+          "x": 0,
+          "y": 4500,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 1,
+      "sourceHandle": "101",
+      "layer": "A-SPACE-TEXT",
+      "type": "TEXT",
+      "text": "LIVING ROOM",
+      "insertionPoint": [
+        2400,
+        2250,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 200,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 2,
+      "sourceHandle": "102",
+      "layer": "A-DOOR",
+      "type": "INSERT",
+      "blockName": "DOOR_900_LH_IN",
+      "insertionPoint": [
+        0,
+        1650,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 270,
+      "hasAttributes": false
+    },
+    {
+      "sourceOrdinal": 3,
+      "sourceHandle": "103",
+      "layer": "A-WINDOW",
+      "type": "INSERT",
+      "blockName": "WINDOW_2400",
+      "insertionPoint": [
+        3000,
+        4500,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 180,
+      "hasAttributes": false
+    },
+    {
+      "sourceOrdinal": 4,
+      "sourceHandle": "104",
+      "layer": "A-WALL",
+      "type": "LINE",
+      "start": [
+        -150,
+        -150,
+        0
+      ],
+      "end": [
+        6150,
+        -150,
+        0
+      ]
+    },
+    {
+      "sourceOrdinal": 5,
+      "sourceHandle": "105",
+      "layer": "A-WALL",
+      "type": "LWPOLYLINE",
+      "closed": false,
+      "flags": 0,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 6150,
+          "y": -150,
+          "bulge": 0
+        },
+        {
+          "x": 6150,
+          "y": 4650,
+          "bulge": 0
+        },
+        {
+          "x": -150,
+          "y": 4650,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 7,
+      "sourceHandle": "107",
+      "layer": "A-NOTES",
+      "type": "TEXT",
+      "text": "SCALE 1:50",
+      "insertionPoint": [
+        6500,
+        -600,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 150,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    }
+  ],
+  "unsupportedEntities": [
+    {
+      "sourceOrdinal": 6,
+      "sourceHandle": "106",
+      "layer": "A-NOTES",
+      "type": "CIRCLE",
+      "reason": "UNSUPPORTED_ENTITY_TYPE"
+    }
+  ],
+  "summary": {
+    "layerCount": 7,
+    "blockCount": 2,
+    "entityCount": 8,
+    "supportedEntityCount": 7,
+    "unsupportedEntityCount": 1,
+    "entityTypeCounts": {
+      "CIRCLE": 1,
+      "INSERT": 2,
+      "LINE": 1,
+      "LWPOLYLINE": 2,
+      "TEXT": 2
+    }
+  }
+}

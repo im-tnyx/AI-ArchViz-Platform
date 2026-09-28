@@ -297,6 +297,9 @@ this command needs no DCC authorization.
 - **No block explosion and no XREF loading.**
 - **Future DWG adapter:** a trusted adapter that emits the same
   `cad-document-v0.1` through `CadSourceAdapter`.
+- **CAD interpretation (Spike 10B):** deterministic architectural candidates
+  from cad-document-v0.1 under an explicit profile are specified in
+  [CAD-INTERPRETATION.md](CAD-INTERPRETATION.md).
 - **Future CAD -> SceneSpec interpretation:** a later spike maps normalized
   source evidence (with explicit layer mapping) to human-verifiable wall,
   opening, and space candidates. Its provenance chain will extend

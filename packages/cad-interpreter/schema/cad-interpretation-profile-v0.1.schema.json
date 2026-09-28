@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-interpretation-profile-v0.1.schema.json",
+  "title": "AI ArchViz CAD interpretation profile v0.1",
+  "description": "Human-authored, declarative description of one CAD drawing convention: exact layer roles, one level, wall defaults, exact label and block rules. Data only; never discovered automatically.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profileVersion", "profileId", "cadDocumentVersion", "interpretationPolicy", "layers", "level", "wallDefaults", "spaceLabelRules", "doorRules", "windowRules"],
+  "properties": {
+    "profileVersion": { "const": "0.1.0" },
+    "profileId": { "$ref": "#/$defs/id" },
+    "cadDocumentVersion": { "const": "0.1.0" },
+    "interpretationPolicy": { "const": "cad-interpretation-policy-v0.1" },
+    "layers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spaceBoundary", "spaceLabel", "door", "window"],
+      "properties": {
+        "spaceBoundary": { "$ref": "#/$defs/layerName" },
+        "spaceLabel": { "$ref": "#/$defs/layerName" },
+        "door": { "$ref": "#/$defs/layerName" },
+        "window": { "$ref": "#/$defs/layerName" }
+      }
+    },
+    "level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levelCandidateId", "name", "elevationMm", "defaultCeilingHeightMm"],
+      "properties": {
+        "levelCandidateId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "elevationMm": { "type": "number" },
+        "defaultCeilingHeightMm": { "$ref": "#/$defs/positiveMm" }
+      }
+    },
+    "wallDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wallThicknessMm"],
+      "properties": {
+        "wallThicknessMm": { "$ref": "#/$defs/positiveMm" }
+      }
+    },
+    "spaceLabelRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleId", "text", "spaceType"],
+        "properties": {
+          "ruleId": { "$ref": "#/$defs/id" },
+          "text": { "type": "string", "minLength": 1 },
+          "spaceType": { "$ref": "#/$defs/id" }
+        }
+      }
+    },
+    "doorRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleId", "blockName", "widthMm", "heightMm", "sillMm", "anchorPolicy", "hingeSide", "swingDirection"],
+        "properties": {
+          "ruleId": { "$ref": "#/$defs/id" },
+          "blockName": { "type": "string", "minLength": 1 },
+          "widthMm": { "$ref": "#/$defs/positiveMm" },
+          "heightMm": { "$ref": "#/$defs/positiveMm" },
+          "sillMm": { "const": 0 },
+          "anchorPolicy": { "const": "center" },
+          "hingeSide": { "enum": ["start_jamb", "end_jamb"] },
+          "swingDirection": { "enum": ["into_room", "out_of_room"] }
+        }
+      }
+    },
+    "windowRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleId", "blockName", "widthMm", "heightMm", "sillMm", "anchorPolicy"],
+        "properties": {
+          "ruleId": { "$ref": "#/$defs/id" },
+          "blockName": { "type": "string", "minLength": 1 },
+          "widthMm": { "$ref": "#/$defs/positiveMm" },
+          "heightMm": { "$ref": "#/$defs/positiveMm" },
+          "sillMm": { "type": "number", "minimum": 0 },
+          "anchorPolicy": { "const": "center" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "layerName": { "type": "string", "minLength": 1 },
+    "positiveMm": { "type": "number", "exclusiveMinimum": 0 }
+  }
+}

@@ -9,6 +9,11 @@ import {
   verifyJobHashes,
 } from "@ai-archviz/worker-contracts";
 import { CadExtractionError, extractCadDocument, writeCadExtraction } from "./cad-extraction.js";
+import {
+  CadInterpretationWorkerError,
+  interpretCadFiles,
+  writeCadInterpretation,
+} from "./cad-interpretation.js";
 import { loadWorkerConfig } from "./config.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { WorkerError } from "./errors.js";
@@ -108,6 +113,26 @@ async function execute(argv: string[]): Promise<CliResult> {
         };
       }
     }
+    case "interpret-cad": {
+      const [cadDocumentPath, profilePath, outputPath] = args;
+      if (!cadDocumentPath || !profilePath || !outputPath) {
+        return usage(
+          "interpret-cad requires repository-relative cad-document and profile JSON paths and an output .json path",
+        );
+      }
+      const config = loadWorkerConfig(repositoryRoot);
+      try {
+        const result = interpretCadFiles({ repositoryRoot, cadDocumentPath, profilePath });
+        const paths = writeCadInterpretation(result, config.workspaceRoot, outputPath);
+        return { exitCode: 0, output: { ok: true, ...paths, evidence: result.evidence } };
+      } catch (error) {
+        if (!(error instanceof CadInterpretationWorkerError)) throw error;
+        return {
+          exitCode: 1,
+          output: { ok: false, errorCode: error.code, message: error.message },
+        };
+      }
+    }
     case "validate-scene": {
       const [path] = args;
       if (!path) return usage("validate-scene requires a JSON path");
@@ -159,6 +184,7 @@ function usage(error?: string): CliResult {
         "inspect-ledger <idempotency-key>",
         "apply-change-set <base-job> <scene-change-set>",
         "extract-cad <repository-relative-source.dxf> <workspace-relative-output.json>",
+        "interpret-cad <cad-document.json> <profile.json> <workspace-relative-output.json>",
         "validate-scene <path>",
         "validate-job <path>",
         "verify-hashes <job> <scene-spec> <expected-manifest>",

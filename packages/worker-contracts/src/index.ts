@@ -86,6 +86,29 @@ export interface CadExtractionEvidence {
   status: "PASS";
 }
 
+/** Identity proof for one architectural-extraction-v0.1 (the upstream hash chain). */
+export interface CadInterpretationEvidence {
+  evidenceVersion: "0.1.0";
+  interpretationPolicyVersion: "cad-interpretation-policy-v0.1";
+  sourceHash: string;
+  cadDocumentHash: string;
+  profileId: string;
+  profileHash: string;
+  architecturalExtractionVersion: "0.1.0";
+  architecturalExtractionHash: string;
+  summary: {
+    spaceCount: number;
+    wallCount: number;
+    openingCount: number;
+    doorCount: number;
+    windowCount: number;
+    sourceEntityCount: number;
+    consumedEntityCount: number;
+    unconsumedEntityCount: number;
+  };
+  status: "READY_FOR_REVIEW";
+}
+
 const schemaDirectory = new URL("../schema/", import.meta.url);
 
 function readSchema(name: string): Record<string, unknown> {
@@ -144,6 +167,9 @@ export const circulationRequirementEvidenceSchema = readSchema(
   "circulation-requirement-evidence-v0.1.schema.json",
 );
 export const cadExtractionEvidenceSchema = readSchema("cad-extraction-evidence-v0.1.schema.json");
+export const cadInterpretationEvidenceSchema = readSchema(
+  "cad-interpretation-evidence-v0.1.schema.json",
+);
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -226,6 +252,9 @@ const circulationRequirementEvidenceValidator = ajv.compile(
 const cadExtractionEvidenceValidator = ajv.compile(
   cadExtractionEvidenceSchema,
 ) as ValidateFunction<CadExtractionEvidence>;
+const cadInterpretationEvidenceValidator = ajv.compile(
+  cadInterpretationEvidenceSchema,
+) as ValidateFunction<CadInterpretationEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -391,6 +420,12 @@ export function validateCadExtractionEvidence(
   value: unknown,
 ): ValidationResult<CadExtractionEvidence> {
   return runValidation(cadExtractionEvidenceValidator, value);
+}
+
+export function validateCadInterpretationEvidence(
+  value: unknown,
+): ValidationResult<CadInterpretationEvidence> {
+  return runValidation(cadInterpretationEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

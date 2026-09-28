@@ -1,0 +1,47 @@
+{
+  "profileVersion": "0.1.0",
+  "profileId": "golden_living_dxf_profile",
+  "cadDocumentVersion": "0.1.0",
+  "interpretationPolicy": "cad-interpretation-policy-v0.1",
+  "layers": {
+    "spaceBoundary": "A-ROOM",
+    "spaceLabel": "A-SPACE-TEXT",
+    "door": "A-DOOR",
+    "window": "A-WINDOW"
+  },
+  "level": {
+    "levelCandidateId": "level_candidate_ground",
+    "name": "Ground Floor",
+    "elevationMm": 0,
+    "defaultCeilingHeightMm": 3000
+  },
+  "wallDefaults": {
+    "wallThicknessMm": 150
+  },
+  "spaceLabelRules": [
+    { "ruleId": "living_room_exact", "text": "LIVING ROOM", "spaceType": "living_room" },
+    { "ruleId": "bedroom_exact", "text": "BEDROOM", "spaceType": "bedroom" }
+  ],
+  "doorRules": [
+    {
+      "ruleId": "door_900_lh_in",
+      "blockName": "DOOR_900_LH_IN",
+      "widthMm": 900,
+      "heightMm": 2100,
+      "sillMm": 0,
+      "anchorPolicy": "center",
+      "hingeSide": "start_jamb",
+      "swingDirection": "into_room"
+    }
+  ],
+  "windowRules": [
+    {
+      "ruleId": "window_2400",
+      "blockName": "WINDOW_2400",
+      "widthMm": 2400,
+      "heightMm": 1500,
+      "sillMm": 900,
+      "anchorPolicy": "center"
+    }
+  ]
+}

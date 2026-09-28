@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-interpretation-evidence-v0.1.schema.json",
+  "title": "AI ArchViz CAD interpretation evidence v0.1",
+  "description": "Identity proof for one architectural-extraction-v0.1: the full upstream hash chain (raw DXF bytes, normalized CAD document, interpretation profile, architectural candidates). No paths, no candidate arrays.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "interpretationPolicyVersion", "sourceHash", "cadDocumentHash", "profileId", "profileHash", "architecturalExtractionVersion", "architecturalExtractionHash", "summary", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "interpretationPolicyVersion": { "const": "cad-interpretation-policy-v0.1" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "cadDocumentHash": { "$ref": "#/$defs/hash" },
+    "profileId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "profileHash": { "$ref": "#/$defs/hash" },
+    "architecturalExtractionVersion": { "const": "0.1.0" },
+    "architecturalExtractionHash": { "$ref": "#/$defs/hash" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spaceCount", "wallCount", "openingCount", "doorCount", "windowCount", "sourceEntityCount", "consumedEntityCount", "unconsumedEntityCount"],
+      "properties": {
+        "spaceCount": { "$ref": "#/$defs/count" },
+        "wallCount": { "$ref": "#/$defs/count" },
+        "openingCount": { "$ref": "#/$defs/count" },
+        "doorCount": { "$ref": "#/$defs/count" },
+        "windowCount": { "$ref": "#/$defs/count" },
+        "sourceEntityCount": { "$ref": "#/$defs/count" },
+        "consumedEntityCount": { "$ref": "#/$defs/count" },
+        "unconsumedEntityCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "status": { "const": "READY_FOR_REVIEW" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 }
+  }
+}
