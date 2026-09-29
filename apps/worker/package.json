@@ -30,6 +30,7 @@
     "@ai-archviz/cad-interpreter": "workspace:*",
     "@ai-archviz/cad-parser": "workspace:*",
     "@ai-archviz/cad-scene-seed": "workspace:*",
+    "@ai-archviz/cad-topology": "workspace:*",
     "@ai-archviz/scene-spec": "workspace:*",
     "@ai-archviz/spatial-engine": "workspace:*",
     "@ai-archviz/worker-contracts": "workspace:*"

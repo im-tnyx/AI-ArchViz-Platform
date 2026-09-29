@@ -175,6 +175,9 @@ the finite segment. Exactly one host is required: zero is
 center at a wall junction, or on an edge shared by two adjacent spaces
 (interior doors), is therefore ambiguous in v0.1. The measured
 perpendicular distance is recorded as `hostDistanceMm` for review.
+This v0.1 behavior is permanent: shared-boundary openings are resolved
+downstream by the separate topology layer (Spike 10D,
+[CAD-TOPOLOGY.md](CAD-TOPOLOGY.md)), never by changing this rule.
 
 **Offset.** With `centerDistance` measured along the host from its start,
 `offsetMm = centerDistance - widthMm / 2`, which is SceneSpec's opening
@@ -233,3 +236,11 @@ SceneSpec structure, and assigns no canonical IDs.
 **10C:** explicit human approval of an exact extraction, canonical logical IDs,
 and approval-supplied non-CAD state produce a SceneSpec v0.4 seed; see
 [CAD-SCENE-SEED.md](CAD-SCENE-SEED.md).
+
+**10D:** passes 1-5 of this policy (validation through walls) are exposed
+as the shared `deriveSpaceWallStage`, and opening rule/host resolution as
+`resolveOpeningRule`, `findOpeningHosts`, and `buildOpeningCandidate`;
+`interpretCadDocument` is exactly their composition, with unchanged outputs,
+errors, and precedence. The multi-space topology analysis (shared
+boundaries, adjacency, interior doors) reuses them; see
+[CAD-TOPOLOGY.md](CAD-TOPOLOGY.md).

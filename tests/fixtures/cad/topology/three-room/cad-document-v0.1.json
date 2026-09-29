@@ -1,0 +1,288 @@
+{
+  "cadDocumentVersion": "0.1.0",
+  "sourceFormat": "dxf",
+  "sourceHash": "sha256:91b9c1a071fe5aa0d653c345c56606868634b0371f6c7311d3635d64cd709cb3",
+  "header": {
+    "acadVersion": "AC1027",
+    "insunitsCode": 4,
+    "dwgCodePage": "ANSI_1252"
+  },
+  "sourceUnits": {
+    "insunitsCode": 4,
+    "name": "millimeters",
+    "scaleToMillimeters": 1
+  },
+  "canonicalUnits": "millimeters",
+  "layers": [
+    {
+      "name": "0",
+      "colorIndex": 7,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-DOOR",
+      "colorIndex": 3,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-ROOM",
+      "colorIndex": 4,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-SPACE-TEXT",
+      "colorIndex": 2,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-WINDOW",
+      "colorIndex": 5,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    }
+  ],
+  "blocks": [
+    {
+      "name": "DOOR_900_LH_IN",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    },
+    {
+      "name": "WINDOW_2400",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    }
+  ],
+  "entities": [
+    {
+      "sourceOrdinal": 0,
+      "sourceHandle": "100",
+      "layer": "A-ROOM",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 0,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 2000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 2000,
+          "y": 8000,
+          "bulge": 0
+        },
+        {
+          "x": 0,
+          "y": 8000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 1,
+      "sourceHandle": "101",
+      "layer": "A-ROOM",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 2000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 3000,
+          "bulge": 0
+        },
+        {
+          "x": 2000,
+          "y": 3000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 2,
+      "sourceHandle": "102",
+      "layer": "A-ROOM",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 2000,
+          "y": 5000,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 5000,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 8000,
+          "bulge": 0
+        },
+        {
+          "x": 2000,
+          "y": 8000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 3,
+      "sourceHandle": "103",
+      "layer": "A-SPACE-TEXT",
+      "type": "TEXT",
+      "text": "HALL",
+      "insertionPoint": [
+        1000,
+        4000,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 200,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 4,
+      "sourceHandle": "104",
+      "layer": "A-SPACE-TEXT",
+      "type": "TEXT",
+      "text": "LIVING ROOM",
+      "insertionPoint": [
+        4000,
+        1500,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 200,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 5,
+      "sourceHandle": "105",
+      "layer": "A-SPACE-TEXT",
+      "type": "TEXT",
+      "text": "BEDROOM",
+      "insertionPoint": [
+        4000,
+        6500,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 200,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 6,
+      "sourceHandle": "106",
+      "layer": "A-DOOR",
+      "type": "INSERT",
+      "blockName": "DOOR_900_LH_IN",
+      "insertionPoint": [
+        0,
+        4000,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 270,
+      "hasAttributes": false
+    },
+    {
+      "sourceOrdinal": 7,
+      "sourceHandle": "107",
+      "layer": "A-WINDOW",
+      "type": "INSERT",
+      "blockName": "WINDOW_2400",
+      "insertionPoint": [
+        6000,
+        1500,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 90,
+      "hasAttributes": false
+    },
+    {
+      "sourceOrdinal": 8,
+      "sourceHandle": "108",
+      "layer": "A-WINDOW",
+      "type": "INSERT",
+      "blockName": "WINDOW_2400",
+      "insertionPoint": [
+        4000,
+        8000,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 180,
+      "hasAttributes": false
+    }
+  ],
+  "unsupportedEntities": [],
+  "summary": {
+    "layerCount": 5,
+    "blockCount": 2,
+    "entityCount": 9,
+    "supportedEntityCount": 9,
+    "unsupportedEntityCount": 0,
+    "entityTypeCounts": {
+      "INSERT": 3,
+      "LWPOLYLINE": 3,
+      "TEXT": 3
+    }
+  }
+}

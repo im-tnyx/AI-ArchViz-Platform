@@ -19,6 +19,11 @@ import {
   seedSceneFromCadFiles,
   writeCadSceneSeed,
 } from "./cad-scene-seed.js";
+import {
+  analyzeCadTopologyFiles,
+  CadTopologyWorkerError,
+  writeCadTopology,
+} from "./cad-topology.js";
 import { loadWorkerConfig } from "./config.js";
 import { discoverThreeDsMax } from "./discovery.js";
 import { WorkerError } from "./errors.js";
@@ -158,6 +163,31 @@ async function execute(argv: string[]): Promise<CliResult> {
         };
       }
     }
+    case "analyze-cad-topology": {
+      const [cadDocumentPath, profilePath, extractionArgument, outputPath] = args;
+      if (!cadDocumentPath || !profilePath || !extractionArgument || !outputPath) {
+        return usage(
+          "analyze-cad-topology requires repository-relative cad-document, profile, and architectural-extraction JSON paths (or the literal none) and an output .json path",
+        );
+      }
+      const config = loadWorkerConfig(repositoryRoot);
+      try {
+        const result = analyzeCadTopologyFiles({
+          repositoryRoot,
+          cadDocumentPath,
+          profilePath,
+          extractionPath: extractionArgument === "none" ? null : extractionArgument,
+        });
+        const paths = writeCadTopology(result, config.workspaceRoot, outputPath);
+        return { exitCode: 0, output: { ok: true, ...paths, evidence: result.evidence } };
+      } catch (error) {
+        if (!(error instanceof CadTopologyWorkerError)) throw error;
+        return {
+          exitCode: 1,
+          output: { ok: false, errorCode: error.code, message: error.message },
+        };
+      }
+    }
     case "validate-scene": {
       const [path] = args;
       if (!path) return usage("validate-scene requires a JSON path");
@@ -210,6 +240,7 @@ function usage(error?: string): CliResult {
         "apply-change-set <base-job> <scene-change-set>",
         "extract-cad <repository-relative-source.dxf> <workspace-relative-output.json>",
         "interpret-cad <cad-document.json> <profile.json> <workspace-relative-output.json>",
+        "analyze-cad-topology <cad-document.json> <profile.json> <architectural-extraction.json|none> <workspace-relative-output.json>",
         "seed-scene-from-cad <architectural-extraction.json> <approval.json> <workspace-relative-output.json>",
         "validate-scene <path>",
         "validate-job <path>",

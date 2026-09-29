@@ -5,9 +5,21 @@ export {
   polygonDefect,
   polygonsOverlap,
   projectOntoSegment,
+  type SegmentProjection,
   signedArea,
 } from "./geometry.js";
-export { interpretCadDocument, semanticHash } from "./interpret.js";
+export {
+  buildOpeningCandidate,
+  type CadSpaceWallStage,
+  deriveSpaceWallStage,
+  findOpeningHosts,
+  interpretCadDocument,
+  type OpeningHost,
+  type OpeningSource,
+  openingCenter,
+  resolveOpeningRule,
+  semanticHash,
+} from "./interpret.js";
 export {
   architecturalExtractionSchema,
   cadInterpretationProfileSchema,

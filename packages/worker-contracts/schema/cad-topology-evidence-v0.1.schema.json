@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-topology-evidence-v0.1.schema.json",
+  "title": "AI ArchViz CAD topology evidence v0.1",
+  "description": "Identity proof for one architectural-topology-v0.1: the upstream hash chain (raw DXF bytes, normalized CAD document, interpretation profile, 10B candidate basis) and the topology hash. No paths, no geometry arrays.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "topologyPolicyVersion", "interpretationPolicyVersion", "sourceHash", "cadDocumentHash", "profileId", "profileHash", "architecturalExtractionVersion", "candidateBasis", "architecturalExtractionHash", "spaceWallStageHash", "architecturalTopologyVersion", "architecturalTopologyHash", "summary", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "topologyPolicyVersion": { "const": "cad-topology-policy-v0.1" },
+    "interpretationPolicyVersion": { "const": "cad-interpretation-policy-v0.1" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "cadDocumentHash": { "$ref": "#/$defs/hash" },
+    "profileId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "profileHash": { "$ref": "#/$defs/hash" },
+    "architecturalExtractionVersion": { "const": "0.1.0" },
+    "candidateBasis": { "enum": ["architectural_extraction", "space_wall_stage"] },
+    "architecturalExtractionHash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+    "spaceWallStageHash": { "$ref": "#/$defs/hash" },
+    "architecturalTopologyVersion": { "const": "0.1.0" },
+    "architecturalTopologyHash": { "$ref": "#/$defs/hash" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spaceCount", "wallCandidateCount", "sharedBoundaryCount", "adjacencyCount", "singleSpaceOpeningCount", "interiorOpeningCount", "unpairedWallCount", "sharedParticipantWallCount"],
+      "properties": {
+        "spaceCount": { "$ref": "#/$defs/count" },
+        "wallCandidateCount": { "$ref": "#/$defs/count" },
+        "sharedBoundaryCount": { "$ref": "#/$defs/count" },
+        "adjacencyCount": { "$ref": "#/$defs/count" },
+        "singleSpaceOpeningCount": { "$ref": "#/$defs/count" },
+        "interiorOpeningCount": { "$ref": "#/$defs/count" },
+        "unpairedWallCount": { "$ref": "#/$defs/count" },
+        "sharedParticipantWallCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "status": { "const": "READY_FOR_REVIEW" }
+  },
+  "if": { "properties": { "candidateBasis": { "const": "architectural_extraction" } } },
+  "then": { "properties": { "architecturalExtractionHash": { "$ref": "#/$defs/hash" } } },
+  "else": { "properties": { "architecturalExtractionHash": { "type": "null" } } },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 }
+  }
+}

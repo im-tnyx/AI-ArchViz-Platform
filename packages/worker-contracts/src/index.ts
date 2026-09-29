@@ -109,6 +109,34 @@ export interface CadInterpretationEvidence {
   status: "READY_FOR_REVIEW";
 }
 
+/** Identity proof for one architectural-topology-v0.1 (upstream chain + topology hash). */
+export interface CadTopologyEvidence {
+  evidenceVersion: "0.1.0";
+  topologyPolicyVersion: "cad-topology-policy-v0.1";
+  interpretationPolicyVersion: "cad-interpretation-policy-v0.1";
+  sourceHash: string;
+  cadDocumentHash: string;
+  profileId: string;
+  profileHash: string;
+  architecturalExtractionVersion: "0.1.0";
+  candidateBasis: "architectural_extraction" | "space_wall_stage";
+  architecturalExtractionHash: string | null;
+  spaceWallStageHash: string;
+  architecturalTopologyVersion: "0.1.0";
+  architecturalTopologyHash: string;
+  summary: {
+    spaceCount: number;
+    wallCandidateCount: number;
+    sharedBoundaryCount: number;
+    adjacencyCount: number;
+    singleSpaceOpeningCount: number;
+    interiorOpeningCount: number;
+    unpairedWallCount: number;
+    sharedParticipantWallCount: number;
+  };
+  status: "READY_FOR_REVIEW";
+}
+
 /** Identity proof for one CAD-derived canonical SceneSpec seed (six-hash chain). */
 export interface CadSceneSeedEvidence {
   evidenceVersion: "0.1.0";
@@ -198,6 +226,7 @@ export const cadInterpretationEvidenceSchema = readSchema(
   "cad-interpretation-evidence-v0.1.schema.json",
 );
 export const cadSceneSeedEvidenceSchema = readSchema("cad-scene-seed-evidence-v0.1.schema.json");
+export const cadTopologyEvidenceSchema = readSchema("cad-topology-evidence-v0.1.schema.json");
 
 const ajv = new Ajv2020({
   allErrors: true,
@@ -286,6 +315,9 @@ const cadInterpretationEvidenceValidator = ajv.compile(
 const cadSceneSeedEvidenceValidator = ajv.compile(
   cadSceneSeedEvidenceSchema,
 ) as ValidateFunction<CadSceneSeedEvidence>;
+const cadTopologyEvidenceValidator = ajv.compile(
+  cadTopologyEvidenceSchema,
+) as ValidateFunction<CadTopologyEvidence>;
 
 function normalizeErrors(errors: ErrorObject[] | null | undefined): ContractValidationError[] {
   return (errors ?? [])
@@ -463,6 +495,10 @@ export function validateCadSceneSeedEvidence(
   value: unknown,
 ): ValidationResult<CadSceneSeedEvidence> {
   return runValidation(cadSceneSeedEvidenceValidator, value);
+}
+
+export function validateCadTopologyEvidence(value: unknown): ValidationResult<CadTopologyEvidence> {
+  return runValidation(cadTopologyEvidenceValidator, value);
 }
 
 export function canonicalizeJson(value: unknown): string {

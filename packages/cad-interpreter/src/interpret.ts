@@ -15,6 +15,7 @@ import {
   polygonDefect,
   polygonsOverlap,
   projectOntoSegment,
+  type SegmentProjection,
   signedArea,
 } from "./geometry.js";
 import { validateCadInterpretationProfile } from "./profile.js";
@@ -31,6 +32,7 @@ import {
   type DerivedProvenance,
   type DoorRule,
   CAD_INTERPRET_EPSILON_MM as EPSILON,
+  type LevelCandidate,
   type OpeningCandidate,
   type Point2,
   type ProfileProvenance,
@@ -111,10 +113,36 @@ interface ParsedSpace {
   sourceWinding: SpaceCandidate["sourceWinding"];
 }
 
-export function interpretCadDocument(
+/** One classified door/window INSERT awaiting host resolution. */
+export interface OpeningSource {
+  entity: CadInsertEntity;
+  role: "door" | "window";
+  /** Position among all opening INSERTs (sourceOrdinal order); names opening_candidate_NNNN. */
+  index: number;
+}
+
+/**
+ * Passes 1-5 of cad-interpretation-policy-v0.1 (validation, classification,
+ * spaces, labels, walls), shared by interpretCadDocument and downstream
+ * pure analyses (Spike 10D topology) so no caller re-derives spaces or
+ * walls. Errors and their precedence are exactly those of
+ * interpretCadDocument up to (not including) opening resolution.
+ */
+export interface CadSpaceWallStage {
+  cadDocument: CadDocument;
+  profile: CadInterpretationProfile;
+  level: LevelCandidate;
+  spaces: SpaceCandidate[];
+  walls: WallCandidate[];
+  openingSources: OpeningSource[];
+  unconsumedEntities: UnconsumedEntity[];
+  consumedEntityCount: number;
+}
+
+export function deriveSpaceWallStage(
   cadDocumentInput: unknown,
   profileInput: unknown,
-): ArchitecturalExtraction {
+): CadSpaceWallStage {
   // 1. Inputs must satisfy their contracts before anything is interpreted.
   const cadResult = validateCadDocument(cadDocumentInput);
   if (!cadResult.ok) {
@@ -374,128 +402,192 @@ export function interpretCadDocument(
     }
   }
 
-  // 6. Openings: explicit block rule, identity scale, unique host, derived offset.
-  const blockByName = new Map(cadDocument.blocks.map((block) => [block.name, block]));
-  const doorRules = new Map(profile.doorRules.map((rule) => [rule.blockName, rule]));
-  const windowRules = new Map(profile.windowRules.map((rule) => [rule.blockName, rule]));
-  const openings: OpeningCandidate[] = insertEntities.map(({ entity, role }, index) => {
-    const details = {
-      sourceOrdinal: entity.sourceOrdinal,
-      blockName: entity.blockName,
-      role,
-    };
-    const block = blockByName.get(entity.blockName);
-    if (!block) {
-      fail(
-        "CAD_INTERPRET_BLOCK_REFERENCE_INVALID",
-        `INSERT (source ordinal ${entity.sourceOrdinal}) references undefined block ${entity.blockName}`,
-        details,
-      );
-    }
-    if (block.externalReference) {
-      fail(
-        "CAD_INTERPRET_EXTERNAL_BLOCK_UNSUPPORTED",
-        `INSERT (source ordinal ${entity.sourceOrdinal}) references external block ${entity.blockName}`,
-        details,
-      );
-    }
-    const rule: DoorRule | WindowRule | undefined =
-      role === "door" ? doorRules.get(entity.blockName) : windowRules.get(entity.blockName);
-    if (!rule) {
-      fail(
-        "CAD_INTERPRET_OPENING_RULE_MISSING",
-        `No ${role} rule maps block ${entity.blockName} (source ordinal ${entity.sourceOrdinal})`,
-        details,
-      );
-    }
-    if (entity.scale.some((factor) => Math.abs(factor - 1) > 1e-9)) {
-      fail(
-        "CAD_INTERPRET_OPENING_SCALE_UNSUPPORTED",
-        `Opening INSERT (source ordinal ${entity.sourceOrdinal}) must have scale [1,1,1]`,
-        { ...details, scale: entity.scale },
-      );
-    }
+  return {
+    cadDocument,
+    profile,
+    level: {
+      levelCandidateId: level.levelCandidateId,
+      name: level.name,
+      elevationMm: level.elevationMm,
+      defaultCeilingHeightMm: level.defaultCeilingHeightMm,
+      provenance: {
+        name: [fromProfile("level.name")],
+        elevationMm: [fromProfile("level.elevationMm")],
+        defaultCeilingHeightMm: [fromProfile("level.defaultCeilingHeightMm")],
+      },
+    },
+    spaces: spaceCandidates,
+    walls: wallCandidates,
+    openingSources: insertEntities.map(({ entity, role }, index) => ({ entity, role, index })),
+    unconsumedEntities,
+    consumedEntityCount: boundaryEntities.length + labelEntities.length + insertEntities.length,
+  };
+}
 
-    const center: Point2 = [entity.insertionPoint[0], entity.insertionPoint[1]];
-    const hosts = wallCandidates.flatMap((wall) => {
-      const projection = projectOntoSegment(center, wall.start, wall.end);
-      const onSegment =
-        projection.alongMm >= -EPSILON && projection.alongMm <= projection.lengthMm + EPSILON;
-      return projection.perpendicularMm <= CAD_INTERPRET_HOST_TOLERANCE_MM && onSegment
-        ? [{ wall, projection }]
-        : [];
-    });
+// 6. Openings: explicit block rule, identity scale, unique host, derived offset.
+
+const openingDetails = ({ entity, role }: OpeningSource) => ({
+  sourceOrdinal: entity.sourceOrdinal,
+  blockName: entity.blockName,
+  role,
+});
+
+/** Block/XREF/rule/scale checks for one opening INSERT; returns its exact profile rule. */
+export function resolveOpeningRule(
+  stage: Pick<CadSpaceWallStage, "cadDocument" | "profile">,
+  source: OpeningSource,
+): DoorRule | WindowRule {
+  const { entity, role } = source;
+  const details = openingDetails(source);
+  // Map lookups (last definition wins), exactly as the v0.1 opening pass.
+  const block = new Map(stage.cadDocument.blocks.map((entry) => [entry.name, entry])).get(
+    entity.blockName,
+  );
+  if (!block) {
+    fail(
+      "CAD_INTERPRET_BLOCK_REFERENCE_INVALID",
+      `INSERT (source ordinal ${entity.sourceOrdinal}) references undefined block ${entity.blockName}`,
+      details,
+    );
+  }
+  if (block.externalReference) {
+    fail(
+      "CAD_INTERPRET_EXTERNAL_BLOCK_UNSUPPORTED",
+      `INSERT (source ordinal ${entity.sourceOrdinal}) references external block ${entity.blockName}`,
+      details,
+    );
+  }
+  const rules: readonly (DoorRule | WindowRule)[] =
+    role === "door" ? stage.profile.doorRules : stage.profile.windowRules;
+  const rule = new Map(rules.map((entry) => [entry.blockName, entry])).get(entity.blockName);
+  if (!rule) {
+    fail(
+      "CAD_INTERPRET_OPENING_RULE_MISSING",
+      `No ${role} rule maps block ${entity.blockName} (source ordinal ${entity.sourceOrdinal})`,
+      details,
+    );
+  }
+  if (entity.scale.some((factor) => Math.abs(factor - 1) > 1e-9)) {
+    fail(
+      "CAD_INTERPRET_OPENING_SCALE_UNSUPPORTED",
+      `Opening INSERT (source ordinal ${entity.sourceOrdinal}) must have scale [1,1,1]`,
+      { ...details, scale: entity.scale },
+    );
+  }
+  return rule;
+}
+
+export interface OpeningHost {
+  wall: WallCandidate;
+  projection: SegmentProjection;
+}
+
+/** Every wall segment within the fixed host tolerance of the opening center. */
+export function findOpeningHosts(center: Point2, walls: readonly WallCandidate[]): OpeningHost[] {
+  return walls.flatMap((wall) => {
+    const projection = projectOntoSegment(center, wall.start, wall.end);
+    const onSegment =
+      projection.alongMm >= -EPSILON && projection.alongMm <= projection.lengthMm + EPSILON;
+    return projection.perpendicularMm <= CAD_INTERPRET_HOST_TOLERANCE_MM && onSegment
+      ? [{ wall, projection }]
+      : [];
+  });
+}
+
+export const openingCenter = ({ entity }: OpeningSource): Point2 => [
+  entity.insertionPoint[0],
+  entity.insertionPoint[1],
+];
+
+/** Offset check and candidate construction for an opening with one resolved host. */
+export function buildOpeningCandidate(
+  source: OpeningSource,
+  rule: DoorRule | WindowRule,
+  host: OpeningHost,
+): OpeningCandidate {
+  const { entity, role, index } = source;
+  const { wall, projection } = host;
+  const rawOffset = projection.alongMm - rule.widthMm / 2;
+  if (rawOffset < -EPSILON || rawOffset + rule.widthMm > wall.lengthMm + EPSILON) {
+    fail(
+      "CAD_INTERPRET_OPENING_OUTSIDE_HOST",
+      `Opening (source ordinal ${entity.sourceOrdinal}) of width ${rule.widthMm} does not fit host ${wall.candidateId}`,
+      { ...openingDetails(source), hostWallCandidateId: wall.candidateId, offsetMm: rawOffset },
+    );
+  }
+  // Epsilon snap into [0, length - width]; values already inside are exact.
+  const offsetMm = Math.min(Math.max(rawOffset, 0), wall.lengthMm - rule.widthMm);
+  const rulesField = role === "door" ? "doorRules" : "windowRules";
+  const cadSource = cad(entity, role === "door" ? "door_insert" : "window_insert");
+  const common = {
+    candidateId: `opening_candidate_${pad4(index)}`,
+    hostWallCandidateId: wall.candidateId,
+    spaceCandidateId: wall.spaceCandidateId,
+    blockName: entity.blockName,
+    sourceCenter: openingCenter(source),
+    sourceRotationDegrees: entity.rotationDegrees,
+    hostDistanceMm: projection.perpendicularMm,
+    offsetMm,
+    widthMm: rule.widthMm,
+    heightMm: rule.heightMm,
+    sillMm: rule.sillMm,
+  };
+  const provenance = {
+    center: [cadSource],
+    host: [cadSource, derived("opening_host_projection_v0.1")],
+    offsetMm: [
+      cadSource,
+      fromProfile(`${rulesField}.widthMm`, rule.ruleId),
+      derived("opening_offset_v0.1"),
+    ],
+    widthMm: [fromProfile(`${rulesField}.widthMm`, rule.ruleId)],
+    heightMm: [fromProfile(`${rulesField}.heightMm`, rule.ruleId)],
+    sillMm: [fromProfile(`${rulesField}.sillMm`, rule.ruleId)],
+  };
+  if (role === "door") {
+    const doorRule = rule as DoorRule;
+    return {
+      ...common,
+      type: "door",
+      hingeSide: doorRule.hingeSide,
+      swingDirection: doorRule.swingDirection,
+      provenance: {
+        ...provenance,
+        hingeSide: [fromProfile("doorRules.hingeSide", rule.ruleId)],
+        swingDirection: [fromProfile("doorRules.swingDirection", rule.ruleId)],
+      },
+    };
+  }
+  return { ...common, type: "window", provenance };
+}
+
+export function interpretCadDocument(
+  cadDocumentInput: unknown,
+  profileInput: unknown,
+): ArchitecturalExtraction {
+  const stage = deriveSpaceWallStage(cadDocumentInput, profileInput);
+  const { cadDocument, profile, unconsumedEntities, consumedEntityCount } = stage;
+  const openings: OpeningCandidate[] = stage.openingSources.map((source) => {
+    const rule = resolveOpeningRule(stage, source);
+    const details = openingDetails(source);
+    const hosts = findOpeningHosts(openingCenter(source), stage.walls);
     if (hosts.length === 0) {
       fail(
         "CAD_INTERPRET_OPENING_HOST_UNRESOLVED",
-        `Opening (source ordinal ${entity.sourceOrdinal}) is within ${CAD_INTERPRET_HOST_TOLERANCE_MM} mm of no wall segment`,
+        `Opening (source ordinal ${source.entity.sourceOrdinal}) is within ${CAD_INTERPRET_HOST_TOLERANCE_MM} mm of no wall segment`,
         details,
       );
     }
     if (hosts.length > 1) {
       fail(
         "CAD_INTERPRET_OPENING_HOST_AMBIGUOUS",
-        `Opening (source ordinal ${entity.sourceOrdinal}) matches ${hosts.length} wall segments`,
+        `Opening (source ordinal ${source.entity.sourceOrdinal}) matches ${hosts.length} wall segments`,
         { ...details, hostWallCandidateIds: hosts.map((host) => host.wall.candidateId) },
       );
     }
-    const { wall, projection } = hosts[0] as (typeof hosts)[number];
-    const rawOffset = projection.alongMm - rule.widthMm / 2;
-    if (rawOffset < -EPSILON || rawOffset + rule.widthMm > wall.lengthMm + EPSILON) {
-      fail(
-        "CAD_INTERPRET_OPENING_OUTSIDE_HOST",
-        `Opening (source ordinal ${entity.sourceOrdinal}) of width ${rule.widthMm} does not fit host ${wall.candidateId}`,
-        { ...details, hostWallCandidateId: wall.candidateId, offsetMm: rawOffset },
-      );
-    }
-    // Epsilon snap into [0, length - width]; values already inside are exact.
-    const offsetMm = Math.min(Math.max(rawOffset, 0), wall.lengthMm - rule.widthMm);
-    const rulesField = role === "door" ? "doorRules" : "windowRules";
-    const source = cad(entity, role === "door" ? "door_insert" : "window_insert");
-    const common = {
-      candidateId: `opening_candidate_${pad4(index)}`,
-      hostWallCandidateId: wall.candidateId,
-      spaceCandidateId: wall.spaceCandidateId,
-      blockName: entity.blockName,
-      sourceCenter: center,
-      sourceRotationDegrees: entity.rotationDegrees,
-      hostDistanceMm: projection.perpendicularMm,
-      offsetMm,
-      widthMm: rule.widthMm,
-      heightMm: rule.heightMm,
-      sillMm: rule.sillMm,
-    };
-    const provenance = {
-      center: [source],
-      host: [source, derived("opening_host_projection_v0.1")],
-      offsetMm: [
-        source,
-        fromProfile(`${rulesField}.widthMm`, rule.ruleId),
-        derived("opening_offset_v0.1"),
-      ],
-      widthMm: [fromProfile(`${rulesField}.widthMm`, rule.ruleId)],
-      heightMm: [fromProfile(`${rulesField}.heightMm`, rule.ruleId)],
-      sillMm: [fromProfile(`${rulesField}.sillMm`, rule.ruleId)],
-    };
-    if (role === "door") {
-      const doorRule = rule as DoorRule;
-      return {
-        ...common,
-        type: "door",
-        hingeSide: doorRule.hingeSide,
-        swingDirection: doorRule.swingDirection,
-        provenance: {
-          ...provenance,
-          hingeSide: [fromProfile("doorRules.hingeSide", rule.ruleId)],
-          swingDirection: [fromProfile("doorRules.swingDirection", rule.ruleId)],
-        },
-      };
-    }
-    return { ...common, type: "window", provenance };
+    return buildOpeningCandidate(source, rule, hosts[0] as OpeningHost);
   });
 
-  const consumedEntityCount =
-    boundaryEntities.length + labelEntities.length + insertEntities.length;
   if (consumedEntityCount + unconsumedEntities.length !== cadDocument.summary.entityCount) {
     throw new Error("Interpretation accounting invariant violated: a source entity was dropped");
   }
@@ -512,24 +604,14 @@ export function interpretCadDocument(
       cadDocumentHash: semanticHash(cadDocument),
     },
     canonicalUnits: "millimeters",
-    level: {
-      levelCandidateId: level.levelCandidateId,
-      name: level.name,
-      elevationMm: level.elevationMm,
-      defaultCeilingHeightMm: level.defaultCeilingHeightMm,
-      provenance: {
-        name: [fromProfile("level.name")],
-        elevationMm: [fromProfile("level.elevationMm")],
-        defaultCeilingHeightMm: [fromProfile("level.defaultCeilingHeightMm")],
-      },
-    },
-    spaces: spaceCandidates,
-    walls: wallCandidates,
+    level: stage.level,
+    spaces: stage.spaces,
+    walls: stage.walls,
     openings,
     unconsumedEntities,
     summary: {
-      spaceCount: spaceCandidates.length,
-      wallCount: wallCandidates.length,
+      spaceCount: stage.spaces.length,
+      wallCount: stage.walls.length,
       openingCount: openings.length,
       doorCount: openings.filter((opening) => opening.type === "door").length,
       windowCount: openings.filter((opening) => opening.type === "window").length,

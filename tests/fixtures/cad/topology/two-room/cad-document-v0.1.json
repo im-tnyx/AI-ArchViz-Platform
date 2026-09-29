@@ -1,0 +1,202 @@
+{
+  "cadDocumentVersion": "0.1.0",
+  "sourceFormat": "dxf",
+  "sourceHash": "sha256:6de69c56aac4cdc9e98f1a658c62974e4af8e53aff9f19382d352b7143fcab9e",
+  "header": {
+    "acadVersion": "AC1027",
+    "insunitsCode": 4,
+    "dwgCodePage": "ANSI_1252"
+  },
+  "sourceUnits": {
+    "insunitsCode": 4,
+    "name": "millimeters",
+    "scaleToMillimeters": 1
+  },
+  "canonicalUnits": "millimeters",
+  "layers": [
+    {
+      "name": "0",
+      "colorIndex": 7,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-DOOR",
+      "colorIndex": 3,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-ROOM",
+      "colorIndex": 4,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-SPACE-TEXT",
+      "colorIndex": 2,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    },
+    {
+      "name": "A-WINDOW",
+      "colorIndex": 5,
+      "lineType": "CONTINUOUS",
+      "flags": 0
+    }
+  ],
+  "blocks": [
+    {
+      "name": "DOOR_900_LH_IN",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    },
+    {
+      "name": "WINDOW_2400",
+      "flags": 0,
+      "basePoint": [
+        0,
+        0,
+        0
+      ],
+      "externalReference": false,
+      "entityCount": 2
+    }
+  ],
+  "entities": [
+    {
+      "sourceOrdinal": 0,
+      "sourceHandle": "100",
+      "layer": "A-ROOM",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 0,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 3000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 3000,
+          "y": 4000,
+          "bulge": 0
+        },
+        {
+          "x": 0,
+          "y": 4000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 1,
+      "sourceHandle": "101",
+      "layer": "A-ROOM",
+      "type": "LWPOLYLINE",
+      "closed": true,
+      "flags": 1,
+      "elevation": 0,
+      "vertices": [
+        {
+          "x": 3000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 0,
+          "bulge": 0
+        },
+        {
+          "x": 6000,
+          "y": 4000,
+          "bulge": 0
+        },
+        {
+          "x": 3000,
+          "y": 4000,
+          "bulge": 0
+        }
+      ]
+    },
+    {
+      "sourceOrdinal": 2,
+      "sourceHandle": "102",
+      "layer": "A-SPACE-TEXT",
+      "type": "TEXT",
+      "text": "LIVING ROOM",
+      "insertionPoint": [
+        1500,
+        2000,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 200,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 3,
+      "sourceHandle": "103",
+      "layer": "A-SPACE-TEXT",
+      "type": "TEXT",
+      "text": "BEDROOM",
+      "insertionPoint": [
+        4500,
+        2000,
+        0
+      ],
+      "alignmentPoint": null,
+      "height": 200,
+      "rotationDegrees": 0,
+      "horizontalJustification": 0,
+      "verticalJustification": 0
+    },
+    {
+      "sourceOrdinal": 4,
+      "sourceHandle": "104",
+      "layer": "A-DOOR",
+      "type": "INSERT",
+      "blockName": "DOOR_900_LH_IN",
+      "insertionPoint": [
+        3000,
+        2000,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "rotationDegrees": 90,
+      "hasAttributes": false
+    }
+  ],
+  "unsupportedEntities": [],
+  "summary": {
+    "layerCount": 5,
+    "blockCount": 2,
+    "entityCount": 5,
+    "supportedEntityCount": 5,
+    "unsupportedEntityCount": 0,
+    "entityTypeCounts": {
+      "INSERT": 1,
+      "LWPOLYLINE": 2,
+      "TEXT": 2
+    }
+  }
+}

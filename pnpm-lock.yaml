@@ -29,6 +29,9 @@ importers:
       '@ai-archviz/cad-scene-seed':
         specifier: workspace:*
         version: link:packages/cad-scene-seed
+      '@ai-archviz/cad-topology':
+        specifier: workspace:*
+        version: link:packages/cad-topology
       '@ai-archviz/scene-spec':
         specifier: workspace:*
         version: link:packages/scene-spec
@@ -59,6 +62,9 @@ importers:
       '@ai-archviz/cad-scene-seed':
         specifier: workspace:*
         version: link:../../packages/cad-scene-seed
+      '@ai-archviz/cad-topology':
+        specifier: workspace:*
+        version: link:../../packages/cad-topology
       '@ai-archviz/scene-spec':
         specifier: workspace:*
         version: link:../../packages/scene-spec
@@ -101,6 +107,21 @@ importers:
       '@ai-archviz/scene-spec':
         specifier: workspace:*
         version: link:../scene-spec
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
+      ajv-formats:
+        specifier: 'catalog:'
+        version: 3.0.1(ajv@8.20.0)
+
+  packages/cad-topology:
+    dependencies:
+      '@ai-archviz/cad-interpreter':
+        specifier: workspace:*
+        version: link:../cad-interpreter
+      '@ai-archviz/cad-parser':
+        specifier: workspace:*
+        version: link:../cad-parser
       ajv:
         specifier: 'catalog:'
         version: 8.20.0

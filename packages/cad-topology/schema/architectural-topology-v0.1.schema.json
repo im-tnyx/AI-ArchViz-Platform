@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/architectural-topology-v0.1.schema.json",
+  "title": "AI ArchViz architectural topology v0.1",
+  "description": "Deterministic multi-space topology over the 10B space/wall candidates of one CAD source (cad-topology-policy-v0.1), awaiting human review: shared boundary intervals, space adjacency, and opening connectivity. Not SceneSpec, not approved canonical topology, not a DCC plan; every ID is topology-local and never a canonical logical ID. All lengths in millimeters; no paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "architecturalTopologyVersion",
+    "topologyPolicyVersion",
+    "identityScope",
+    "source",
+    "canonicalUnits",
+    "levelCandidateId",
+    "spaces",
+    "sharedBoundaries",
+    "spaceAdjacencies",
+    "openingRelations",
+    "wallClassifications",
+    "summary",
+    "status"
+  ],
+  "properties": {
+    "architecturalTopologyVersion": { "const": "0.1.0" },
+    "topologyPolicyVersion": { "const": "cad-topology-policy-v0.1" },
+    "identityScope": { "const": "topology_local_non_canonical" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceFormat",
+        "sourceHash",
+        "cadDocumentVersion",
+        "cadDocumentHash",
+        "profileId",
+        "profileHash",
+        "interpretationPolicyVersion",
+        "architecturalExtractionVersion",
+        "candidateBasis",
+        "architecturalExtractionHash",
+        "spaceWallStageHash"
+      ],
+      "properties": {
+        "sourceFormat": { "const": "dxf" },
+        "sourceHash": { "$ref": "#/$defs/hash" },
+        "cadDocumentVersion": { "const": "0.1.0" },
+        "cadDocumentHash": { "$ref": "#/$defs/hash" },
+        "profileId": { "$ref": "#/$defs/id" },
+        "profileHash": { "$ref": "#/$defs/hash" },
+        "interpretationPolicyVersion": { "const": "cad-interpretation-policy-v0.1" },
+        "architecturalExtractionVersion": { "const": "0.1.0" },
+        "candidateBasis": { "enum": ["architectural_extraction", "space_wall_stage"] },
+        "architecturalExtractionHash": {
+          "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+        },
+        "spaceWallStageHash": { "$ref": "#/$defs/hash" }
+      },
+      "if": { "properties": { "candidateBasis": { "const": "architectural_extraction" } } },
+      "then": { "properties": { "architecturalExtractionHash": { "$ref": "#/$defs/hash" } } },
+      "else": { "properties": { "architecturalExtractionHash": { "type": "null" } } }
+    },
+    "canonicalUnits": { "const": "millimeters" },
+    "levelCandidateId": { "$ref": "#/$defs/id" },
+    "spaces": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/space" } },
+    "sharedBoundaries": { "type": "array", "items": { "$ref": "#/$defs/sharedBoundary" } },
+    "spaceAdjacencies": { "type": "array", "items": { "$ref": "#/$defs/spaceAdjacency" } },
+    "openingRelations": {
+      "type": "array",
+      "items": {
+        "oneOf": [{ "$ref": "#/$defs/interiorOpening" }, { "$ref": "#/$defs/singleSpaceOpening" }]
+      }
+    },
+    "wallClassifications": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/wallClassification" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spaceCount",
+        "wallCandidateCount",
+        "sharedBoundaryCount",
+        "adjacencyCount",
+        "singleSpaceOpeningCount",
+        "interiorOpeningCount",
+        "unpairedWallCount",
+        "sharedParticipantWallCount"
+      ],
+      "properties": {
+        "spaceCount": { "$ref": "#/$defs/count" },
+        "wallCandidateCount": { "$ref": "#/$defs/count" },
+        "sharedBoundaryCount": { "$ref": "#/$defs/count" },
+        "adjacencyCount": { "$ref": "#/$defs/count" },
+        "singleSpaceOpeningCount": { "$ref": "#/$defs/count" },
+        "interiorOpeningCount": { "$ref": "#/$defs/count" },
+        "unpairedWallCount": { "$ref": "#/$defs/count" },
+        "sharedParticipantWallCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "status": { "const": "READY_FOR_REVIEW" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "nonNegativeMm": { "type": "number", "minimum": 0 },
+    "positiveMm": { "type": "number", "exclusiveMinimum": 0 },
+    "point2": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "spaceId": { "type": "string", "pattern": "^space_candidate_[0-9]{4}$" },
+    "wallId": { "type": "string", "pattern": "^wall_candidate_[0-9]{4}_[0-9]{4}$" },
+    "sharedBoundaryId": { "type": "string", "pattern": "^shared_boundary_[0-9]{4}$" },
+    "spacePair": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/spaceId" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "provenance": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "wallCandidateId", "spaceCandidateId", "basisHash"],
+          "properties": {
+            "authority": { "const": "wall_candidate" },
+            "wallCandidateId": { "$ref": "#/$defs/wallId" },
+            "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+            "basisHash": { "$ref": "#/$defs/hash" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "sharedBoundaryCandidateId"],
+          "properties": {
+            "authority": { "const": "shared_boundary" },
+            "sharedBoundaryCandidateId": { "$ref": "#/$defs/sharedBoundaryId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "openingCandidateId", "basisHash"],
+          "properties": {
+            "authority": { "const": "opening_candidate" },
+            "openingCandidateId": { "type": "string", "pattern": "^opening_candidate_[0-9]{4}$" },
+            "basisHash": { "$ref": "#/$defs/hash" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "sourceOrdinal", "sourceHandle", "role"],
+          "properties": {
+            "authority": { "const": "cad" },
+            "sourceOrdinal": { "$ref": "#/$defs/count" },
+            "sourceHandle": { "type": ["string", "null"] },
+            "role": { "enum": ["door_insert", "window_insert"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "field", "ruleId"],
+          "properties": {
+            "authority": { "const": "profile" },
+            "field": { "type": "string", "minLength": 1 },
+            "ruleId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "derivation"],
+          "properties": {
+            "authority": { "const": "derived" },
+            "derivation": { "type": "string", "pattern": "^[a-z][a-z0-9_]*_v0\\.1$" }
+          }
+        }
+      ]
+    },
+    "provenanceList": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/provenance" } },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spaceCandidateId", "spaceType", "labelText", "wallCandidateIds"],
+      "properties": {
+        "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "spaceType": { "$ref": "#/$defs/id" },
+        "labelText": { "type": "string", "minLength": 1 },
+        "wallCandidateIds": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/$defs/wallId" }
+        }
+      }
+    },
+    "sharedBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sharedBoundaryCandidateId",
+        "relationship",
+        "spaceCandidateIds",
+        "wallCandidateIds",
+        "worldStart",
+        "worldEnd",
+        "lengthMm",
+        "directionRelationship",
+        "wallIntervals",
+        "provenance"
+      ],
+      "properties": {
+        "sharedBoundaryCandidateId": { "$ref": "#/$defs/sharedBoundaryId" },
+        "relationship": { "const": "shared_partition_boundary" },
+        "spaceCandidateIds": { "$ref": "#/$defs/spacePair" },
+        "wallCandidateIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/wallId" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "worldStart": { "$ref": "#/$defs/point2" },
+        "worldEnd": { "$ref": "#/$defs/point2" },
+        "lengthMm": { "$ref": "#/$defs/positiveMm" },
+        "directionRelationship": { "const": "opposite" },
+        "wallIntervals": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["wallCandidateId", "spaceCandidateId", "fromMm", "toMm"],
+            "properties": {
+              "wallCandidateId": { "$ref": "#/$defs/wallId" },
+              "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+              "fromMm": { "type": "number" },
+              "toMm": { "type": "number" }
+            }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["geometry"],
+          "properties": { "geometry": { "$ref": "#/$defs/provenanceList" } }
+        }
+      }
+    },
+    "spaceAdjacency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spaceAdjacencyCandidateId",
+        "spaceCandidateIds",
+        "sharedBoundaryCandidateIds",
+        "totalSharedLengthMm",
+        "provenance"
+      ],
+      "properties": {
+        "spaceAdjacencyCandidateId": {
+          "type": "string",
+          "pattern": "^space_adjacency_[0-9]{4}_[0-9]{4}$"
+        },
+        "spaceCandidateIds": { "$ref": "#/$defs/spacePair" },
+        "sharedBoundaryCandidateIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sharedBoundaryId" }
+        },
+        "totalSharedLengthMm": { "$ref": "#/$defs/positiveMm" },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adjacency"],
+          "properties": { "adjacency": { "$ref": "#/$defs/provenanceList" } }
+        }
+      }
+    },
+    "openingBase": {
+      "type": "object",
+      "required": [
+        "topologyOpeningId",
+        "relationKind",
+        "type",
+        "openingSourceOrdinal",
+        "openingSourceHandle",
+        "blockName",
+        "connectsSpaces",
+        "provenance"
+      ],
+      "properties": {
+        "topologyOpeningId": { "type": "string", "pattern": "^topology_opening_[0-9]{4}$" },
+        "openingSourceOrdinal": { "$ref": "#/$defs/count" },
+        "openingSourceHandle": { "type": ["string", "null"] },
+        "blockName": { "type": "string", "minLength": 1 }
+      }
+    },
+    "interiorOpening": {
+      "allOf": [{ "$ref": "#/$defs/openingBase" }],
+      "type": "object",
+      "unevaluatedProperties": false,
+      "required": [
+        "sharedBoundaryCandidateId",
+        "centerXY",
+        "hostDistanceMm",
+        "centerDistanceFromWorldStartMm",
+        "offsetFromWorldStartMm",
+        "resolvedWidthMm",
+        "resolvedHeightMm",
+        "resolvedSillMm",
+        "doorRule"
+      ],
+      "properties": {
+        "relationKind": { "const": "interior_shared_boundary" },
+        "type": { "const": "door" },
+        "connectsSpaces": { "$ref": "#/$defs/spacePair" },
+        "sharedBoundaryCandidateId": { "$ref": "#/$defs/sharedBoundaryId" },
+        "centerXY": { "$ref": "#/$defs/point2" },
+        "hostDistanceMm": { "$ref": "#/$defs/nonNegativeMm" },
+        "centerDistanceFromWorldStartMm": { "type": "number" },
+        "offsetFromWorldStartMm": { "$ref": "#/$defs/nonNegativeMm" },
+        "resolvedWidthMm": { "$ref": "#/$defs/positiveMm" },
+        "resolvedHeightMm": { "$ref": "#/$defs/positiveMm" },
+        "resolvedSillMm": { "const": 0 },
+        "doorRule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ruleId", "hingeSide", "swingDirection"],
+          "properties": {
+            "ruleId": { "$ref": "#/$defs/id" },
+            "hingeSide": { "enum": ["start_jamb", "end_jamb"] },
+            "swingDirection": { "enum": ["into_room", "out_of_room"] }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "center",
+            "host",
+            "offsetFromWorldStartMm",
+            "resolvedWidthMm",
+            "resolvedHeightMm",
+            "resolvedSillMm",
+            "doorRule"
+          ],
+          "properties": {
+            "center": { "$ref": "#/$defs/provenanceList" },
+            "host": { "$ref": "#/$defs/provenanceList" },
+            "offsetFromWorldStartMm": { "$ref": "#/$defs/provenanceList" },
+            "resolvedWidthMm": { "$ref": "#/$defs/provenanceList" },
+            "resolvedHeightMm": { "$ref": "#/$defs/provenanceList" },
+            "resolvedSillMm": { "$ref": "#/$defs/provenanceList" },
+            "doorRule": { "$ref": "#/$defs/provenanceList" }
+          }
+        }
+      }
+    },
+    "singleSpaceOpening": {
+      "allOf": [{ "$ref": "#/$defs/openingBase" }],
+      "type": "object",
+      "unevaluatedProperties": false,
+      "required": ["hostWallCandidateId", "openingCandidate"],
+      "properties": {
+        "relationKind": { "const": "single_space" },
+        "type": { "enum": ["door", "window"] },
+        "connectsSpaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/spaceId" },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "hostWallCandidateId": { "$ref": "#/$defs/wallId" },
+        "openingCandidate": {
+          "oneOf": [
+            {
+              "$ref": "https://ai-archviz.example/schema/architectural-extraction-v0.1.schema.json#/$defs/door"
+            },
+            {
+              "$ref": "https://ai-archviz.example/schema/architectural-extraction-v0.1.schema.json#/$defs/window"
+            }
+          ]
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["relation"],
+          "properties": { "relation": { "$ref": "#/$defs/provenanceList" } }
+        }
+      }
+    },
+    "wallClassification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wallCandidateId",
+        "spaceCandidateId",
+        "boundaryRole",
+        "sharedBoundaryCandidateIds",
+        "lengthMm",
+        "sharedLengthMm",
+        "unpairedLengthMm"
+      ],
+      "properties": {
+        "wallCandidateId": { "$ref": "#/$defs/wallId" },
+        "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "boundaryRole": { "enum": ["exterior_or_unpaired", "shared_boundary_participant"] },
+        "sharedBoundaryCandidateIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sharedBoundaryId" }
+        },
+        "lengthMm": { "$ref": "#/$defs/positiveMm" },
+        "sharedLengthMm": { "$ref": "#/$defs/nonNegativeMm" },
+        "unpairedLengthMm": { "$ref": "#/$defs/nonNegativeMm" }
+      }
+    }
+  }
+}
