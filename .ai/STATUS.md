@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `86ab2fe` (`feat: add reviewed shared partition model`),
-  on top of `c072c11` (`feat: add deterministic cad topology`).
+- Local baseline HEAD: `81d7b9b` (`feat: add canonical multi-space scene contract`),
+  on top of `86ab2fe` (`feat: add reviewed shared partition model`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -390,6 +390,21 @@
   shared/unpaired segmentation. The stage basis keeps
   `architecturalExtractionHash: null`. No SceneSpec change (v0.4 cannot
   encode shared partitions; no v0.5), no room-boundary rewrite, no DCC.
+- Spike 10F canonical multi-space data + pure validation: SceneSpec v0.5
+  (v0.1-v0.4 untouched) adds `shared_partition` (two sorted adjacent spaces,
+  reviewed centerline, thickness, explicit left/right faces proven at
+  thickness/2), partition-hosted doors (exact host spaces, centerline
+  offset, `host_start`/`host_end` hinge, explicit swing space), and
+  circulation-policy-v0.2 requirements; room boundaries stay the reviewed
+  CAD boundaries. cad-scene-seed-policy-v0.2 seeds a re-derived, hash-bound
+  10E model (null extraction hash kept for the stage basis) into v0.5 with
+  explicit mappings; spatial-policy-v0.2 subtracts door voids from partition
+  solids, rejects asset/partition overlap, and derives two-sided door
+  clearances; circulation-policy-v0.2 adds partition obstacles and one
+  portal per (shared door, space) with same-space routing only. v0.1
+  spatial/circulation results are unchanged and refuse v0.5. The DCC
+  initial build refuses SceneSpec 0.5.0 before any discovery/process:
+  physical v0.5 realization is NOT implemented (future 10G).
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

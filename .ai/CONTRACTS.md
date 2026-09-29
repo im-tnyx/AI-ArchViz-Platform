@@ -903,3 +903,44 @@
   `review-cad-partitions <doc> <profile> <extraction|none> <topology>
   <approval> <output>`.
 - See [../docs/architecture/CAD-SHARED-PARTITIONS.md](../docs/architecture/CAD-SHARED-PARTITIONS.md).
+
+## Canonical multi-space scenes (Spike 10F)
+
+- SceneSpec v0.5 (`scene-spec-v0.5.schema.json`; v0.1-v0.4 untouched;
+  `validateSceneSpec` dispatches 0.1.0-0.5.0) = v0.4 + `shared_partition`
+  geometry + partition-hosted door + requirements pinned to
+  circulation-policy-v0.2. `shared_partition`: exactly two distinct sorted
+  `adjacentSpaceIds` on its level, centerline start -> end at
+  baseElevation (u, left [-u.y, u.x], right [u.y, -u.x]),
+  `referenceLine: "centerline"`, `spaceFaces` [left, right] proven to be
+  the centerline offset by thickness/2 (epsilon 0.001). Partition door:
+  `connectsSpaceIds` = host `adjacentSpaceIds`, offset along the
+  centerline, `hingeEndpoint` host_start|host_end, `swingIntoSpaceId` in
+  connectsSpaceIds, fits, no overlap. Walls keep v0.4 single-space
+  semantics; windows and legacy doors must be wall-hosted.
+  `space.boundary` is the reviewed boundary, never rewritten.
+- cad-scene-seed-policy-v0.2 + `cad-scene-seed-approval-v0.2`
+  (`createMultiSpaceSceneSpecSeed`; v0.1 untouched): binds the exact
+  re-derived reviewed-partition-model-v0.1 chain (null extraction hash for
+  the stage basis), `approved_as_is` only, explicit mappings for level,
+  spaces (+ surfaces), unpaired wall segments
+  (`unpaired_wall_segment_<wallCandidateId>_<ordinal>`), partitions, and
+  topology openings; unshared openings re-hosted on exactly one unpaired
+  segment (`CAD_SCENE_SEED_OPENING_SEGMENT_INVALID`); extension
+  `aiarchviz.cad_multispace_seed`; `cad-scene-seed-evidence-v0.2`.
+- spatial-policy-v0.2 (`validateSpatialSceneV02`,
+  `validateSpatialSceneForVersion`): partition solids
+  `partitionId::solid::NNNN` with door voids subtracted,
+  `SPATIAL_ASSET_PARTITION_OVERLAP`, one doorway clearance per connected
+  space; `spatial-validation-evidence-v0.2`. spatial-policy-v0.1
+  unchanged and refuses 0.5.0.
+- circulation-policy-v0.2 (`analyzeCirculationV02`,
+  `findCirculationRouteV02`): v0.1 grid/radius/tie rules, partition solids
+  as obstacles of both adjacent spaces, one portal per (door, space),
+  same-space routing only; `evaluateCirculationRequirements` dispatches
+  v0.4 -> v0.1, v0.5 -> v0.2; `circulation-analysis-evidence-v0.2`,
+  `circulation-requirement-evidence-v0.2`. v0.1 unchanged, refuses 0.5.0.
+- The DCC initial build refuses SceneSpec 0.5.0
+  (`DCC_SCENE_SPEC_VERSION_UNSUPPORTED`) before any build plan, discovery,
+  or process. No build plan v0.3, SceneChangeSet v0.5, or revision.
+- See [../docs/architecture/MULTI-SPACE-SCENE-SPEC.md](../docs/architecture/MULTI-SPACE-SCENE-SPEC.md).

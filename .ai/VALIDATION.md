@@ -1,5 +1,61 @@
 # Latest Validation Evidence
 
+## Spike 10F canonical multi-space SceneSpec v0.5 (local commit `81d7b9b`)
+
+Static gates, all PASS. pnpm is not on PATH on this workstation; the exact
+local commands were `node_modules/.bin/tsc.CMD -b packages/scene-spec
+packages/spatial-engine packages/cad-parser packages/cad-interpreter
+packages/cad-topology packages/cad-partition-model packages/cad-scene-seed
+packages/worker-contracts apps/worker` (build), `node_modules/.bin/tsc.CMD
+--noEmit -p tsconfig.tests.json` (typecheck), `node_modules/.bin/biome.CMD
+check .` (lint), `node node_modules/vitest/vitest.mjs run` (twice),
+`node node_modules/vitest/vitest.mjs run tests/unit/asset-trust.test.ts`, and
+`git diff --cached --check`.
+
+- Full unit suite 727/727 (31 new: 30 in `tests/unit/multi-space-scene.test.ts`,
+  1 in `tests/unit/scene-spec-v05-dcc-guard.test.ts`), twice after the final
+  code, with no failure. asset-trust 7/7.
+- Canonical two-room seed (`tests/fixtures/cad/multispace-seed/two-room/`):
+  2 spaces, 6 walls, 1 shared partition (x = 3000, 150 mm, faces 2925 /
+  3075), 4 surfaces, 1 shared door (offset 1550, width 900, host_start,
+  swing into the bedroom); boundaries still meet at x = 3000. Chain:
+  sourceHash `6de69c56...ab9e`, cadDocumentHash `7cdd0a8b...af29`,
+  profileHash `120a33f5...3f39`, spaceWallStageHash `ab13a1ac...a81a`,
+  architecturalTopologyHash `d8be5d08...2f59`, partitionApprovalHash
+  `bcb1a14c...f563`, reviewedPartitionModelHash `3f57213e...e017`,
+  sceneApprovalHash `794f8659...3abb`, sceneSpecHash `341f67b7...d779`,
+  architecturalExtractionHash null. spatial-policy-v0.2 and
+  circulation-policy-v0.2 PASS.
+- Proven: v0.5 face/adjacency/host/connectivity/fit/overlap validation;
+  v0.4 rejects v0.5 constructs; seed approval failures (stale, unapproved,
+  incomplete, unknown, duplicate ID, override, non-null stage extraction
+  hash, model mismatch); segment re-hosting (partial-share end to end:
+  door offset 4750 -> 750 on its unpaired segment); partition solids
+  [0,1550] and [2450,4000]; in-room asset intruding 15 mm into the partition
+  -> SPATIAL_ASSET_PARTITION_OVERLAP; door void not solid; per-side
+  clearance violations; living centers x <= 2625 beside the solid; two
+  portals (2025,2000) and (3975,2000); no cross-space edge; two-sided
+  requirements both SATISFIED; living-only portal block fails only the
+  living requirement; determinism and frozen-input immutability.
+- Pre-DCC proof: `buildGoldenScene` with DCC fully authorized refuses the
+  v0.5 seed with DCC_SCENE_SPEC_VERSION_UNSUPPORTED, 0 discovery calls,
+  0 controlled processes, no .max; both build plans also throw on
+  shared_partition.
+- Mutation checks (package source rebuilt to dist, then restored): face
+  offset validation removed fails 1 test; duplicate-space validation 1; door
+  connectivity 1; unpaired segment generation including shared intervals
+  4; door void not subtracted 2; asset/partition check removed 2;
+  one-sided clearance 6; portal not selected by spaceId 2; DCC guard
+  removed 1; spatial-policy-v0.1 accepting 0.5.0 1.
+- 10A-10E hashes, Golden rev1-rev13, and every v0.1 spatial/circulation
+  result (incl. Golden rev12 graph) unchanged. Earlier scope guards were
+  updated narrowly (downstream seed may consume cad-topology /
+  cad-partition-model; SceneSpec v0.5 now exists; 9C helper narrows the
+  dispatched evaluation type).
+
+NO DCC TEST REQUIRED — V0.5 REALIZATION DEFERRED. Target 3ds Max 2026 was
+not tested.
+
 ## Spike 10E reviewed shared-partition model (local commit `86ab2fe`)
 
 Static gates, all PASS. pnpm is not on PATH on this workstation; the exact
