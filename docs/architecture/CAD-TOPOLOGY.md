@@ -233,3 +233,9 @@ shared boundary becomes one wall, two walls, a centerline wall, or a
 dual-space partition. No DCC, spatial, or circulation behavior change; the
 DCC path is untouched. Those follow only in a future canonicalization
 spike.
+
+**10E:** an explicit human `cad-topology-approval-v0.1` turns this topology
+into the reviewed physical shared-partition model (centerline, thickness,
+dual interior faces, reviewed door orientation); see
+[CAD-SHARED-PARTITIONS.md](CAD-SHARED-PARTITIONS.md). The topology contract
+itself is unchanged.

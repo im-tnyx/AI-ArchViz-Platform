@@ -15,6 +15,11 @@ import {
   writeCadInterpretation,
 } from "./cad-interpretation.js";
 import {
+  CadPartitionWorkerError,
+  reviewCadPartitionFiles,
+  writeCadPartitionModel,
+} from "./cad-partition-model.js";
+import {
   CadSceneSeedWorkerError,
   seedSceneFromCadFiles,
   writeCadSceneSeed,
@@ -188,6 +193,47 @@ async function execute(argv: string[]): Promise<CliResult> {
         };
       }
     }
+    case "review-cad-partitions": {
+      const [
+        cadDocumentPath,
+        profilePath,
+        extractionArgument,
+        topologyPath,
+        approvalPath,
+        outputPath,
+      ] = args;
+      if (
+        !cadDocumentPath ||
+        !profilePath ||
+        !extractionArgument ||
+        !topologyPath ||
+        !approvalPath ||
+        !outputPath
+      ) {
+        return usage(
+          "review-cad-partitions requires repository-relative cad-document, profile, architectural-extraction (or the literal none), topology, and approval JSON paths and an output .json path",
+        );
+      }
+      const config = loadWorkerConfig(repositoryRoot);
+      try {
+        const result = reviewCadPartitionFiles({
+          repositoryRoot,
+          cadDocumentPath,
+          profilePath,
+          extractionPath: extractionArgument === "none" ? null : extractionArgument,
+          topologyPath,
+          approvalPath,
+        });
+        const paths = writeCadPartitionModel(result, config.workspaceRoot, outputPath);
+        return { exitCode: 0, output: { ok: true, ...paths, evidence: result.evidence } };
+      } catch (error) {
+        if (!(error instanceof CadPartitionWorkerError)) throw error;
+        return {
+          exitCode: 1,
+          output: { ok: false, errorCode: error.code, message: error.message },
+        };
+      }
+    }
     case "validate-scene": {
       const [path] = args;
       if (!path) return usage("validate-scene requires a JSON path");
@@ -241,6 +287,7 @@ function usage(error?: string): CliResult {
         "extract-cad <repository-relative-source.dxf> <workspace-relative-output.json>",
         "interpret-cad <cad-document.json> <profile.json> <workspace-relative-output.json>",
         "analyze-cad-topology <cad-document.json> <profile.json> <architectural-extraction.json|none> <workspace-relative-output.json>",
+        "review-cad-partitions <cad-document.json> <profile.json> <architectural-extraction.json|none> <topology.json> <approval.json> <workspace-relative-output.json>",
         "seed-scene-from-cad <architectural-extraction.json> <approval.json> <workspace-relative-output.json>",
         "validate-scene <path>",
         "validate-job <path>",

@@ -1,0 +1,27 @@
+{
+  "approvalVersion": "0.1.0",
+  "approvalId": "approval_partitions_three_room",
+  "partitionPolicy": "cad-shared-partition-policy-v0.1",
+  "decision": "approved_as_shared_partition_model",
+  "topology": {
+    "architecturalTopologyVersion": "0.1.0",
+    "architecturalTopologyHash": "sha256:e2fc51c02600758999eb4d8c96fd3ed93e73e8f657e90261a749ec50b6af83c7",
+    "candidateBasis": "architectural_extraction",
+    "sourceHash": "sha256:91b9c1a071fe5aa0d653c345c56606868634b0371f6c7311d3635d64cd709cb3",
+    "cadDocumentHash": "sha256:7e7f1c913bee1f680fe38dfc28f585e76de71288cf25fcd59d92ce8b2eb313a3",
+    "profileHash": "sha256:120a33f5919cbc03a0c0f7db42f0770cca9645d8bfd4348d8012f269d5b63f39",
+    "spaceWallStageHash": "sha256:772999dcc0fe31196af9410ebffde72ab49a08729f5c4299cffdc1ffce579635",
+    "architecturalExtractionHash": "sha256:1d8d74c7acf790ec0e37c7da3a6cf459a9f92c63541da52a5968b2c49d9f3efd"
+  },
+  "sharedBoundaryReviews": [
+    {
+      "sharedBoundaryCandidateId": "shared_boundary_0000",
+      "referencePolicy": "partition_centerline"
+    },
+    {
+      "sharedBoundaryCandidateId": "shared_boundary_0001",
+      "referencePolicy": "partition_centerline"
+    }
+  ],
+  "interiorDoorReviews": []
+}

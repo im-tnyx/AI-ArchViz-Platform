@@ -9,6 +9,7 @@
   "references": [
     { "path": "../../packages/cad-interpreter" },
     { "path": "../../packages/cad-parser" },
+    { "path": "../../packages/cad-partition-model" },
     { "path": "../../packages/cad-scene-seed" },
     { "path": "../../packages/cad-topology" },
     { "path": "../../packages/scene-spec" },

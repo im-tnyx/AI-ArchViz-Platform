@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-topology-approval-v0.1.schema.json",
+  "title": "AI ArchViz CAD topology approval v0.1",
+  "description": "Declarative human review of one exact architectural-topology-v0.1 (bound by hash). It selects semantics only: the partition_centerline meaning of each shared boundary and the hinge jamb and swing space of each interior door. It can never enter geometry (no endpoints, thickness, height, width, offset, or face coordinates).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "approvalVersion",
+    "approvalId",
+    "partitionPolicy",
+    "decision",
+    "topology",
+    "sharedBoundaryReviews",
+    "interiorDoorReviews"
+  ],
+  "properties": {
+    "approvalVersion": { "const": "0.1.0" },
+    "approvalId": { "$ref": "#/$defs/id" },
+    "partitionPolicy": { "const": "cad-shared-partition-policy-v0.1" },
+    "decision": {
+      "description": "Recorded review outcome. Only approved_as_shared_partition_model produces a reviewed model.",
+      "enum": ["approved_as_shared_partition_model", "rejected", "changes_requested"]
+    },
+    "topology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecturalTopologyVersion",
+        "architecturalTopologyHash",
+        "candidateBasis",
+        "sourceHash",
+        "cadDocumentHash",
+        "profileHash",
+        "spaceWallStageHash",
+        "architecturalExtractionHash"
+      ],
+      "properties": {
+        "architecturalTopologyVersion": { "const": "0.1.0" },
+        "architecturalTopologyHash": { "$ref": "#/$defs/hash" },
+        "candidateBasis": { "enum": ["architectural_extraction", "space_wall_stage"] },
+        "sourceHash": { "$ref": "#/$defs/hash" },
+        "cadDocumentHash": { "$ref": "#/$defs/hash" },
+        "profileHash": { "$ref": "#/$defs/hash" },
+        "spaceWallStageHash": { "$ref": "#/$defs/hash" },
+        "architecturalExtractionHash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] }
+      },
+      "if": { "properties": { "candidateBasis": { "const": "architectural_extraction" } } },
+      "then": { "properties": { "architecturalExtractionHash": { "$ref": "#/$defs/hash" } } },
+      "else": { "properties": { "architecturalExtractionHash": { "type": "null" } } }
+    },
+    "sharedBoundaryReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sharedBoundaryCandidateId", "referencePolicy"],
+        "properties": {
+          "sharedBoundaryCandidateId": {
+            "type": "string",
+            "pattern": "^shared_boundary_[0-9]{4}$"
+          },
+          "referencePolicy": { "const": "partition_centerline" }
+        }
+      }
+    },
+    "interiorDoorReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["topologyOpeningId", "hingeEndpoint", "swingIntoSpaceCandidateId"],
+        "properties": {
+          "topologyOpeningId": { "type": "string", "pattern": "^topology_opening_[0-9]{4}$" },
+          "hingeEndpoint": { "enum": ["world_start", "world_end"] },
+          "swingIntoSpaceCandidateId": { "type": "string", "pattern": "^space_candidate_[0-9]{4}$" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

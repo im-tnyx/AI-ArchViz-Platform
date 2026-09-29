@@ -1,0 +1,25 @@
+{
+  "evidenceVersion": "0.1.0",
+  "partitionPolicyVersion": "cad-shared-partition-policy-v0.1",
+  "approvalId": "approval_partitions_two_room",
+  "approvalHash": "sha256:bcb1a14c24df3d512a2fa258f398a6cd8218d2960435cdc1a571b3351eb1f563",
+  "sourceHash": "sha256:6de69c56aac4cdc9e98f1a658c62974e4af8e53aff9f19382d352b7143fcab9e",
+  "cadDocumentHash": "sha256:7cdd0a8b9d47a74bc57edec6449594d59c4c46682b568c141475f9e84a3aaf29",
+  "profileHash": "sha256:120a33f5919cbc03a0c0f7db42f0770cca9645d8bfd4348d8012f269d5b63f39",
+  "candidateBasis": "space_wall_stage",
+  "architecturalExtractionHash": null,
+  "spaceWallStageHash": "sha256:ab13a1ac0eed9d9deec986e78bb14bbe6b04aa7119467488184a76ac3083a81a",
+  "architecturalTopologyHash": "sha256:d8be5d08652116e14a7f959adf3efcd80148c7615661d2a7448fce68f74c2f59",
+  "reviewedPartitionModelVersion": "0.1.0",
+  "reviewedPartitionModelHash": "sha256:3f57213e3260437b21cc354efd1d6ed3c79bae9597ca92fe2fce59a41d8be017",
+  "summary": {
+    "spaceCount": 2,
+    "sharedPartitionCount": 1,
+    "reviewedInteriorDoorCount": 1,
+    "unsharedOpeningCount": 0,
+    "wallCandidateCount": 8,
+    "sharedWallIntervalCount": 2,
+    "unpairedWallIntervalCount": 6
+  },
+  "status": "APPROVED_FOR_SCENE_CANONICALIZATION"
+}

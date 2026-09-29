@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/reviewed-partition-model-v0.1.schema.json",
+  "title": "AI ArchViz reviewed partition model v0.1",
+  "description": "Human-approved physical shared-partition model (cad-shared-partition-policy-v0.1) derived from one architectural-topology-v0.1: partition centerlines, thickness, height, one interior face per adjacent space, reviewed interior-door orientation, and exact wall segmentation. Not SceneSpec; every ID is model-local and never a canonical logical ID. All lengths in millimeters; no paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reviewedPartitionModelVersion",
+    "partitionPolicyVersion",
+    "identityScope",
+    "approvalId",
+    "approvalHash",
+    "source",
+    "canonicalUnits",
+    "levelCandidateId",
+    "spaces",
+    "sharedPartitions",
+    "wallSegments",
+    "unsharedOpeningReferences",
+    "summary",
+    "status"
+  ],
+  "properties": {
+    "reviewedPartitionModelVersion": { "const": "0.1.0" },
+    "partitionPolicyVersion": { "const": "cad-shared-partition-policy-v0.1" },
+    "identityScope": { "const": "model_local_non_canonical" },
+    "approvalId": { "$ref": "#/$defs/id" },
+    "approvalHash": { "$ref": "#/$defs/hash" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "architecturalTopologyVersion",
+        "architecturalTopologyHash",
+        "topologyPolicyVersion",
+        "candidateBasis",
+        "sourceHash",
+        "cadDocumentHash",
+        "profileId",
+        "profileHash",
+        "interpretationPolicyVersion",
+        "architecturalExtractionHash",
+        "spaceWallStageHash"
+      ],
+      "properties": {
+        "architecturalTopologyVersion": { "const": "0.1.0" },
+        "architecturalTopologyHash": { "$ref": "#/$defs/hash" },
+        "topologyPolicyVersion": { "const": "cad-topology-policy-v0.1" },
+        "candidateBasis": { "enum": ["architectural_extraction", "space_wall_stage"] },
+        "sourceHash": { "$ref": "#/$defs/hash" },
+        "cadDocumentHash": { "$ref": "#/$defs/hash" },
+        "profileId": { "$ref": "#/$defs/id" },
+        "profileHash": { "$ref": "#/$defs/hash" },
+        "interpretationPolicyVersion": { "const": "cad-interpretation-policy-v0.1" },
+        "architecturalExtractionHash": {
+          "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+        },
+        "spaceWallStageHash": { "$ref": "#/$defs/hash" }
+      },
+      "if": { "properties": { "candidateBasis": { "const": "architectural_extraction" } } },
+      "then": { "properties": { "architecturalExtractionHash": { "$ref": "#/$defs/hash" } } },
+      "else": { "properties": { "architecturalExtractionHash": { "type": "null" } } }
+    },
+    "canonicalUnits": { "const": "millimeters" },
+    "levelCandidateId": { "$ref": "#/$defs/id" },
+    "spaces": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/space" } },
+    "sharedPartitions": { "type": "array", "items": { "$ref": "#/$defs/partition" } },
+    "wallSegments": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/wallSegmentation" }
+    },
+    "unsharedOpeningReferences": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unsharedOpening" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spaceCount",
+        "sharedPartitionCount",
+        "reviewedInteriorDoorCount",
+        "unsharedOpeningCount",
+        "wallCandidateCount",
+        "sharedWallIntervalCount",
+        "unpairedWallIntervalCount"
+      ],
+      "properties": {
+        "spaceCount": { "$ref": "#/$defs/count" },
+        "sharedPartitionCount": { "$ref": "#/$defs/count" },
+        "reviewedInteriorDoorCount": { "$ref": "#/$defs/count" },
+        "unsharedOpeningCount": { "$ref": "#/$defs/count" },
+        "wallCandidateCount": { "$ref": "#/$defs/count" },
+        "sharedWallIntervalCount": { "$ref": "#/$defs/count" },
+        "unpairedWallIntervalCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "status": { "const": "APPROVED_FOR_SCENE_CANONICALIZATION" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 },
+    "positiveMm": { "type": "number", "exclusiveMinimum": 0 },
+    "nonNegativeMm": { "type": "number", "minimum": 0 },
+    "point2": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+    "spaceId": { "type": "string", "pattern": "^space_candidate_[0-9]{4}$" },
+    "wallId": { "type": "string", "pattern": "^wall_candidate_[0-9]{4}_[0-9]{4}$" },
+    "partitionId": { "type": "string", "pattern": "^partition_candidate_[0-9]{4}$" },
+    "side": { "enum": ["left", "right"] },
+    "provenance": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "relation", "id"],
+          "properties": {
+            "authority": { "const": "topology" },
+            "relation": { "enum": ["shared_boundary", "opening"] },
+            "id": { "$ref": "#/$defs/id" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "wallCandidateId", "spaceCandidateId"],
+          "properties": {
+            "authority": { "const": "wall_candidate" },
+            "wallCandidateId": { "$ref": "#/$defs/wallId" },
+            "spaceCandidateId": { "$ref": "#/$defs/spaceId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "approvalId", "field"],
+          "properties": {
+            "authority": { "const": "approval" },
+            "approvalId": { "$ref": "#/$defs/id" },
+            "field": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "field", "ruleId"],
+          "properties": {
+            "authority": { "const": "profile" },
+            "field": { "type": "string", "minLength": 1 },
+            "ruleId": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "sourceOrdinal", "sourceHandle", "role"],
+          "properties": {
+            "authority": { "const": "cad" },
+            "sourceOrdinal": { "$ref": "#/$defs/count" },
+            "sourceHandle": { "type": ["string", "null"] },
+            "role": { "const": "door_insert" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "partitionCandidateId"],
+          "properties": {
+            "authority": { "const": "partition" },
+            "partitionCandidateId": { "$ref": "#/$defs/partitionId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authority", "derivation"],
+          "properties": {
+            "authority": { "const": "derived" },
+            "derivation": { "type": "string", "pattern": "^[a-z][a-z0-9_]*_v0\\.1$" }
+          }
+        }
+      ]
+    },
+    "provenanceList": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/provenance" } },
+    "space": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spaceCandidateId",
+        "spaceType",
+        "partitionCandidateIds",
+        "adjacentSpaceCandidateIds"
+      ],
+      "properties": {
+        "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "spaceType": { "$ref": "#/$defs/id" },
+        "partitionCandidateIds": { "type": "array", "items": { "$ref": "#/$defs/partitionId" } },
+        "adjacentSpaceCandidateIds": { "type": "array", "items": { "$ref": "#/$defs/spaceId" } }
+      }
+    },
+    "face": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "side",
+        "spaceCandidateId",
+        "sourceWallCandidateId",
+        "start",
+        "end",
+        "offsetFromCenterlineMm"
+      ],
+      "properties": {
+        "side": { "$ref": "#/$defs/side" },
+        "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "sourceWallCandidateId": { "$ref": "#/$defs/wallId" },
+        "start": { "$ref": "#/$defs/point2" },
+        "end": { "$ref": "#/$defs/point2" },
+        "offsetFromCenterlineMm": { "$ref": "#/$defs/positiveMm" }
+      }
+    },
+    "door": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topologyOpeningId",
+        "type",
+        "openingSourceOrdinal",
+        "openingSourceHandle",
+        "blockName",
+        "connectsSpaces",
+        "centerXY",
+        "centerDistanceFromWorldStartMm",
+        "offsetFromWorldStartMm",
+        "widthMm",
+        "heightMm",
+        "sillMm",
+        "hingeEndpoint",
+        "hingeJambCenterlinePoint",
+        "swingIntoSpaceCandidateId",
+        "swingIntoSide",
+        "profileDoorRule",
+        "provenance"
+      ],
+      "properties": {
+        "topologyOpeningId": { "type": "string", "pattern": "^topology_opening_[0-9]{4}$" },
+        "type": { "const": "door" },
+        "openingSourceOrdinal": { "$ref": "#/$defs/count" },
+        "openingSourceHandle": { "type": ["string", "null"] },
+        "blockName": { "type": "string", "minLength": 1 },
+        "connectsSpaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/spaceId" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "centerXY": { "$ref": "#/$defs/point2" },
+        "centerDistanceFromWorldStartMm": { "type": "number" },
+        "offsetFromWorldStartMm": { "$ref": "#/$defs/nonNegativeMm" },
+        "widthMm": { "$ref": "#/$defs/positiveMm" },
+        "heightMm": { "$ref": "#/$defs/positiveMm" },
+        "sillMm": { "const": 0 },
+        "hingeEndpoint": { "enum": ["world_start", "world_end"] },
+        "hingeJambCenterlinePoint": { "$ref": "#/$defs/point2" },
+        "swingIntoSpaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "swingIntoSide": { "$ref": "#/$defs/side" },
+        "profileDoorRule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ruleId", "hingeSide", "swingDirection"],
+          "properties": {
+            "ruleId": { "$ref": "#/$defs/id" },
+            "hingeSide": { "enum": ["start_jamb", "end_jamb"] },
+            "swingDirection": { "enum": ["into_room", "out_of_room"] }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "topologyRelation",
+            "source",
+            "dimensions",
+            "host",
+            "hingeEndpoint",
+            "swingIntoSpaceCandidateId",
+            "profileDoorRule"
+          ],
+          "properties": {
+            "topologyRelation": { "$ref": "#/$defs/provenanceList" },
+            "source": { "$ref": "#/$defs/provenanceList" },
+            "dimensions": { "$ref": "#/$defs/provenanceList" },
+            "host": { "$ref": "#/$defs/provenanceList" },
+            "hingeEndpoint": { "$ref": "#/$defs/provenanceList" },
+            "swingIntoSpaceCandidateId": { "$ref": "#/$defs/provenanceList" },
+            "profileDoorRule": { "$ref": "#/$defs/provenanceList" }
+          }
+        }
+      }
+    },
+    "partition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partitionCandidateId",
+        "sharedBoundaryCandidateId",
+        "adjacentSpaceCandidateIds",
+        "sourceWallCandidateIds",
+        "referencePolicy",
+        "levelCandidateId",
+        "centerLineStart",
+        "centerLineEnd",
+        "lengthMm",
+        "unitDirection",
+        "leftNormal",
+        "rightNormal",
+        "baseElevationMm",
+        "heightMm",
+        "thicknessMm",
+        "spaceFaces",
+        "openings",
+        "provenance"
+      ],
+      "properties": {
+        "partitionCandidateId": { "$ref": "#/$defs/partitionId" },
+        "sharedBoundaryCandidateId": { "type": "string", "pattern": "^shared_boundary_[0-9]{4}$" },
+        "adjacentSpaceCandidateIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/spaceId" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "sourceWallCandidateIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/wallId" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "referencePolicy": { "const": "partition_centerline" },
+        "levelCandidateId": { "$ref": "#/$defs/id" },
+        "centerLineStart": { "$ref": "#/$defs/point2" },
+        "centerLineEnd": { "$ref": "#/$defs/point2" },
+        "lengthMm": { "$ref": "#/$defs/positiveMm" },
+        "unitDirection": { "$ref": "#/$defs/point2" },
+        "leftNormal": { "$ref": "#/$defs/point2" },
+        "rightNormal": { "$ref": "#/$defs/point2" },
+        "baseElevationMm": { "type": "number" },
+        "heightMm": { "$ref": "#/$defs/positiveMm" },
+        "thicknessMm": { "$ref": "#/$defs/positiveMm" },
+        "spaceFaces": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "allOf": [
+                { "$ref": "#/$defs/face" },
+                { "properties": { "side": { "const": "left" } } }
+              ]
+            },
+            {
+              "allOf": [
+                { "$ref": "#/$defs/face" },
+                { "properties": { "side": { "const": "right" } } }
+              ]
+            }
+          ]
+        },
+        "openings": { "type": "array", "items": { "$ref": "#/$defs/door" } },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "centerLine",
+            "referencePolicy",
+            "thicknessMm",
+            "vertical",
+            "spaceSides",
+            "spaceFaces"
+          ],
+          "properties": {
+            "centerLine": { "$ref": "#/$defs/provenanceList" },
+            "referencePolicy": { "$ref": "#/$defs/provenanceList" },
+            "thicknessMm": { "$ref": "#/$defs/provenanceList" },
+            "vertical": { "$ref": "#/$defs/provenanceList" },
+            "spaceSides": { "$ref": "#/$defs/provenanceList" },
+            "spaceFaces": { "$ref": "#/$defs/provenanceList" }
+          }
+        }
+      }
+    },
+    "wallSegmentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wallCandidateId", "spaceCandidateId", "lengthMm", "intervals"],
+      "properties": {
+        "wallCandidateId": { "$ref": "#/$defs/wallId" },
+        "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "lengthMm": { "$ref": "#/$defs/positiveMm" },
+        "intervals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fromMm", "toMm", "role", "partitionCandidateId"],
+            "properties": {
+              "fromMm": { "$ref": "#/$defs/nonNegativeMm" },
+              "toMm": { "$ref": "#/$defs/positiveMm" },
+              "role": { "enum": ["shared_partition", "unpaired"] },
+              "partitionCandidateId": {
+                "oneOf": [{ "$ref": "#/$defs/partitionId" }, { "type": "null" }]
+              }
+            }
+          }
+        }
+      }
+    },
+    "unsharedOpening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topologyOpeningId",
+        "openingCandidateId",
+        "type",
+        "openingSourceOrdinal",
+        "spaceCandidateId",
+        "hostWallCandidateId"
+      ],
+      "properties": {
+        "topologyOpeningId": { "type": "string", "pattern": "^topology_opening_[0-9]{4}$" },
+        "openingCandidateId": { "type": "string", "pattern": "^opening_candidate_[0-9]{4}$" },
+        "type": { "enum": ["door", "window"] },
+        "openingSourceOrdinal": { "$ref": "#/$defs/count" },
+        "spaceCandidateId": { "$ref": "#/$defs/spaceId" },
+        "hostWallCandidateId": { "$ref": "#/$defs/wallId" }
+      }
+    }
+  }
+}

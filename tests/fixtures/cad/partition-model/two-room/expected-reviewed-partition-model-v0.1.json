@@ -1,0 +1,435 @@
+{
+  "reviewedPartitionModelVersion": "0.1.0",
+  "partitionPolicyVersion": "cad-shared-partition-policy-v0.1",
+  "identityScope": "model_local_non_canonical",
+  "approvalId": "approval_partitions_two_room",
+  "approvalHash": "sha256:bcb1a14c24df3d512a2fa258f398a6cd8218d2960435cdc1a571b3351eb1f563",
+  "source": {
+    "architecturalTopologyVersion": "0.1.0",
+    "architecturalTopologyHash": "sha256:d8be5d08652116e14a7f959adf3efcd80148c7615661d2a7448fce68f74c2f59",
+    "topologyPolicyVersion": "cad-topology-policy-v0.1",
+    "candidateBasis": "space_wall_stage",
+    "sourceHash": "sha256:6de69c56aac4cdc9e98f1a658c62974e4af8e53aff9f19382d352b7143fcab9e",
+    "cadDocumentHash": "sha256:7cdd0a8b9d47a74bc57edec6449594d59c4c46682b568c141475f9e84a3aaf29",
+    "profileId": "topology_fixture_profile",
+    "profileHash": "sha256:120a33f5919cbc03a0c0f7db42f0770cca9645d8bfd4348d8012f269d5b63f39",
+    "interpretationPolicyVersion": "cad-interpretation-policy-v0.1",
+    "architecturalExtractionHash": null,
+    "spaceWallStageHash": "sha256:ab13a1ac0eed9d9deec986e78bb14bbe6b04aa7119467488184a76ac3083a81a"
+  },
+  "canonicalUnits": "millimeters",
+  "levelCandidateId": "level_candidate_ground",
+  "spaces": [
+    {
+      "spaceCandidateId": "space_candidate_0000",
+      "spaceType": "living_room",
+      "partitionCandidateIds": [
+        "partition_candidate_0000"
+      ],
+      "adjacentSpaceCandidateIds": [
+        "space_candidate_0001"
+      ]
+    },
+    {
+      "spaceCandidateId": "space_candidate_0001",
+      "spaceType": "bedroom",
+      "partitionCandidateIds": [
+        "partition_candidate_0000"
+      ],
+      "adjacentSpaceCandidateIds": [
+        "space_candidate_0000"
+      ]
+    }
+  ],
+  "sharedPartitions": [
+    {
+      "partitionCandidateId": "partition_candidate_0000",
+      "sharedBoundaryCandidateId": "shared_boundary_0000",
+      "adjacentSpaceCandidateIds": [
+        "space_candidate_0000",
+        "space_candidate_0001"
+      ],
+      "sourceWallCandidateIds": [
+        "wall_candidate_0000_0001",
+        "wall_candidate_0001_0003"
+      ],
+      "referencePolicy": "partition_centerline",
+      "levelCandidateId": "level_candidate_ground",
+      "centerLineStart": [
+        3000,
+        0
+      ],
+      "centerLineEnd": [
+        3000,
+        4000
+      ],
+      "lengthMm": 4000,
+      "unitDirection": [
+        0,
+        1
+      ],
+      "leftNormal": [
+        -1,
+        0
+      ],
+      "rightNormal": [
+        1,
+        0
+      ],
+      "baseElevationMm": 0,
+      "heightMm": 3000,
+      "thicknessMm": 150,
+      "spaceFaces": [
+        {
+          "side": "left",
+          "spaceCandidateId": "space_candidate_0000",
+          "sourceWallCandidateId": "wall_candidate_0000_0001",
+          "start": [
+            2925,
+            0
+          ],
+          "end": [
+            2925,
+            4000
+          ],
+          "offsetFromCenterlineMm": 75
+        },
+        {
+          "side": "right",
+          "spaceCandidateId": "space_candidate_0001",
+          "sourceWallCandidateId": "wall_candidate_0001_0003",
+          "start": [
+            3075,
+            0
+          ],
+          "end": [
+            3075,
+            4000
+          ],
+          "offsetFromCenterlineMm": 75
+        }
+      ],
+      "openings": [
+        {
+          "topologyOpeningId": "topology_opening_0000",
+          "type": "door",
+          "openingSourceOrdinal": 4,
+          "openingSourceHandle": "104",
+          "blockName": "DOOR_900_LH_IN",
+          "connectsSpaces": [
+            "space_candidate_0000",
+            "space_candidate_0001"
+          ],
+          "centerXY": [
+            3000,
+            2000
+          ],
+          "centerDistanceFromWorldStartMm": 2000,
+          "offsetFromWorldStartMm": 1550,
+          "widthMm": 900,
+          "heightMm": 2100,
+          "sillMm": 0,
+          "hingeEndpoint": "world_start",
+          "hingeJambCenterlinePoint": [
+            3000,
+            1550
+          ],
+          "swingIntoSpaceCandidateId": "space_candidate_0001",
+          "swingIntoSide": "right",
+          "profileDoorRule": {
+            "ruleId": "door_900_lh_in",
+            "hingeSide": "start_jamb",
+            "swingDirection": "into_room"
+          },
+          "provenance": {
+            "topologyRelation": [
+              {
+                "authority": "topology",
+                "relation": "opening",
+                "id": "topology_opening_0000"
+              }
+            ],
+            "source": [
+              {
+                "authority": "cad",
+                "sourceOrdinal": 4,
+                "sourceHandle": "104",
+                "role": "door_insert"
+              }
+            ],
+            "dimensions": [
+              {
+                "authority": "topology",
+                "relation": "opening",
+                "id": "topology_opening_0000"
+              },
+              {
+                "authority": "profile",
+                "field": "doorRules.widthMm",
+                "ruleId": "door_900_lh_in"
+              },
+              {
+                "authority": "profile",
+                "field": "doorRules.heightMm",
+                "ruleId": "door_900_lh_in"
+              },
+              {
+                "authority": "profile",
+                "field": "doorRules.sillMm",
+                "ruleId": "door_900_lh_in"
+              }
+            ],
+            "host": [
+              {
+                "authority": "topology",
+                "relation": "shared_boundary",
+                "id": "shared_boundary_0000"
+              },
+              {
+                "authority": "partition",
+                "partitionCandidateId": "partition_candidate_0000"
+              },
+              {
+                "authority": "derived",
+                "derivation": "partition_opening_host_v0.1"
+              }
+            ],
+            "hingeEndpoint": [
+              {
+                "authority": "approval",
+                "approvalId": "approval_partitions_two_room",
+                "field": "interiorDoorReviews.hingeEndpoint"
+              },
+              {
+                "authority": "derived",
+                "derivation": "partition_hinge_jamb_v0.1"
+              }
+            ],
+            "swingIntoSpaceCandidateId": [
+              {
+                "authority": "approval",
+                "approvalId": "approval_partitions_two_room",
+                "field": "interiorDoorReviews.swingIntoSpaceCandidateId"
+              },
+              {
+                "authority": "derived",
+                "derivation": "partition_space_side_v0.1"
+              }
+            ],
+            "profileDoorRule": [
+              {
+                "authority": "profile",
+                "field": "doorRules.hingeSide",
+                "ruleId": "door_900_lh_in"
+              },
+              {
+                "authority": "profile",
+                "field": "doorRules.swingDirection",
+                "ruleId": "door_900_lh_in"
+              }
+            ]
+          }
+        }
+      ],
+      "provenance": {
+        "centerLine": [
+          {
+            "authority": "topology",
+            "relation": "shared_boundary",
+            "id": "shared_boundary_0000"
+          },
+          {
+            "authority": "approval",
+            "approvalId": "approval_partitions_two_room",
+            "field": "sharedBoundaryReviews.referencePolicy"
+          }
+        ],
+        "referencePolicy": [
+          {
+            "authority": "approval",
+            "approvalId": "approval_partitions_two_room",
+            "field": "sharedBoundaryReviews.referencePolicy"
+          }
+        ],
+        "thicknessMm": [
+          {
+            "authority": "wall_candidate",
+            "wallCandidateId": "wall_candidate_0000_0001",
+            "spaceCandidateId": "space_candidate_0000"
+          },
+          {
+            "authority": "wall_candidate",
+            "wallCandidateId": "wall_candidate_0001_0003",
+            "spaceCandidateId": "space_candidate_0001"
+          },
+          {
+            "authority": "profile",
+            "field": "wallDefaults.wallThicknessMm",
+            "ruleId": null
+          }
+        ],
+        "vertical": [
+          {
+            "authority": "wall_candidate",
+            "wallCandidateId": "wall_candidate_0000_0001",
+            "spaceCandidateId": "space_candidate_0000"
+          },
+          {
+            "authority": "wall_candidate",
+            "wallCandidateId": "wall_candidate_0001_0003",
+            "spaceCandidateId": "space_candidate_0001"
+          },
+          {
+            "authority": "profile",
+            "field": "level.elevationMm",
+            "ruleId": null
+          },
+          {
+            "authority": "profile",
+            "field": "level.defaultCeilingHeightMm",
+            "ruleId": null
+          }
+        ],
+        "spaceSides": [
+          {
+            "authority": "wall_candidate",
+            "wallCandidateId": "wall_candidate_0000_0001",
+            "spaceCandidateId": "space_candidate_0000"
+          },
+          {
+            "authority": "wall_candidate",
+            "wallCandidateId": "wall_candidate_0001_0003",
+            "spaceCandidateId": "space_candidate_0001"
+          },
+          {
+            "authority": "derived",
+            "derivation": "partition_space_side_v0.1"
+          }
+        ],
+        "spaceFaces": [
+          {
+            "authority": "derived",
+            "derivation": "partition_face_offset_v0.1"
+          }
+        ]
+      }
+    }
+  ],
+  "wallSegments": [
+    {
+      "wallCandidateId": "wall_candidate_0000_0000",
+      "spaceCandidateId": "space_candidate_0000",
+      "lengthMm": 3000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 3000,
+          "role": "unpaired",
+          "partitionCandidateId": null
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0000_0001",
+      "spaceCandidateId": "space_candidate_0000",
+      "lengthMm": 4000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 4000,
+          "role": "shared_partition",
+          "partitionCandidateId": "partition_candidate_0000"
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0000_0002",
+      "spaceCandidateId": "space_candidate_0000",
+      "lengthMm": 3000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 3000,
+          "role": "unpaired",
+          "partitionCandidateId": null
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0000_0003",
+      "spaceCandidateId": "space_candidate_0000",
+      "lengthMm": 4000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 4000,
+          "role": "unpaired",
+          "partitionCandidateId": null
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0001_0000",
+      "spaceCandidateId": "space_candidate_0001",
+      "lengthMm": 3000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 3000,
+          "role": "unpaired",
+          "partitionCandidateId": null
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0001_0001",
+      "spaceCandidateId": "space_candidate_0001",
+      "lengthMm": 4000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 4000,
+          "role": "unpaired",
+          "partitionCandidateId": null
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0001_0002",
+      "spaceCandidateId": "space_candidate_0001",
+      "lengthMm": 3000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 3000,
+          "role": "unpaired",
+          "partitionCandidateId": null
+        }
+      ]
+    },
+    {
+      "wallCandidateId": "wall_candidate_0001_0003",
+      "spaceCandidateId": "space_candidate_0001",
+      "lengthMm": 4000,
+      "intervals": [
+        {
+          "fromMm": 0,
+          "toMm": 4000,
+          "role": "shared_partition",
+          "partitionCandidateId": "partition_candidate_0000"
+        }
+      ]
+    }
+  ],
+  "unsharedOpeningReferences": [],
+  "summary": {
+    "spaceCount": 2,
+    "sharedPartitionCount": 1,
+    "reviewedInteriorDoorCount": 1,
+    "unsharedOpeningCount": 0,
+    "wallCandidateCount": 8,
+    "sharedWallIntervalCount": 2,
+    "unpairedWallIntervalCount": 6
+  },
+  "status": "APPROVED_FOR_SCENE_CANONICALIZATION"
+}

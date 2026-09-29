@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-partition-model-evidence-v0.1.schema.json",
+  "title": "AI ArchViz CAD partition model evidence v0.1",
+  "description": "Identity proof for one reviewed-partition-model-v0.1: the approval, the full upstream hash chain (raw DXF bytes, CAD document, profile, 10B candidate basis, topology), and the model hash. No paths, no geometry arrays.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidenceVersion", "partitionPolicyVersion", "approvalId", "approvalHash", "sourceHash", "cadDocumentHash", "profileHash", "candidateBasis", "architecturalExtractionHash", "spaceWallStageHash", "architecturalTopologyHash", "reviewedPartitionModelVersion", "reviewedPartitionModelHash", "summary", "status"],
+  "properties": {
+    "evidenceVersion": { "const": "0.1.0" },
+    "partitionPolicyVersion": { "const": "cad-shared-partition-policy-v0.1" },
+    "approvalId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 3, "maxLength": 128 },
+    "approvalHash": { "$ref": "#/$defs/hash" },
+    "sourceHash": { "$ref": "#/$defs/hash" },
+    "cadDocumentHash": { "$ref": "#/$defs/hash" },
+    "profileHash": { "$ref": "#/$defs/hash" },
+    "candidateBasis": { "enum": ["architectural_extraction", "space_wall_stage"] },
+    "architecturalExtractionHash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+    "spaceWallStageHash": { "$ref": "#/$defs/hash" },
+    "architecturalTopologyHash": { "$ref": "#/$defs/hash" },
+    "reviewedPartitionModelVersion": { "const": "0.1.0" },
+    "reviewedPartitionModelHash": { "$ref": "#/$defs/hash" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spaceCount", "sharedPartitionCount", "reviewedInteriorDoorCount", "unsharedOpeningCount", "wallCandidateCount", "sharedWallIntervalCount", "unpairedWallIntervalCount"],
+      "properties": {
+        "spaceCount": { "$ref": "#/$defs/count" },
+        "sharedPartitionCount": { "$ref": "#/$defs/count" },
+        "reviewedInteriorDoorCount": { "$ref": "#/$defs/count" },
+        "unsharedOpeningCount": { "$ref": "#/$defs/count" },
+        "wallCandidateCount": { "$ref": "#/$defs/count" },
+        "sharedWallIntervalCount": { "$ref": "#/$defs/count" },
+        "unpairedWallIntervalCount": { "$ref": "#/$defs/count" }
+      }
+    },
+    "status": { "const": "APPROVED_FOR_SCENE_CANONICALIZATION" }
+  },
+  "if": { "properties": { "candidateBasis": { "const": "architectural_extraction" } } },
+  "then": { "properties": { "architecturalExtractionHash": { "$ref": "#/$defs/hash" } } },
+  "else": { "properties": { "architecturalExtractionHash": { "type": "null" } } },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "count": { "type": "integer", "minimum": 0 }
+  }
+}
