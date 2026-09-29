@@ -866,3 +866,40 @@
 - 10B public contracts and behavior are unchanged; passes 1-5 are exposed
   as `deriveSpaceWallStage` and opening helpers without semantic change.
 - See [../docs/architecture/CAD-TOPOLOGY.md](../docs/architecture/CAD-TOPOLOGY.md).
+
+## Reviewed shared partitions (Spike 10E)
+
+- `cad-shared-partition-policy-v0.1` (software-owned,
+  `CAD_PARTITION_EPSILON_MM = 0.001`) +
+  `cad-topology-approval-v0.1` (`packages/cad-partition-model/schema`,
+  `validateCadTopologyApproval`): `approvalId`, exact `partitionPolicy`,
+  `decision` (only `approved_as_shared_partition_model` produces a model),
+  `topology` binding (version, `architecturalTopologyHash`,
+  `candidateBasis`, `sourceHash`, `cadDocumentHash`, `profileHash`,
+  `spaceWallStageHash`, `architecturalExtractionHash` null only for the
+  stage basis; `CAD_PARTITION_APPROVAL_HASH_MISMATCH`), sorted
+  `sharedBoundaryReviews[{sharedBoundaryCandidateId, referencePolicy:
+  "partition_centerline"}]` and `interiorDoorReviews[{topologyOpeningId,
+  hingeEndpoint: world_start|world_end, swingIntoSpaceCandidateId}]`, exactly
+  one each. No geometry field exists.
+- `createReviewedPartitionModel({cadDocument, interpretationProfile,
+  architecturalExtraction, architecturalTopology, approval})` ->
+  `reviewed-partition-model-v0.1` (`validateReviewedPartitionModel`):
+  `identityScope: "model_local_non_canonical"`, approval + source chain,
+  `spaces`, `sharedPartitions` (`partition_candidate_NNNN`, centerline =
+  10D worldStart -> worldEnd, unit/left [-u.y, u.x]/right [u.y, -u.x]
+  normals, agreeing thickness/level/base/height, left and right
+  `spaceFaces` at T/2 in the centerline direction, reviewed doors with
+  derived hinge jamb point and swing side), `wallSegments` (exact
+  shared/unpaired cover of every wall), `unsharedOpeningReferences`,
+  summary, `status: "APPROVED_FOR_SCENE_CANONICALIZATION"`. Not SceneSpec.
+- Candidate chain recomputed: stage basis reruns only
+  `deriveSpaceWallStage` and must reproduce `spaceWallStageHash`; the
+  extraction basis requires the exact extraction
+  (`CAD_PARTITION_INPUT_HASH_MISMATCH`).
+- `cad-partition-model-evidence-v0.1` (worker-contracts,
+  `validateCadPartitionModelEvidence`): approval and full hash chain,
+  `reviewedPartitionModelHash`, summary; no geometry, no paths. CLI
+  `review-cad-partitions <doc> <profile> <extraction|none> <topology>
+  <approval> <output>`.
+- See [../docs/architecture/CAD-SHARED-PARTITIONS.md](../docs/architecture/CAD-SHARED-PARTITIONS.md).

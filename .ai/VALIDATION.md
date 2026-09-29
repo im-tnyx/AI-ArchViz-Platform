@@ -1,5 +1,48 @@
 # Latest Validation Evidence
 
+## Spike 10E reviewed shared-partition model (local commit `86ab2fe`)
+
+Static gates, all PASS. pnpm is not on PATH on this workstation; the exact
+local commands were:
+`node_modules/.bin/tsc.CMD -b packages/scene-spec packages/spatial-engine
+packages/cad-parser packages/cad-interpreter packages/cad-topology
+packages/cad-partition-model packages/cad-scene-seed packages/worker-contracts
+apps/worker` (build), `node_modules/.bin/tsc.CMD --noEmit -p
+tsconfig.tests.json` (typecheck), `node_modules/.bin/biome.CMD check .`
+(lint), `node node_modules/vitest/vitest.mjs run` (test, twice),
+`node node_modules/vitest/vitest.mjs run tests/unit/asset-trust.test.ts`,
+and `git diff --cached --check`.
+
+- Full unit suite 696/696 (44 new in
+  `tests/unit/cad-partition-model.test.ts`), run twice after the final code,
+  696/696 both times with no failure. asset-trust 7/7.
+- Fixtures (`tests/fixtures/cad/partition-model/`, reusing the unchanged 10D
+  topologies): two-room (stage basis, extraction hash null; 150 mm partition
+  on x = 3000, living face x = 2925 left, bedroom face x = 3075 right; door
+  hinge world_start -> jamb [3000,1550], swing into the bedroom; model
+  `sha256:3f57213e...e017`), three-room (two disjoint 3000 mm partitions,
+  hall wall segmented shared/unpaired/shared;
+  `sha256:2ecc1a9d...95ac`), partial-share (one 2500 mm partition, source
+  wall unpaired 0-1500 / shared 1500-4000 / unpaired 4000-6000;
+  `sha256:f0c47487...7c0d`).
+- Also proven: face distances T/2 and T (incl. a 3-4-5 diagonal);
+  exact segmentation coverage; thickness, vertical, space-side, stale
+  approval, hash chain, basis/extraction mismatch, missing/unknown/
+  duplicate/unsorted reviews, missing/unknown/bad-swing door reviews,
+  geometry-override fields, non-approved decisions, shared-window tamper,
+  door interval, and inconsistent topology all fail closed; reordered
+  approval JSON hashes the same; deep-frozen inputs untouched; static
+  guards.
+- Mutation checks (package source rebuilt to dist, then restored): face
+  offset = T fails 23 tests; ID-order sides 4; flipped left normal 10;
+  thickness check removed 1; approval-topology hash trusted 1; swing
+  membership removed 1; leading unpaired interval dropped 11; coverage
+  self-check removed + trailing interval dropped 22.
+- 10A, 10B, 10C, and 10D frozen hashes and tests unchanged.
+
+No DCC test required: the DCC path is unchanged. Target 3ds Max 2026 was not
+tested.
+
 ## Spike 10D deterministic multi-space topology (local commit `c072c11`)
 
 Static gates, all PASS (pnpm is not on PATH on this workstation, so the

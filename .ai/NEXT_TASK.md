@@ -16,19 +16,25 @@ Technical Spike 10D (deterministic multi-space shared-boundary topology:
 interior-door resolution) is complete; see [STATUS.md](STATUS.md) and
 [VALIDATION.md](VALIDATION.md). It made no SceneSpec or DCC change.
 
+Technical Spike 10E (reviewed shared-partition geometry:
+`cad-topology-approval-v0.1` -> `reviewed-partition-model-v0.1`, partition
+centerlines, dual interior faces, reviewed interior-door orientation, exact
+wall segmentation) is complete. It made no SceneSpec or DCC change.
+
 ## No committed next spike
 
 There is no authorized next spike. A plausible future candidate, NOT
 authorized:
 
-- Technical Spike 10E — Reviewed Multi-Space Topology -> Canonical
-  Shared-Partition Scene Model. It would decide the canonical SceneSpec
-  representation of shared partitions, space adjacency, and interior doors,
-  and only then extend DCC/spatial/circulation behavior.
+- Technical Spike 10F — Canonical Multi-Space SceneSpec Contract &
+  Shared-Partition Realization. It may introduce the exact SceneSpec
+  representation needed for shared partitions, adjacent spaces, interior
+  doors, space-side faces, spatial/circulation semantics, and DCC
+  realization.
 
 Other directions (a production DWG adapter, an approval / review UX,
 AI-assisted interpretation) remain unauthorized as well.
 
-Do not start 10E or any other new spike, renderer, AI integration,
+Do not start 10F or any other new spike, renderer, AI integration,
 download, DWG/AutoCAD integration, or production external `ReplaceAsset`
 path without explicit user authorization and a separate scope description.

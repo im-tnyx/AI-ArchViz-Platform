@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `c072c11` (`feat: add deterministic cad topology`),
-  on top of `a3bea86` (`fix: realize canonical polygon surfaces`).
+- Local baseline HEAD: `86ab2fe` (`feat: add reviewed shared partition model`),
+  on top of `c072c11` (`feat: add deterministic cad topology`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -377,6 +377,19 @@
   `deriveSpaceWallStage`, used as the candidate basis only when 10B cannot
   produce an extraction. No SceneSpec, DCC, DWG, or AI change; how a shared
   partition becomes canonical SceneSpec walls is not decided.
+- Spike 10E reviewed shared-partition geometry: the new pure
+  `@ai-archviz/cad-partition-model` package
+  (`cad-shared-partition-policy-v0.1`) turns one 10D topology plus an
+  explicit human `cad-topology-approval-v0.1` (bound to the exact topology
+  hash chain; semantics only, no geometry fields) into
+  `reviewed-partition-model-v0.1` (APPROVED_FOR_SCENE_CANONICALIZATION,
+  model-local IDs): each shared interval reviewed as a
+  `partition_centerline`, thickness/height from both agreeing 10B walls,
+  space sides resolved geometrically, dual interior faces at +/- T/2,
+  reviewed door hinge endpoint and swing space, and exact per-wall
+  shared/unpaired segmentation. The stage basis keeps
+  `architecturalExtractionHash: null`. No SceneSpec change (v0.4 cannot
+  encode shared partitions; no v0.5), no room-boundary rewrite, no DCC.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and
