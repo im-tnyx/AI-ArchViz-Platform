@@ -2,8 +2,8 @@
 
 ## Local baseline
 
-- Local baseline HEAD: `a3bea86` (`fix: realize canonical polygon surfaces`),
-  on top of `f00f743` (`feat: seed canonical scenes from reviewed cad`).
+- Local baseline HEAD: `c072c11` (`feat: add deterministic cad topology`),
+  on top of `a3bea86` (`fix: realize canonical polygon surfaces`).
 - Runtime hardening baseline: `9dd86cf` (`fix: harden render state and dcc environment`)
   remains an ancestor of the local baseline.
 
@@ -363,6 +363,20 @@
   concave simple rooms are now buildable; 10C only refuses surface
   rotation/scale and non-simple boundaries. No SceneSpec, manifest, 10A,
   10B, or 10C contract changed; the 10C six-hash chain is unchanged.
+- Spike 10D deterministic multi-space topology: the new pure
+  `@ai-archviz/cad-topology` package (`cad-topology-policy-v0.1`) turns the
+  exact 10B space/wall candidates into `architectural-topology-v0.1`
+  (READY_FOR_REVIEW, topology-local non-canonical IDs): positive-length
+  collinear shared-boundary intervals (full, partial, T-junction, disjoint
+  multi-neighbor; corner touch and parallel gaps are not shared), one
+  adjacency per space pair, every wall classified, and one interior
+  relation per shared-boundary door INSERT connecting exactly two spaces.
+  Overlapping intervals, same-direction edges, junction doors, doors wider
+  than the interval, and shared windows fail closed. 10B v0.1 is unchanged
+  and still rejects shared doors as ambiguous; its passes 1-5 are shared as
+  `deriveSpaceWallStage`, used as the candidate basis only when 10B cannot
+  produce an extraction. No SceneSpec, DCC, DWG, or AI change; how a shared
+  partition becomes canonical SceneSpec walls is not decided.
 - Target 3ds Max 2026 verification has not occurred on this workstation.
 
 See [VALIDATION.md](VALIDATION.md) for executed checks and

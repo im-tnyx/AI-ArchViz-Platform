@@ -826,3 +826,43 @@
   The initial build promotes only on `surfaceVerification.status: PASS` for
   every surface (`SURFACE_GEOMETRY_MISMATCH`). Scene manifest stays v0.1.
 - See [../docs/architecture/DCC-SURFACE-REALIZATION.md](../docs/architecture/DCC-SURFACE-REALIZATION.md).
+
+## Deterministic CAD topology (Spike 10D)
+
+- `cad-topology-policy-v0.1` (software-owned; `CAD_TOPOLOGY_EPSILON_MM =
+  0.001`, never user input) + `analyzeArchitecturalTopology({cadDocument,
+  interpretationProfile, architecturalExtraction})` ->
+  `architectural-topology-v0.1` (`packages/cad-topology/schema`,
+  `validateArchitecturalTopology`): `identityScope:
+  "topology_local_non_canonical"`, `source` hash chain (sourceHash,
+  cadDocumentHash, profileId/profileHash, candidateBasis,
+  architecturalExtractionHash or null, spaceWallStageHash), `spaces`,
+  `sharedBoundaries`, `spaceAdjacencies`, `openingRelations`,
+  `wallClassifications`, `summary`, `status: "READY_FOR_REVIEW"`. Not
+  SceneSpec, not approved topology, not a DCC plan.
+- Candidate basis: a READY_FOR_REVIEW extraction bound to the supplied
+  cad-document and profile (`CAD_TOPOLOGY_INPUT_HASH_MISMATCH`), or null ->
+  the shared 10B stage `deriveSpaceWallStage`, only when an opening lies
+  on a shared boundary (`CAD_TOPOLOGY_EXTRACTION_REQUIRED`); 10B rejections
+  surface as `CAD_TOPOLOGY_INTERPRETATION_REJECTED`.
+- Shared boundary: positive-length (> epsilon) collinear overlap of wall
+  candidates of different spaces, opposite direction required
+  (`CAD_TOPOLOGY_SHARED_EDGE_DIRECTION_INVALID`), no positive overlap
+  between intervals on one wall (`CAD_TOPOLOGY_SHARED_INTERVAL_CONFLICT`);
+  worldStart/worldEnd lexicographic (x, then y). IDs `shared_boundary_NNNN`,
+  `space_adjacency_AAAA_BBBB`, `topology_opening_NNNN`.
+- Openings: a door on exactly one shared interval -> one
+  `interior_shared_boundary` relation (`connectsSpaces` = two sorted spaces,
+  exact profile rule, width inside the interval else
+  `CAD_TOPOLOGY_OPENING_OUTSIDE_SHARED_BOUNDARY`); several intervals or an
+  extra wall host -> `CAD_TOPOLOGY_OPENING_AMBIGUOUS`; window ->
+  `CAD_TOPOLOGY_WINDOW_ON_SHARED_BOUNDARY_UNSUPPORTED`; otherwise the
+  uniquely hosted 10B candidate verbatim as `single_space`.
+- `cad-topology-evidence-v0.1` (worker-contracts,
+  `validateCadTopologyEvidence`): full hash chain, candidateBasis,
+  `architecturalTopologyHash`, summary; no geometry arrays, no paths. The
+  worker recomputes every hash (`CAD_TOPOLOGY_HASH_MISMATCH`); CLI
+  `analyze-cad-topology <doc> <profile> <extraction|none> <output>`.
+- 10B public contracts and behavior are unchanged; passes 1-5 are exposed
+  as `deriveSpaceWallStage` and opening helpers without semantic change.
+- See [../docs/architecture/CAD-TOPOLOGY.md](../docs/architecture/CAD-TOPOLOGY.md).

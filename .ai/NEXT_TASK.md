@@ -11,17 +11,24 @@ shared initial build now realizes exact canonical polygon floors/ceilings
 (translated, non-axis-aligned, concave), verified physically before
 promotion.
 
+Technical Spike 10D (deterministic multi-space shared-boundary topology:
+`architectural-topology-v0.1`, shared boundaries, space adjacency,
+interior-door resolution) is complete; see [STATUS.md](STATUS.md) and
+[VALIDATION.md](VALIDATION.md). It made no SceneSpec or DCC change.
+
 ## No committed next spike
 
-There is no authorized next spike. The architecture should be evaluated as
-a whole before choosing the next milestone, for example among:
+There is no authorized next spike. A plausible future candidate, NOT
+authorized:
 
-- multi-room / shared-wall CAD interpretation,
-- a production DWG adapter,
-- an approval / review UX,
-- AI-assisted interpretation.
+- Technical Spike 10E — Reviewed Multi-Space Topology -> Canonical
+  Shared-Partition Scene Model. It would decide the canonical SceneSpec
+  representation of shared partitions, space adjacency, and interior doors,
+  and only then extend DCC/spatial/circulation behavior.
 
-None of these is authorized. Do not start any new spike, renderer, AI
-integration, download, DWG/AutoCAD integration, or production external
-`ReplaceAsset` path without explicit user authorization and a separate
-scope description.
+Other directions (a production DWG adapter, an approval / review UX,
+AI-assisted interpretation) remain unauthorized as well.
+
+Do not start 10E or any other new spike, renderer, AI integration,
+download, DWG/AutoCAD integration, or production external `ReplaceAsset`
+path without explicit user authorization and a separate scope description.

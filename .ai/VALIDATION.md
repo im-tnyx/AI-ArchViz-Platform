@@ -1,5 +1,44 @@
 # Latest Validation Evidence
 
+## Spike 10D deterministic multi-space topology (local commit `c072c11`)
+
+Static gates, all PASS (pnpm is not on PATH on this workstation, so the
+equivalent local binaries were run: `tsc -b` over every package,
+`tsc --noEmit -p tsconfig.tests.json`, `biome check .`, `vitest run`):
+
+- build, typecheck, lint, `git diff --cached --check`.
+- Full unit suite 652/652 (54 new in `tests/unit/cad-topology.test.ts`),
+  run twice after the final code, 652/652 both times with no failure.
+- `test:asset-trust` 7/7.
+- Fixtures (`tests/fixtures/cad/topology/`, shared profile hash
+  `sha256:120a33f5...3f39`): two-room (10B still rejects with
+  `CAD_INTERPRET_OPENING_HOST_AMBIGUOUS`; stage basis; 2 spaces, 8 wall
+  candidates, 1 shared boundary [3000,0]->[3000,4000], 1 adjacency, 1
+  interior door at 2000 mm / offset 1550, 6 unpaired; topology
+  `sha256:d8be5d08...2f59`), three-room (extraction basis; hall east edge
+  shares 0..3000 and 5000..8000 with two rooms, two adjacencies, T-junction
+  not shared; `sha256:e2fc51c0...83c7`), partial-share (2000..4500 at
+  y = 3000, length 2500; `sha256:675d9f33...2cc0`).
+- Also proven: corner touch and 150 mm parallel gap give no adjacency;
+  conflict, direction, door-outside-interval, junction-door ambiguity,
+  shared window, extraction-required, 10B-rejection passthrough, and hash
+  chain mismatch fail closed; stage-basis single-space openings equal 10B
+  output; the stage equals the 10B extraction's level/spaces/walls;
+  repeated analysis deep-equal; deep-frozen inputs untouched; static
+  import/dependency guards.
+- Mutation checks (package source rebuilt to dist, then restored): point
+  contact accepted fails 28 tests; parallel lines treated as collinear 33;
+  overlap orientation from the first wall 6; conflict check removed 1;
+  direction check removed 1; ambiguous door picks first 1; width fit
+  skipped 1; shared window allowed 1; door connects one room twice 4;
+  stage basis without a shared door 1; cadDocumentHash binding removed 1;
+  10B ambiguity threshold changed 8; 10B stage wall order changed 15.
+- 10A, 10B, and 10C frozen hashes and tests unchanged.
+
+No DCC test required: the DCC path is unchanged (no worker DCC module,
+Python script, build plan, or SceneSpec touched). Target 3ds Max 2026 was
+not tested.
+
 ## Post-10C polygon surface realization closure (local commit `a3bea86`)
 
 Static gates, all PASS:
