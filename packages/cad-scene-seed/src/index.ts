@@ -1,4 +1,12 @@
 export {
+  type CreateMultiSpaceSeedResult,
+  createMultiSpaceSceneSpecSeed,
+  hostOnUnpairedSegment,
+  type UnpairedWallSegmentCandidate,
+  unpairedWallSegmentCandidateId,
+  unpairedWallSegments,
+} from "./multispace-seed.js";
+export {
   type CreateSceneSpecSeedResult,
   createSceneSpecSeed,
   createSceneSpecSeedWithHashes,
@@ -6,7 +14,9 @@ export {
 export * from "./types.js";
 export {
   cadSceneSeedApprovalSchema,
+  cadSceneSeedApprovalV02Schema,
   type SeedContractError,
   type SeedValidationResult,
   validateCadSceneSeedApproval,
+  validateCadSceneSeedApprovalV02,
 } from "./validate.js";

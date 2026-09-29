@@ -1,24 +1,35 @@
 import {
   analyzeCirculation,
+  analyzeCirculationV02,
   CIRCULATION_POLICY_VERSION,
+  CIRCULATION_POLICY_VERSION_V02,
   type CirculationAnalysisResult,
+  type CirculationAnalysisResultV02,
+  type CirculationRouteQuery,
   type CirculationRouteResult,
+  type CirculationRouteResultV02,
   type CirculationViolationCode,
   findCirculationRoute,
+  findCirculationRouteV02,
 } from "./circulation.js";
 import { SPATIAL_POLICY_VERSION } from "./geometry.js";
 import type { Point2 } from "./types.js";
+import { SPATIAL_POLICY_VERSION_V02 } from "./validate-multispace.js";
 
 export type CirculationRequirementEndpoint =
   | { kind: "door_portal"; openingId: string }
   | { kind: "point"; pointXY: Point2 };
 
-/** SceneSpec v0.4 `circulationRequirements[]` entry (only `same_space_route` exists). */
+/**
+ * SceneSpec v0.4/v0.5 `circulationRequirements[]` entry (only
+ * `same_space_route` exists). v0.4 pins circulation-policy-v0.1; v0.5 pins
+ * circulation-policy-v0.2.
+ */
 export interface CirculationRequirement {
   id: string;
   type: "same_space_route";
   spaceId: string;
-  evaluationPolicy: typeof CIRCULATION_POLICY_VERSION;
+  evaluationPolicy: typeof CIRCULATION_POLICY_VERSION | typeof CIRCULATION_POLICY_VERSION_V02;
   start: CirculationRequirementEndpoint;
   end: CirculationRequirementEndpoint;
 }
@@ -52,6 +63,22 @@ export interface CirculationRequirementEvaluation {
   requirements: CirculationRequirementResult[];
   /** The 9B analysis the requirements were resolved against (source of `graphSemanticHash`). */
   analysis: CirculationAnalysisResult;
+}
+
+export interface CirculationRequirementResultV02
+  extends Omit<CirculationRequirementResult, "route"> {
+  route: CirculationRouteResultV02 | null;
+}
+
+export interface CirculationRequirementEvaluationV02
+  extends Omit<
+    CirculationRequirementEvaluation,
+    "circulationPolicyVersion" | "spatialPolicyVersion" | "requirements" | "analysis"
+  > {
+  circulationPolicyVersion: typeof CIRCULATION_POLICY_VERSION_V02;
+  spatialPolicyVersion: typeof SPATIAL_POLICY_VERSION_V02;
+  requirements: CirculationRequirementResultV02[];
+  analysis: CirculationAnalysisResultV02;
 }
 
 function compareText(left: string, right: string): number {
@@ -93,11 +120,44 @@ function unsatisfied(
  */
 export function evaluateCirculationRequirements(
   sceneSpec: Record<string, unknown>,
-): CirculationRequirementEvaluation {
+): CirculationRequirementEvaluation | CirculationRequirementEvaluationV02 {
+  // Explicit policy dispatch by SceneSpec version; never "latest available".
+  if (sceneSpec.sceneSpecVersion === "0.5.0") {
+    return evaluateWith(sceneSpec, {
+      circulationPolicyVersion: CIRCULATION_POLICY_VERSION_V02,
+      spatialPolicyVersion: SPATIAL_POLICY_VERSION_V02,
+      analyze: analyzeCirculationV02,
+      route: findCirculationRouteV02,
+      sceneSpecVersion: "v0.5",
+    }) as unknown as CirculationRequirementEvaluationV02;
+  }
+  return evaluateWith(sceneSpec, {
+    circulationPolicyVersion: CIRCULATION_POLICY_VERSION,
+    spatialPolicyVersion: SPATIAL_POLICY_VERSION,
+    analyze: analyzeCirculation,
+    route: findCirculationRoute,
+    sceneSpecVersion: "v0.4",
+  }) as CirculationRequirementEvaluation;
+}
+
+interface RequirementPolicy {
+  circulationPolicyVersion: string;
+  spatialPolicyVersion: string;
+  analyze(
+    sceneSpec: Record<string, unknown>,
+  ): CirculationAnalysisResult | CirculationAnalysisResultV02;
+  route(
+    sceneSpec: Record<string, unknown>,
+    query: CirculationRouteQuery,
+  ): CirculationRouteResult | CirculationRouteResultV02;
+  sceneSpecVersion: string;
+}
+
+function evaluateWith(sceneSpec: Record<string, unknown>, policy: RequirementPolicy) {
   const requirements = [
     ...((sceneSpec.circulationRequirements as CirculationRequirement[] | undefined) ?? []),
   ].sort((left, right) => compareText(left.id, right.id));
-  const analysis = analyzeCirculation(sceneSpec);
+  const analysis = policy.analyze(sceneSpec);
 
   const results = requirements.map((requirement): CirculationRequirementResult => {
     if (analysis.spatialValidationStatus !== "PASS") {
@@ -106,6 +166,7 @@ export function evaluateCirculationRequirements(
         end: null,
       });
     }
+    // The requirement's own space selects the portal: a shared door has one per connected space.
     const space = analysis.spaces.find((entry) => entry.spaceId === requirement.spaceId);
     const resolve = (endpoint: CirculationRequirementEndpoint) => {
       if (endpoint.kind === "point") {
@@ -114,7 +175,7 @@ export function evaluateCirculationRequirements(
       const portal = space?.doorPortals.find((entry) => entry.openingId === endpoint.openingId);
       if (!portal) {
         throw new Error(
-          `Requirement ${requirement.id} references door ${endpoint.openingId} with no 9B portal in ${requirement.spaceId}; validate SceneSpec v0.4 first`,
+          `Requirement ${requirement.id} references door ${endpoint.openingId} with no portal in ${requirement.spaceId}; validate SceneSpec ${policy.sceneSpecVersion} first`,
         );
       }
       return { xy: portal.portalXY, blocked: portal.status === "BLOCKED" };
@@ -128,7 +189,7 @@ export function evaluateCirculationRequirements(
       });
     }
 
-    const route = findCirculationRoute(sceneSpec, {
+    const route = policy.route(sceneSpec, {
       spaceId: requirement.spaceId,
       startXY: start.xy,
       endXY: end.xy,
@@ -155,13 +216,13 @@ export function evaluateCirculationRequirements(
       orthogonalStepCount: route.orthogonalStepCount,
       diagonalStepCount: route.diagonalStepCount,
       failureCode: null,
-      route,
+      route: route as CirculationRouteResult,
     };
   });
 
   return {
-    circulationPolicyVersion: CIRCULATION_POLICY_VERSION,
-    spatialPolicyVersion: SPATIAL_POLICY_VERSION,
+    circulationPolicyVersion: policy.circulationPolicyVersion,
+    spatialPolicyVersion: policy.spatialPolicyVersion,
     sceneSpecVersion: analysis.sceneSpecVersion,
     projectId: analysis.projectId,
     sceneId: analysis.sceneId,

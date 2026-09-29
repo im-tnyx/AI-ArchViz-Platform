@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/spatial-validation-evidence-v0.2.schema.json",
+  "title": "AI ArchViz spatial validation evidence v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidenceVersion",
+    "policyVersion",
+    "projectId",
+    "sceneId",
+    "revisionId",
+    "sceneSpecVersion",
+    "sceneSpecHash",
+    "status",
+    "assetFootprints",
+    "partitionSolids",
+    "doorwayClearances",
+    "violations"
+  ],
+  "properties": {
+    "evidenceVersion": {
+      "const": "0.2.0"
+    },
+    "policyVersion": {
+      "const": "spatial-policy-v0.2"
+    },
+    "projectId": {
+      "$ref": "#/$defs/id"
+    },
+    "sceneId": {
+      "$ref": "#/$defs/id"
+    },
+    "revisionId": {
+      "$ref": "#/$defs/id"
+    },
+    "sceneSpecVersion": {
+      "const": "0.5.0"
+    },
+    "sceneSpecHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAILED"
+      ]
+    },
+    "assetFootprints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assetFootprint"
+      }
+    },
+    "partitionSolids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/partitionSolid"
+      }
+    },
+    "doorwayClearances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/doorwayClearance"
+      }
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/violation"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "point2": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "corners2": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/point2"
+        },
+        {
+          "$ref": "#/$defs/point2"
+        },
+        {
+          "$ref": "#/$defs/point2"
+        },
+        {
+          "$ref": "#/$defs/point2"
+        }
+      ],
+      "items": false,
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "assetFootprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "assetDefinitionId",
+        "spaceId",
+        "centerXY",
+        "widthMm",
+        "lengthMm",
+        "rotationZDegrees",
+        "cornersXY"
+      ],
+      "properties": {
+        "assetId": {
+          "$ref": "#/$defs/id"
+        },
+        "assetDefinitionId": {
+          "$ref": "#/$defs/id"
+        },
+        "spaceId": {
+          "$ref": "#/$defs/id"
+        },
+        "centerXY": {
+          "$ref": "#/$defs/point2"
+        },
+        "widthMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "lengthMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rotationZDegrees": {
+          "type": "number"
+        },
+        "cornersXY": {
+          "$ref": "#/$defs/corners2"
+        }
+      }
+    },
+    "doorwayClearance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "openingId",
+        "hostGeometryId",
+        "spaceId",
+        "widthMm",
+        "depthMm",
+        "cornersXY",
+        "hostType",
+        "side"
+      ],
+      "properties": {
+        "openingId": {
+          "$ref": "#/$defs/id"
+        },
+        "hostGeometryId": {
+          "$ref": "#/$defs/id"
+        },
+        "spaceId": {
+          "type": "string"
+        },
+        "widthMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "depthMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cornersXY": {
+          "$ref": "#/$defs/corners2"
+        },
+        "hostType": {
+          "enum": [
+            "wall",
+            "shared_partition"
+          ]
+        },
+        "side": {
+          "enum": [
+            "left",
+            "right",
+            null
+          ]
+        }
+      }
+    },
+    "violation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "SPATIAL_FOOTPRINT_UNSUPPORTED",
+            "SPATIAL_ASSET_OUTSIDE_SPACE",
+            "SPATIAL_ASSET_COLLISION",
+            "SPATIAL_DOOR_CLEARANCE_BLOCKED",
+            "SPATIAL_ASSET_PARTITION_OVERLAP"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "assetId": {
+          "$ref": "#/$defs/id"
+        },
+        "assetAId": {
+          "$ref": "#/$defs/id"
+        },
+        "assetBId": {
+          "$ref": "#/$defs/id"
+        },
+        "spaceId": {
+          "$ref": "#/$defs/id"
+        },
+        "openingId": {
+          "$ref": "#/$defs/id"
+        },
+        "hostGeometryId": {
+          "$ref": "#/$defs/id"
+        },
+        "partitionId": {
+          "$ref": "#/$defs/id"
+        },
+        "partitionSolidId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*::solid::[0-9]{4}$",
+          "maxLength": 160
+        }
+      }
+    },
+    "partitionSolid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "solidId",
+        "partitionId",
+        "adjacentSpaceIds",
+        "fromMm",
+        "toMm",
+        "lengthMm",
+        "thicknessMm",
+        "cornersXY"
+      ],
+      "properties": {
+        "solidId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*::solid::[0-9]{4}$",
+          "maxLength": 160
+        },
+        "partitionId": {
+          "$ref": "#/$defs/id"
+        },
+        "adjacentSpaceIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "fromMm": {
+          "type": "number",
+          "minimum": 0
+        },
+        "toMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "lengthMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "thicknessMm": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cornersXY": {
+          "$ref": "#/$defs/corners2"
+        }
+      }
+    }
+  },
+  "description": "spatial-policy-v0.2 evidence for one SceneSpec v0.5: asset footprints, physical shared-partition solids (door voids subtracted), doorway clearances (one per connected space for a shared-partition door), and violations. No paths."
+}

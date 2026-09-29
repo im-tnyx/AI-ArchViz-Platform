@@ -9,6 +9,7 @@ import {
 } from "./geometry.js";
 import type { DoorwayClearance, Point2, SpaceInput, SpatialSceneInput } from "./types.js";
 import { validateSpatialScene } from "./validate.js";
+import { SPATIAL_POLICY_VERSION_V02, validateSpatialSceneV02 } from "./validate-multispace.js";
 
 /**
  * circulation-policy-v0.1 (Technical Spike 9B). Grid step and agent radius
@@ -17,6 +18,15 @@ import { validateSpatialScene } from "./validate.js";
  * human-body standards.
  */
 export const CIRCULATION_POLICY_VERSION = "circulation-policy-v0.1" as const;
+/**
+ * circulation-policy-v0.2 (Spike 10F, SceneSpec v0.5 only): the same grid
+ * step, agent radius, snap, graph, and tie rules as v0.1; its only semantic
+ * differences are partition-aware obstacles (each space also avoids the
+ * physical shared-partition solids adjacent to it, measured from the actual
+ * solid face) and two-sided shared-door portals (one per connected space).
+ * Routing stays same-space: a shared door never joins two space graphs.
+ */
+export const CIRCULATION_POLICY_VERSION_V02 = "circulation-policy-v0.2" as const;
 export const CIRCULATION_GRID_STEP_MM = 100;
 export const CIRCULATION_AGENT_RADIUS_MM = 300;
 export const CIRCULATION_SNAP_DISTANCE_MM = CIRCULATION_GRID_STEP_MM * Math.SQRT2;
@@ -109,6 +119,19 @@ export interface CirculationAnalysisResult {
   graph: CirculationGraph;
 }
 
+export interface CirculationGraphV02
+  extends Omit<CirculationGraph, "policyVersion" | "spatialPolicyVersion"> {
+  policyVersion: typeof CIRCULATION_POLICY_VERSION_V02;
+  spatialPolicyVersion: typeof SPATIAL_POLICY_VERSION_V02;
+}
+
+export interface CirculationAnalysisResultV02
+  extends Omit<CirculationAnalysisResult, "policyVersion" | "spatialPolicyVersion" | "graph"> {
+  policyVersion: typeof CIRCULATION_POLICY_VERSION_V02;
+  spatialPolicyVersion: typeof SPATIAL_POLICY_VERSION_V02;
+  graph: CirculationGraphV02;
+}
+
 export interface CirculationRouteQuery {
   spaceId: string;
   startXY: Point2;
@@ -130,6 +153,10 @@ export interface CirculationRouteResult {
   diagonalStepCount: number | null;
   path: { nodeIds: string[]; pointsXY: Point2[] };
   violations: CirculationViolation[];
+}
+
+export interface CirculationRouteResultV02 extends Omit<CirculationRouteResult, "policyVersion"> {
+  policyVersion: typeof CIRCULATION_POLICY_VERSION_V02;
 }
 
 interface GridNode {
@@ -317,19 +344,76 @@ function resolveAnchor(graph: SpaceGraph, point: Point2): Anchor {
   return best ? { kind: "resolved", node: best.node } : { kind: "unresolvable" };
 }
 
+interface CirculationPolicy {
+  policyVersion: string;
+  spatialPolicyVersion: string;
+  spatial(sceneSpec: Record<string, unknown>): {
+    status: "PASS" | "FAILED";
+    doorwayClearances: readonly DoorwayClearance[];
+    obstacles: ReadonlyArray<{ spaceIds: readonly string[]; cornersXY: readonly Point2[] }>;
+  };
+}
+
+const POLICY_V01: CirculationPolicy = {
+  policyVersion: CIRCULATION_POLICY_VERSION,
+  spatialPolicyVersion: SPATIAL_POLICY_VERSION,
+  spatial(sceneSpec) {
+    if (sceneSpec.sceneSpecVersion === "0.5.0") {
+      throw new Error(
+        `SceneSpec 0.5.0 must be analyzed under ${CIRCULATION_POLICY_VERSION_V02}, never ${CIRCULATION_POLICY_VERSION}`,
+      );
+    }
+    const spatial = validateSpatialScene(sceneSpec);
+    return {
+      status: spatial.status,
+      doorwayClearances: spatial.doorwayClearances,
+      obstacles: spatial.assetFootprints.map((footprint) => ({
+        spaceIds: [footprint.spaceId],
+        cornersXY: footprint.cornersXY,
+      })),
+    };
+  },
+};
+
+const POLICY_V02: CirculationPolicy = {
+  policyVersion: CIRCULATION_POLICY_VERSION_V02,
+  spatialPolicyVersion: SPATIAL_POLICY_VERSION_V02,
+  spatial(sceneSpec) {
+    const spatial = validateSpatialSceneV02(sceneSpec);
+    return {
+      status: spatial.status,
+      doorwayClearances: spatial.doorwayClearances,
+      // Physical partition solids obstruct BOTH adjacent spaces; door voids do not.
+      obstacles: [
+        ...spatial.assetFootprints.map((footprint) => ({
+          spaceIds: [footprint.spaceId],
+          cornersXY: footprint.cornersXY,
+        })),
+        ...spatial.partitionSolids.map((solid) => ({
+          spaceIds: solid.adjacentSpaceIds,
+          cornersXY: solid.cornersXY,
+        })),
+      ],
+    };
+  },
+};
+
 /**
  * A space's obstacles are exactly the 9A footprints canonically assigned to
- * that space (`footprint.spaceId`), never inferred from coordinates. Spaces
- * may share XY (stacked floors, overlapping boundaries), so another space's
- * furniture must never obstruct this one.
+ * that space (`footprint.spaceId`), never inferred from coordinates (plus,
+ * under v0.2, the partition solids adjacent to it). Spaces may share XY
+ * (stacked floors, overlapping boundaries), so another space's furniture
+ * must never obstruct this one.
  */
-function sceneObstacles(sceneSpec: Record<string, unknown>) {
-  const spatial = validateSpatialScene(sceneSpec);
+function sceneObstacles(sceneSpec: Record<string, unknown>, policy: CirculationPolicy) {
+  const spatial = policy.spatial(sceneSpec);
   const obstaclesBySpace = new Map<string, Array<readonly Point2[]>>();
-  for (const footprint of spatial.assetFootprints) {
-    const list = obstaclesBySpace.get(footprint.spaceId) ?? [];
-    list.push(footprint.cornersXY);
-    obstaclesBySpace.set(footprint.spaceId, list);
+  for (const obstacle of spatial.obstacles) {
+    for (const spaceId of obstacle.spaceIds) {
+      const list = obstaclesBySpace.get(spaceId) ?? [];
+      list.push(obstacle.cornersXY);
+      obstaclesBySpace.set(spaceId, list);
+    }
   }
   return {
     spatial,
@@ -342,7 +426,11 @@ function sortedSpaces(scene: SpatialSceneInput): SpaceInput[] {
   return [...scene.spaces].sort((left, right) => compareText(left.id, right.id));
 }
 
-function portalFor(clearance: DoorwayClearance, graph: SpaceGraph | undefined) {
+function portalFor(
+  clearance: DoorwayClearance,
+  graph: SpaceGraph | undefined,
+  policyVersion: string,
+) {
   const [, , intoRoomEnd, intoRoomStart] = clearance.cornersXY;
   const portalXY: Point2 = [
     (intoRoomEnd[0] + intoRoomStart[0]) / 2,
@@ -364,8 +452,8 @@ function portalFor(clearance: DoorwayClearance, graph: SpaceGraph | undefined) {
       code: "CIRCULATION_PORTAL_BLOCKED",
       message:
         anchor.kind === "blocked"
-          ? `Door ${clearance.openingId} interior portal is not a clear ${CIRCULATION_AGENT_RADIUS_MM}mm-radius circulation-probe position under ${CIRCULATION_POLICY_VERSION}`
-          : `Door ${clearance.openingId} interior portal resolves to no walkable node within ${CIRCULATION_GRID_STEP_MM}mm*sqrt(2) under ${CIRCULATION_POLICY_VERSION}`,
+          ? `Door ${clearance.openingId} interior portal is not a clear ${CIRCULATION_AGENT_RADIUS_MM}mm-radius circulation-probe position under ${policyVersion}`
+          : `Door ${clearance.openingId} interior portal resolves to no walkable node within ${CIRCULATION_GRID_STEP_MM}mm*sqrt(2) under ${policyVersion}`,
       openingId: clearance.openingId,
       portalXY,
       ...(clearance.spaceId ? { spaceId: clearance.spaceId } : {}),
@@ -381,11 +469,27 @@ function portalFor(clearance: DoorwayClearance, graph: SpaceGraph | undefined) {
  * portals. Never mutates the input and never launches a DCC.
  */
 export function analyzeCirculation(sceneSpec: Record<string, unknown>): CirculationAnalysisResult {
+  return analyzeCirculationWith(sceneSpec, POLICY_V01) as unknown as CirculationAnalysisResult;
+}
+
+/**
+ * Pure full-scene circulation analysis for SceneSpec v0.5
+ * (circulation-policy-v0.2 over spatial-policy-v0.2): the v0.1 graph, with
+ * partition solids as obstacles of both adjacent spaces and one portal per
+ * (shared door, connected space). The space graphs stay disconnected.
+ */
+export function analyzeCirculationV02(
+  sceneSpec: Record<string, unknown>,
+): CirculationAnalysisResultV02 {
+  return analyzeCirculationWith(sceneSpec, POLICY_V02) as unknown as CirculationAnalysisResultV02;
+}
+
+function analyzeCirculationWith(sceneSpec: Record<string, unknown>, policy: CirculationPolicy) {
   const scene = sceneSpec as unknown as SpatialSceneInput;
-  const { spatial, obstaclesFor } = sceneObstacles(sceneSpec);
+  const { spatial, obstaclesFor } = sceneObstacles(sceneSpec, policy);
   const base = {
-    policyVersion: CIRCULATION_POLICY_VERSION,
-    spatialPolicyVersion: SPATIAL_POLICY_VERSION,
+    policyVersion: policy.policyVersion,
+    spatialPolicyVersion: policy.spatialPolicyVersion,
     sceneSpecVersion: scene.sceneSpecVersion,
     projectId: scene.project.id,
     sceneId: scene.scene.id,
@@ -394,9 +498,9 @@ export function analyzeCirculation(sceneSpec: Record<string, unknown>): Circulat
     gridStepMm: CIRCULATION_GRID_STEP_MM,
     agentRadiusMm: CIRCULATION_AGENT_RADIUS_MM,
   };
-  const emptyGraph = (spaces: CirculationGraphSpace[]): CirculationGraph => ({
-    policyVersion: CIRCULATION_POLICY_VERSION,
-    spatialPolicyVersion: SPATIAL_POLICY_VERSION,
+  const emptyGraph = (spaces: CirculationGraphSpace[]) => ({
+    policyVersion: policy.policyVersion,
+    spatialPolicyVersion: policy.spatialPolicyVersion,
     gridStepMm: CIRCULATION_GRID_STEP_MM,
     agentRadiusMm: CIRCULATION_AGENT_RADIUS_MM,
     spaces,
@@ -408,8 +512,8 @@ export function analyzeCirculation(sceneSpec: Record<string, unknown>): Circulat
       spaces: [],
       violations: [
         {
-          code: "CIRCULATION_SOURCE_SPATIAL_INVALID",
-          message: `Source scene fails ${SPATIAL_POLICY_VERSION}; no circulation graph was built`,
+          code: "CIRCULATION_SOURCE_SPATIAL_INVALID" as const,
+          message: `Source scene fails ${policy.spatialPolicyVersion}; no circulation graph was built`,
         },
       ],
       graph: emptyGraph([]),
@@ -422,7 +526,11 @@ export function analyzeCirculation(sceneSpec: Record<string, unknown>): Circulat
   const violations: CirculationViolation[] = [];
   const portalsBySpace = new Map<string, CirculationDoorPortal[]>();
   for (const clearance of spatial.doorwayClearances) {
-    const { portal, violation } = portalFor(clearance, graphs.get(clearance.spaceId));
+    const { portal, violation } = portalFor(
+      clearance,
+      graphs.get(clearance.spaceId),
+      policy.policyVersion,
+    );
     const list = portalsBySpace.get(clearance.spaceId) ?? [];
     list.push(portal);
     portalsBySpace.set(clearance.spaceId, list);
@@ -582,6 +690,31 @@ export function findCirculationRoute(
   sceneSpec: Record<string, unknown>,
   query: CirculationRouteQuery,
 ): CirculationRouteResult {
+  return findCirculationRouteWith(sceneSpec, query, POLICY_V01) as CirculationRouteResult;
+}
+
+/**
+ * Same-space route query under circulation-policy-v0.2 (SceneSpec v0.5).
+ * A shared door connects two canonical spaces, but no cross-space route is
+ * planned: each space keeps its own disconnected graph.
+ */
+export function findCirculationRouteV02(
+  sceneSpec: Record<string, unknown>,
+  query: CirculationRouteQuery,
+): CirculationRouteResultV02 {
+  return findCirculationRouteWith(
+    sceneSpec,
+    query,
+    POLICY_V02,
+  ) as unknown as CirculationRouteResultV02;
+}
+
+function findCirculationRouteWith(
+  sceneSpec: Record<string, unknown>,
+  query: CirculationRouteQuery,
+  policy: CirculationPolicy,
+): CirculationRouteResult | CirculationRouteResultV02 {
+  const policyVersion = policy.policyVersion as typeof CIRCULATION_POLICY_VERSION;
   const requestedStartXY: Point2 = [query.startXY[0], query.startXY[1]];
   const requestedEndXY: Point2 = [query.endXY[0], query.endXY[1]];
   const failed = (
@@ -589,7 +722,7 @@ export function findCirculationRoute(
     startNodeId: string | null = null,
     endNodeId: string | null = null,
   ): CirculationRouteResult => ({
-    policyVersion: CIRCULATION_POLICY_VERSION,
+    policyVersion,
     spaceId: query.spaceId,
     requestedStartXY,
     requestedEndXY,
@@ -605,12 +738,12 @@ export function findCirculationRoute(
   });
 
   const scene = sceneSpec as unknown as SpatialSceneInput;
-  const { spatial, obstaclesFor } = sceneObstacles(sceneSpec);
+  const { spatial, obstaclesFor } = sceneObstacles(sceneSpec, policy);
   if (spatial.status !== "PASS") {
     return failed([
       {
         code: "CIRCULATION_SOURCE_SPATIAL_INVALID",
-        message: `Source scene fails ${SPATIAL_POLICY_VERSION}; no circulation graph was built`,
+        message: `Source scene fails ${policy.spatialPolicyVersion}; no circulation graph was built`,
       },
     ]);
   }
@@ -661,7 +794,7 @@ export function findCirculationRoute(
       [
         {
           code: "CIRCULATION_NO_ROUTE",
-          message: `No ${CIRCULATION_POLICY_VERSION} route connects ${startAnchor.nodeId} to ${endAnchor.nodeId}`,
+          message: `No ${policyVersion} route connects ${startAnchor.nodeId} to ${endAnchor.nodeId}`,
           spaceId: query.spaceId,
         },
       ],
@@ -671,7 +804,7 @@ export function findCirculationRoute(
   }
   const pathNodes = route.path.map((index) => graph.nodes[index] as GridNode);
   return {
-    policyVersion: CIRCULATION_POLICY_VERSION,
+    policyVersion,
     spaceId: query.spaceId,
     requestedStartXY,
     requestedEndXY,

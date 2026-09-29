@@ -20,6 +20,7 @@ import {
 import {
   analyzeCirculation,
   type CirculationRequirementEvaluation,
+  type CirculationRequirementEvaluationV02,
   evaluateCirculationRequirements,
   validateSpatialScene,
 } from "../../packages/spatial-engine/src/index.js";
@@ -160,7 +161,14 @@ function keywords(scene: unknown): string[] {
   return result.ok ? [] : result.errors.map((error) => error.keyword);
 }
 
-function resultFor(evaluation: CirculationRequirementEvaluation, requirementId: string) {
+function resultFor(
+  evaluation: CirculationRequirementEvaluation | CirculationRequirementEvaluationV02,
+  requirementId: string,
+) {
+  // Every 9C fixture is SceneSpec v0.4, so dispatch must select circulation-policy-v0.1.
+  if (evaluation.circulationPolicyVersion !== "circulation-policy-v0.1") {
+    throw new Error("9C fixtures must be evaluated under circulation-policy-v0.1");
+  }
   const result = evaluation.requirements.find((entry) => entry.requirementId === requirementId);
   if (!result) throw new Error(`missing ${requirementId}`);
   return result;

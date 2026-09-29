@@ -895,9 +895,12 @@ describe("Spike 10C static boundary guards", () => {
   const importsOf = (text: string) =>
     [...text.matchAll(/(?:from|import)\s*\(?\s*"([^"]+)"/g)].map((match) => match[1] as string);
 
-  it("cad-scene-seed imports only cad-interpreter, scene-spec, schema utilities, and local modules", () => {
+  it("cad-scene-seed imports only upstream CAD packages, scene-spec, schema utilities, and local modules", () => {
     const allowed = new Set([
       "@ai-archviz/cad-interpreter",
+      // Spike 10F multi-space seed: the reviewed 10D/10E chain (upstream packages).
+      "@ai-archviz/cad-partition-model",
+      "@ai-archviz/cad-topology",
       "@ai-archviz/scene-spec",
       "ajv/dist/2020.js",
       "ajv-formats",

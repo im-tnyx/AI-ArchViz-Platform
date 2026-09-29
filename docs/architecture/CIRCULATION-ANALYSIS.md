@@ -242,3 +242,12 @@ A 100 mm grid with straightforward arrays, maps, and a binary heap is
 intentionally sufficient for the current architecture proof (Golden rev12
 analysis is tens of milliseconds). No quadtree, navmesh, GPU
 rasterization, or third-party geometry engine is used.
+
+## circulation-policy-v0.2 (SceneSpec v0.5)
+
+circulation-policy-v0.1 results are byte-identical and it refuses SceneSpec
+0.5.0. `analyzeCirculationV02` / `findCirculationRouteV02` keep the same
+grid, radius, snap, graph, and tie rules and add partition solids as
+obstacles of both adjacent spaces and one portal per (shared door,
+connected space). Space graphs are never connected across a shared door
+(`circulation-analysis-evidence-v0.2`). See [MULTI-SPACE-SCENE-SPEC.md](MULTI-SPACE-SCENE-SPEC.md).

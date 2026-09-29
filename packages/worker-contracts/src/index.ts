@@ -65,6 +65,48 @@ export type CanonicalCameraStateEvidence = Record<string, unknown>;
 export type SpatialValidationEvidence = Record<string, unknown>;
 export type CirculationAnalysisEvidence = Record<string, unknown>;
 export type CirculationRequirementEvidence = Record<string, unknown>;
+export type SpatialValidationEvidenceV02 = Record<string, unknown>;
+export type CirculationAnalysisEvidenceV02 = Record<string, unknown>;
+export type CirculationRequirementEvidenceV02 = Record<string, unknown>;
+
+/** Identity proof for one multi-space SceneSpec v0.5 seed (complete reviewed chain). */
+export interface CadSceneSeedEvidenceV02 {
+  evidenceVersion: "0.2.0";
+  seedPolicyVersion: "cad-scene-seed-policy-v0.2";
+  sceneSpecVersion: "0.5.0";
+  sourceHash: string;
+  cadDocumentHash: string;
+  profileHash: string;
+  candidateBasis: "architectural_extraction" | "space_wall_stage";
+  /** Null for the space_wall_stage basis: no architectural extraction exists. */
+  architecturalExtractionHash: string | null;
+  spaceWallStageHash: string;
+  architecturalTopologyHash: string;
+  partitionPolicyVersion: "cad-shared-partition-policy-v0.1";
+  partitionApprovalId: string;
+  partitionApprovalHash: string;
+  reviewedPartitionModelHash: string;
+  sceneApprovalId: string;
+  sceneApprovalHash: string;
+  sceneSpecHash: string;
+  projectId: string;
+  sceneId: string;
+  revisionId: string;
+  mappingSummary: {
+    levelCount: number;
+    spaceCount: number;
+    wallCount: number;
+    sharedPartitionCount: number;
+    surfaceCount: number;
+    openingCount: number;
+    partitionDoorCount: number;
+  };
+  spatialPolicyVersion: "spatial-policy-v0.2";
+  spatialValidationStatus: "PASS";
+  circulationPolicyVersion: "circulation-policy-v0.2";
+  circulationRequirementStatus: "PASS";
+  status: "PASS";
+}
 
 /** Identity proof for one cad-document-v0.1 extraction (no path, no entities). */
 export interface CadExtractionEvidence {
@@ -248,6 +290,16 @@ export const circulationAnalysisEvidenceSchema = readSchema(
 export const circulationRequirementEvidenceSchema = readSchema(
   "circulation-requirement-evidence-v0.1.schema.json",
 );
+export const spatialValidationEvidenceV02Schema = readSchema(
+  "spatial-validation-evidence-v0.2.schema.json",
+);
+export const circulationAnalysisEvidenceV02Schema = readSchema(
+  "circulation-analysis-evidence-v0.2.schema.json",
+);
+export const circulationRequirementEvidenceV02Schema = readSchema(
+  "circulation-requirement-evidence-v0.2.schema.json",
+);
+export const cadSceneSeedEvidenceV02Schema = readSchema("cad-scene-seed-evidence-v0.2.schema.json");
 export const cadExtractionEvidenceSchema = readSchema("cad-extraction-evidence-v0.1.schema.json");
 export const cadInterpretationEvidenceSchema = readSchema(
   "cad-interpretation-evidence-v0.1.schema.json",
@@ -336,6 +388,18 @@ const circulationAnalysisEvidenceValidator = ajv.compile(
 const circulationRequirementEvidenceValidator = ajv.compile(
   circulationRequirementEvidenceSchema,
 ) as ValidateFunction<CirculationRequirementEvidence>;
+const spatialValidationEvidenceV02Validator = ajv.compile(
+  spatialValidationEvidenceV02Schema,
+) as ValidateFunction<SpatialValidationEvidenceV02>;
+const circulationAnalysisEvidenceV02Validator = ajv.compile(
+  circulationAnalysisEvidenceV02Schema,
+) as ValidateFunction<CirculationAnalysisEvidenceV02>;
+const circulationRequirementEvidenceV02Validator = ajv.compile(
+  circulationRequirementEvidenceV02Schema,
+) as ValidateFunction<CirculationRequirementEvidenceV02>;
+const cadSceneSeedEvidenceV02Validator = ajv.compile(
+  cadSceneSeedEvidenceV02Schema,
+) as ValidateFunction<CadSceneSeedEvidenceV02>;
 const cadExtractionEvidenceValidator = ajv.compile(
   cadExtractionEvidenceSchema,
 ) as ValidateFunction<CadExtractionEvidence>;
@@ -510,6 +574,30 @@ export function validateCirculationRequirementEvidence(
   value: unknown,
 ): ValidationResult<CirculationRequirementEvidence> {
   return runValidation(circulationRequirementEvidenceValidator, value);
+}
+
+export function validateSpatialValidationEvidenceV02(
+  value: unknown,
+): ValidationResult<SpatialValidationEvidenceV02> {
+  return runValidation(spatialValidationEvidenceV02Validator, value);
+}
+
+export function validateCirculationAnalysisEvidenceV02(
+  value: unknown,
+): ValidationResult<CirculationAnalysisEvidenceV02> {
+  return runValidation(circulationAnalysisEvidenceV02Validator, value);
+}
+
+export function validateCirculationRequirementEvidenceV02(
+  value: unknown,
+): ValidationResult<CirculationRequirementEvidenceV02> {
+  return runValidation(circulationRequirementEvidenceV02Validator, value);
+}
+
+export function validateCadSceneSeedEvidenceV02(
+  value: unknown,
+): ValidationResult<CadSceneSeedEvidenceV02> {
+  return runValidation(cadSceneSeedEvidenceV02Validator, value);
 }
 
 export function validateCadExtractionEvidence(

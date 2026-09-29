@@ -217,3 +217,13 @@ The spatial engine is an oracle only. It never moves furniture, snaps to a
 wall, rotates an object, shrinks a clearance zone, substitutes another
 asset, or changes scale. Repair, if it ever exists, is a future AI/planner
 concern layered on top of this oracle — never inside it.
+
+## spatial-policy-v0.2 (SceneSpec v0.5)
+
+spatial-policy-v0.1 above is unchanged and now refuses SceneSpec 0.5.0
+rather than evaluate it silently. SceneSpec 0.5.0 is validated under
+spatial-policy-v0.2 (`validateSpatialSceneV02`; explicit dispatch via
+`validateSpatialSceneForVersion`): shared-partition solids with door voids
+subtracted, `SPATIAL_ASSET_PARTITION_OVERLAP`, and one doorway clearance
+per connected space of a shared door (`spatial-validation-evidence-v0.2`).
+See [MULTI-SPACE-SCENE-SPEC.md](MULTI-SPACE-SCENE-SPEC.md).

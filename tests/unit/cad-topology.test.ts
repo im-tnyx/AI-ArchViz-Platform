@@ -1153,7 +1153,8 @@ describe("Spike 10D static boundary guards", () => {
   });
 
   it("keeps the dependency direction cad-parser <- cad-interpreter <- cad-topology", () => {
-    for (const upstream of ["cad-parser", "cad-interpreter", "scene-spec", "cad-scene-seed"]) {
+    // cad-scene-seed legitimately consumes cad-topology since Spike 10F (downstream).
+    for (const upstream of ["cad-parser", "cad-interpreter", "scene-spec"]) {
       const directory = join(repositoryRoot, "packages", upstream);
       expect(readFileSync(join(directory, "package.json"), "utf8")).not.toContain("cad-topology");
       for (const file of readdirSync(join(directory, "src"))) {

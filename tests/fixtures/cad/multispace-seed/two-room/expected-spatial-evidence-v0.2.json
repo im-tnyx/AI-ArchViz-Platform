@@ -1,0 +1,191 @@
+{
+  "evidenceVersion": "0.2.0",
+  "policyVersion": "spatial-policy-v0.2",
+  "projectId": "project_cad_multispace_001",
+  "sceneId": "scene_cad_multispace_001",
+  "revisionId": "rev_cad_multispace_0001",
+  "sceneSpecVersion": "0.5.0",
+  "sceneSpecHash": "sha256:341f67b720881d6236d8b2dca63c31671c8c64fef48f9ef299c7bc7ff851d779",
+  "status": "PASS",
+  "assetFootprints": [
+    {
+      "assetId": "asset_multispace_box_bedroom",
+      "assetDefinitionId": "assetdef_multispace_box_v1",
+      "spaceId": "space_bedroom_main",
+      "centerXY": [
+        5000,
+        1000
+      ],
+      "widthMm": 600,
+      "lengthMm": 400,
+      "rotationZDegrees": 0,
+      "cornersXY": [
+        [
+          4700,
+          800
+        ],
+        [
+          5300,
+          800
+        ],
+        [
+          5300,
+          1200
+        ],
+        [
+          4700,
+          1200
+        ]
+      ]
+    },
+    {
+      "assetId": "asset_multispace_box_living",
+      "assetDefinitionId": "assetdef_multispace_box_v1",
+      "spaceId": "space_living_main",
+      "centerXY": [
+        1000,
+        1000
+      ],
+      "widthMm": 600,
+      "lengthMm": 400,
+      "rotationZDegrees": 0,
+      "cornersXY": [
+        [
+          700,
+          800
+        ],
+        [
+          1300,
+          800
+        ],
+        [
+          1300,
+          1200
+        ],
+        [
+          700,
+          1200
+        ]
+      ]
+    }
+  ],
+  "partitionSolids": [
+    {
+      "solidId": "partition_living_bedroom_main::solid::0000",
+      "partitionId": "partition_living_bedroom_main",
+      "adjacentSpaceIds": [
+        "space_bedroom_main",
+        "space_living_main"
+      ],
+      "fromMm": 0,
+      "toMm": 1550,
+      "lengthMm": 1550,
+      "thicknessMm": 150,
+      "cornersXY": [
+        [
+          3075,
+          0
+        ],
+        [
+          3075,
+          1550
+        ],
+        [
+          2925,
+          1550
+        ],
+        [
+          2925,
+          0
+        ]
+      ]
+    },
+    {
+      "solidId": "partition_living_bedroom_main::solid::0001",
+      "partitionId": "partition_living_bedroom_main",
+      "adjacentSpaceIds": [
+        "space_bedroom_main",
+        "space_living_main"
+      ],
+      "fromMm": 2450,
+      "toMm": 4000,
+      "lengthMm": 1550,
+      "thicknessMm": 150,
+      "cornersXY": [
+        [
+          3075,
+          2450
+        ],
+        [
+          3075,
+          4000
+        ],
+        [
+          2925,
+          4000
+        ],
+        [
+          2925,
+          2450
+        ]
+      ]
+    }
+  ],
+  "doorwayClearances": [
+    {
+      "openingId": "opening_d_internal_01",
+      "hostGeometryId": "partition_living_bedroom_main",
+      "spaceId": "space_bedroom_main",
+      "widthMm": 900,
+      "depthMm": 900,
+      "cornersXY": [
+        [
+          3075,
+          1550
+        ],
+        [
+          3075,
+          2450
+        ],
+        [
+          3975,
+          2450
+        ],
+        [
+          3975,
+          1550
+        ]
+      ],
+      "hostType": "shared_partition",
+      "side": "right"
+    },
+    {
+      "openingId": "opening_d_internal_01",
+      "hostGeometryId": "partition_living_bedroom_main",
+      "spaceId": "space_living_main",
+      "widthMm": 900,
+      "depthMm": 900,
+      "cornersXY": [
+        [
+          2925,
+          1550
+        ],
+        [
+          2925,
+          2450
+        ],
+        [
+          2025,
+          2450
+        ],
+        [
+          2025,
+          1550
+        ]
+      ],
+      "hostType": "shared_partition",
+      "side": "left"
+    }
+  ],
+  "violations": []
+}

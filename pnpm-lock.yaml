@@ -128,6 +128,12 @@ importers:
       '@ai-archviz/cad-interpreter':
         specifier: workspace:*
         version: link:../cad-interpreter
+      '@ai-archviz/cad-partition-model':
+        specifier: workspace:*
+        version: link:../cad-partition-model
+      '@ai-archviz/cad-topology':
+        specifier: workspace:*
+        version: link:../cad-topology
       '@ai-archviz/scene-spec':
         specifier: workspace:*
         version: link:../scene-spec

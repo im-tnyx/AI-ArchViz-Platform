@@ -241,3 +241,13 @@ A canonical requirement means "project intent requires this deterministic
 route under the named circulation policy". It does not mean code
 compliant, accessible, fire safe, egress compliant, or NBC/IBC/ADA
 compliant.
+
+## SceneSpec v0.5 requirements (circulation-policy-v0.2)
+
+SceneSpec v0.4 requirements still pin and evaluate under
+circulation-policy-v0.1. SceneSpec v0.5 requirements pin
+circulation-policy-v0.2; `evaluateCirculationRequirements` dispatches by
+SceneSpec version. A shared-partition door may be a `door_portal` for either
+connected space, and resolves to the portal on the requirement space's own
+side; no cross-space route requirement exists
+(`circulation-requirement-evidence-v0.2`). See [MULTI-SPACE-SCENE-SPEC.md](MULTI-SPACE-SCENE-SPEC.md).

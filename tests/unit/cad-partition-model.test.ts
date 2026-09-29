@@ -982,13 +982,8 @@ describe("Spike 10E static boundary guards", () => {
   });
 
   it("keeps the dependency direction parser <- interpreter <- topology <- partition model", () => {
-    for (const upstream of [
-      "cad-parser",
-      "cad-interpreter",
-      "cad-topology",
-      "scene-spec",
-      "cad-scene-seed",
-    ]) {
+    // cad-scene-seed legitimately consumes cad-partition-model since Spike 10F (downstream).
+    for (const upstream of ["cad-parser", "cad-interpreter", "cad-topology", "scene-spec"]) {
       const directory = join(repositoryRoot, "packages", upstream);
       expect(readFileSync(join(directory, "package.json"), "utf8")).not.toContain(
         "cad-partition-model",
@@ -1029,8 +1024,20 @@ describe("Spike 10E static boundary guards", () => {
     expect(text).not.toMatch(/resolveWithinRoot|child_process|process\.env|dcc-|probe\.js/);
   });
 
-  it("introduces no SceneSpec version and leaves the SceneSpec package untouched", () => {
+  it("keeps the partition model independent of SceneSpec (v0.5 is a 10F seed concern)", () => {
+    const partitionPackage = readFileSync(
+      join(repositoryRoot, "packages/cad-partition-model/package.json"),
+      "utf8",
+    );
+    expect(partitionPackage).not.toContain("scene-spec");
     const schemas = readdirSync(join(repositoryRoot, "packages/scene-spec/schema"));
-    expect(schemas.some((file) => file.includes("v0.5"))).toBe(false);
+    // SceneSpec v0.5 was introduced by the separately authorized Spike 10F; nothing newer.
+    expect(schemas.filter((file) => file.startsWith("scene-spec-v")).sort()).toEqual([
+      "scene-spec-v0.1.schema.json",
+      "scene-spec-v0.2.schema.json",
+      "scene-spec-v0.3.schema.json",
+      "scene-spec-v0.4.schema.json",
+      "scene-spec-v0.5.schema.json",
+    ]);
   });
 });

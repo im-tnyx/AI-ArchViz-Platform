@@ -33,7 +33,7 @@ import { validateCadSceneSeedApproval } from "./validate.js";
  */
 
 /** Canonical coordinate system: seed-policy-owned, never user-selectable. */
-const COORDINATE_SYSTEM = {
+export const COORDINATE_SYSTEM = {
   linearUnit: "mm",
   angularUnit: "degree",
   upAxis: "Z",
@@ -42,9 +42,13 @@ const COORDINATE_SYSTEM = {
   worldOrigin: [0, 0, 0],
 } as const;
 
-const IDENTITY_TRANSFORM = { position: [0, 0, 0], rotationEuler: [0, 0, 0], scale: [1, 1, 1] };
+export const IDENTITY_TRANSFORM = {
+  position: [0, 0, 0],
+  rotationEuler: [0, 0, 0],
+  scale: [1, 1, 1],
+};
 
-function fail(
+export function fail(
   code: CadSceneSeedErrorCode,
   message: string,
   details: Record<string, unknown> = {},
@@ -53,7 +57,7 @@ function fail(
 }
 
 /** Unicode code-point order (the approval's required mapping order). */
-function compareCodePoints(left: string, right: string): number {
+export function compareCodePoints(left: string, right: string): number {
   const a = Array.from(left, (character) => character.codePointAt(0) as number);
   const b = Array.from(right, (character) => character.codePointAt(0) as number);
   for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
@@ -64,11 +68,11 @@ function compareCodePoints(left: string, right: string): number {
 }
 
 /** All-unlocked is the only v0.1 lock policy; it is written explicitly. */
-function unlocked() {
+export function unlocked() {
   return { geometry: false, transform: false, material: false };
 }
 
-function resolveMappings<T extends CandidateMapping>(
+export function resolveMappings<T extends CandidateMapping>(
   kind: string,
   mappings: readonly T[],
   candidateIds: readonly string[],
@@ -117,7 +121,7 @@ function resolveMappings<T extends CandidateMapping>(
   return byCandidate;
 }
 
-function mapped<T extends CandidateMapping>(map: Map<string, T>, candidateId: string): T {
+export function mapped<T extends CandidateMapping>(map: Map<string, T>, candidateId: string): T {
   // Completeness was proven above; there is no fallback identity.
   return map.get(candidateId) as T;
 }
@@ -390,7 +394,7 @@ export function createSceneSpecSeedWithHashes(
  * source content-addressed as urn:sha256:<raw DXF byte hash>. No source URI
  * may be a local filesystem path (canonical identity is content hashes).
  */
-function assertSourceMetadata(sceneSpec: SceneSpec, sourceHash: string): void {
+export function assertSourceMetadata(sceneSpec: SceneSpec, sourceHash: string): void {
   const sources = sceneSpec.sources as { type: string; uri: string }[];
   const contentAddress = `urn:sha256:${sourceHash.slice("sha256:".length)}`;
   // Drive-letter, absolute, UNC, file:, relative (./ ../), or home (~) paths.
@@ -411,7 +415,7 @@ function assertSourceMetadata(sceneSpec: SceneSpec, sourceHash: string): void {
   }
 }
 
-function assertReferences(sceneSpec: SceneSpec): void {
+export function assertReferences(sceneSpec: SceneSpec): void {
   const ids = (key: string) =>
     new Set(((sceneSpec[key] as SceneSpec[] | undefined) ?? []).map((entry) => String(entry.id)));
   const spaceIds = ids("spaces");

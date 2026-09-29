@@ -115,3 +115,76 @@ export interface SpatialSceneInput {
   assets: AssetInput[];
   assetDefinitions: AssetDefinitionInput[];
 }
+
+// ------------------------------------------------ spatial-policy-v0.2 (10F)
+
+/** SceneSpec v0.5 shared_partition as read by spatial-policy-v0.2. */
+export interface SharedPartitionInput {
+  id: string;
+  type: "shared_partition";
+  adjacentSpaceIds: readonly [string, string];
+  start: Vector3;
+  end: Vector3;
+  thickness: number;
+  spaceFaces: ReadonlyArray<{
+    spaceId: string;
+    side: "left" | "right";
+    start: Vector3;
+    end: Vector3;
+  }>;
+}
+
+/** SceneSpec v0.5 partition-hosted door as read by spatial-policy-v0.2. */
+export interface PartitionDoorInput {
+  id: string;
+  type: "door";
+  hostGeometryId: string;
+  offset: number;
+  width: number;
+  connectsSpaceIds: readonly [string, string];
+}
+
+/**
+ * One physical solid piece of a shared partition: the centerline interval
+ * [fromMm, toMm] between door voids, thickness wide and centered on the
+ * centerline, as an exact oriented rectangle. `solidId` is a derived spatial
+ * identity (`partitionId::solid::NNNN`), never a SceneSpec logical ID.
+ */
+export interface PartitionSolid {
+  solidId: string;
+  partitionId: string;
+  adjacentSpaceIds: readonly [string, string];
+  fromMm: number;
+  toMm: number;
+  lengthMm: number;
+  thicknessMm: number;
+  /** Right-face start, right-face end, left-face end, left-face start. */
+  cornersXY: readonly [Point2, Point2, Point2, Point2];
+}
+
+export interface DoorwayClearanceV02 extends DoorwayClearance {
+  hostType: "wall" | "shared_partition";
+  /** The partition side of `spaceId` for a shared-partition door; null for a wall door. */
+  side: "left" | "right" | null;
+}
+
+export type SpatialViolationCodeV02 = SpatialViolationCode | "SPATIAL_ASSET_PARTITION_OVERLAP";
+
+export interface SpatialViolationV02 extends Omit<SpatialViolation, "code"> {
+  code: SpatialViolationCodeV02;
+  partitionId?: string;
+  partitionSolidId?: string;
+}
+
+export interface SpatialSceneValidationResultV02 {
+  policyVersion: "spatial-policy-v0.2";
+  sceneSpecVersion: string;
+  projectId: string;
+  sceneId: string;
+  revisionId: string;
+  status: "PASS" | "FAILED";
+  assetFootprints: AssetFootprint[];
+  partitionSolids: PartitionSolid[];
+  doorwayClearances: DoorwayClearanceV02[];
+  violations: SpatialViolationV02[];
+}

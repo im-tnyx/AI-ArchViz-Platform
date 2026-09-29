@@ -297,6 +297,18 @@ async function executeGoldenAttempt(
       resolve(dirname(absoluteJobPath), "fixture-manifest.json"),
     ) as ManifestTolerances;
     const sceneValidation = validateSceneSpec(sceneSpec);
+    // Spike 10F: SceneSpec v0.5 (shared partitions, partition doors) has no
+    // trusted physical realization yet (10G). Refuse it before any build plan,
+    // DCC discovery, or process launch rather than ignore, skip, approximate,
+    // or duplicate a shared partition.
+    if (sceneValidation.ok && sceneSpec.sceneSpecVersion === "0.5.0") {
+      return fail(
+        context,
+        "DCC_SCENE_SPEC_VERSION_UNSUPPORTED",
+        "SceneSpec 0.5.0 (shared partitions) has no DCC realization; the initial build supports SceneSpec <= 0.4.0",
+        { validationFailed: true },
+      );
+    }
     const manifestValidation = validateSceneManifest(expectedManifest);
     if (!sceneValidation.ok || !manifestValidation.ok) {
       return fail(context, "SCHEMA_INVALID", "SceneSpec or expected manifest validation failed", {

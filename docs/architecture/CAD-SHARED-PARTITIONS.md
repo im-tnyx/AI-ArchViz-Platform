@@ -207,3 +207,10 @@ pnpm worker review-cad-partitions tests/fixtures/cad/topology/two-room/cad-docum
 
 Fixtures live in `tests/fixtures/cad/partition-model/` (approvals, expected
 models and evidence) and reuse the 10D topology fixtures unchanged.
+
+**10F:** the reviewed partition model is now canonicalized into SceneSpec
+v0.5 by cad-scene-seed-policy-v0.2 (one `shared_partition` per reviewed
+partition, partition-hosted doors with `host_start`/`host_end` hinge and
+explicit swing space, ordinary walls only for unpaired intervals, room
+boundaries unchanged); see [MULTI-SPACE-SCENE-SPEC.md](MULTI-SPACE-SCENE-SPEC.md). The partition-model contract itself is
+unchanged.

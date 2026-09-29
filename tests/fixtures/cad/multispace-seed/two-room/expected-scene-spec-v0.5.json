@@ -1,0 +1,925 @@
+{
+  "sceneSpecVersion": "0.5.0",
+  "project": {
+    "id": "project_cad_multispace_001",
+    "name": "CAD Multi-Space Two Room"
+  },
+  "scene": {
+    "id": "scene_cad_multispace_001",
+    "revisionId": "rev_cad_multispace_0001",
+    "headRevisionId": "rev_cad_multispace_0001"
+  },
+  "coordinateSystem": {
+    "linearUnit": "mm",
+    "angularUnit": "degree",
+    "upAxis": "Z",
+    "handedness": "right",
+    "axisConvention": "X_east_Y_north_Z_up",
+    "worldOrigin": [
+      0,
+      0,
+      0
+    ]
+  },
+  "sources": [
+    {
+      "id": "source_cad_multispace_dxf",
+      "type": "dxf",
+      "uri": "urn:sha256:6de69c56aac4cdc9e98f1a658c62974e4af8e53aff9f19382d352b7143fcab9e",
+      "authority": "A3",
+      "confidence": 1,
+      "verified": true
+    }
+  ],
+  "levels": [
+    {
+      "id": "level_ground",
+      "name": "Ground Floor",
+      "elevation": 0,
+      "defaultCeilingHeight": 3000
+    }
+  ],
+  "spaces": [
+    {
+      "id": "space_living_main",
+      "levelId": "level_ground",
+      "type": "living_room",
+      "boundary": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          3000,
+          0,
+          0
+        ],
+        [
+          3000,
+          4000,
+          0
+        ],
+        [
+          0,
+          4000,
+          0
+        ]
+      ],
+      "boundaryWinding": "counter_clockwise",
+      "floorElevation": 0,
+      "ceilingHeight": 3000,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "space_bedroom_main",
+      "levelId": "level_ground",
+      "type": "bedroom",
+      "boundary": [
+        [
+          3000,
+          0,
+          0
+        ],
+        [
+          6000,
+          0,
+          0
+        ],
+        [
+          6000,
+          4000,
+          0
+        ],
+        [
+          3000,
+          4000,
+          0
+        ]
+      ],
+      "boundaryWinding": "counter_clockwise",
+      "floorElevation": 0,
+      "ceilingHeight": 3000,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "geometry": [
+    {
+      "id": "wall_living_south",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        0,
+        0,
+        0
+      ],
+      "end": [
+        3000,
+        0,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_living_north",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        3000,
+        4000,
+        0
+      ],
+      "end": [
+        0,
+        4000,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_living_west",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "start": [
+        0,
+        4000,
+        0
+      ],
+      "end": [
+        0,
+        0,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_bedroom_south",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_bedroom_main",
+      "start": [
+        3000,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        0,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_bedroom_east",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_bedroom_main",
+      "start": [
+        6000,
+        0,
+        0
+      ],
+      "end": [
+        6000,
+        4000,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "wall_bedroom_north",
+      "type": "wall",
+      "levelId": "level_ground",
+      "spaceId": "space_bedroom_main",
+      "start": [
+        6000,
+        4000,
+        0
+      ],
+      "end": [
+        3000,
+        4000,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "interior_face",
+      "thicknessDirection": "exterior_right_of_u",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "partition_living_bedroom_main",
+      "type": "shared_partition",
+      "levelId": "level_ground",
+      "adjacentSpaceIds": [
+        "space_bedroom_main",
+        "space_living_main"
+      ],
+      "start": [
+        3000,
+        0,
+        0
+      ],
+      "end": [
+        3000,
+        4000,
+        0
+      ],
+      "baseElevation": 0,
+      "height": 3000,
+      "thickness": 150,
+      "referenceLine": "centerline",
+      "spaceFaces": [
+        {
+          "spaceId": "space_living_main",
+          "side": "left",
+          "start": [
+            2925,
+            0,
+            0
+          ],
+          "end": [
+            2925,
+            4000,
+            0
+          ]
+        },
+        {
+          "spaceId": "space_bedroom_main",
+          "side": "right",
+          "start": [
+            3075,
+            0,
+            0
+          ],
+          "end": [
+            3075,
+            4000,
+            0
+          ]
+        }
+      ],
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "surface_floor_living",
+      "type": "floor",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "boundary": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          3000,
+          0,
+          0
+        ],
+        [
+          3000,
+          4000,
+          0
+        ],
+        [
+          0,
+          4000,
+          0
+        ]
+      ],
+      "elevation": 0,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "surface_ceiling_living",
+      "type": "ceiling",
+      "levelId": "level_ground",
+      "spaceId": "space_living_main",
+      "boundary": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          3000,
+          0,
+          0
+        ],
+        [
+          3000,
+          4000,
+          0
+        ],
+        [
+          0,
+          4000,
+          0
+        ]
+      ],
+      "elevation": 3000,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [
+          0,
+          0,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "surface_floor_bedroom",
+      "type": "floor",
+      "levelId": "level_ground",
+      "spaceId": "space_bedroom_main",
+      "boundary": [
+        [
+          3000,
+          0,
+          0
+        ],
+        [
+          6000,
+          0,
+          0
+        ],
+        [
+          6000,
+          4000,
+          0
+        ],
+        [
+          3000,
+          4000,
+          0
+        ]
+      ],
+      "elevation": 0,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "surface_ceiling_bedroom",
+      "type": "ceiling",
+      "levelId": "level_ground",
+      "spaceId": "space_bedroom_main",
+      "boundary": [
+        [
+          3000,
+          0,
+          0
+        ],
+        [
+          6000,
+          0,
+          0
+        ],
+        [
+          6000,
+          4000,
+          0
+        ],
+        [
+          3000,
+          4000,
+          0
+        ]
+      ],
+      "elevation": 3000,
+      "thickness": 0,
+      "extrusionDirection": "none",
+      "transform": {
+        "position": [
+          0,
+          0,
+          3000
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    }
+  ],
+  "openings": [
+    {
+      "id": "opening_d_internal_01",
+      "type": "door",
+      "hostGeometryId": "partition_living_bedroom_main",
+      "connectsSpaceIds": [
+        "space_bedroom_main",
+        "space_living_main"
+      ],
+      "offset": 1550,
+      "width": 900,
+      "sill": 0,
+      "height": 2100,
+      "hingeEndpoint": "host_start",
+      "swingIntoSpaceId": "space_bedroom_main",
+      "transform": {
+        "position": [
+          1550,
+          0,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    }
+  ],
+  "assetDefinitions": [
+    {
+      "id": "assetdef_multispace_box_v1",
+      "version": "1",
+      "category": "coffee_table",
+      "sourceType": "procedural_proxy",
+      "dimensions": [
+        600,
+        400,
+        450
+      ],
+      "pivotPolicy": "floor_center",
+      "allowNonUniformScale": false
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_multispace_box_bedroom",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_multispace_box_v1",
+      "spaceId": "space_bedroom_main",
+      "transform": {
+        "position": [
+          5000,
+          1000,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    },
+    {
+      "id": "asset_multispace_box_living",
+      "type": "proxy_asset",
+      "assetDefinitionId": "assetdef_multispace_box_v1",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [
+          1000,
+          1000,
+          0
+        ],
+        "rotationEuler": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "locks": {
+        "geometry": false,
+        "transform": false,
+        "material": false
+      }
+    }
+  ],
+  "materials": [],
+  "materialAssignments": [],
+  "cameras": [
+    {
+      "id": "camera_multispace_living_a",
+      "type": "camera",
+      "spaceId": "space_living_main",
+      "transform": {
+        "position": [
+          1200,
+          3800,
+          1500
+        ],
+        "rotationEuler": [
+          -2.84471,
+          0,
+          206.565051
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "target": [
+        3000,
+        200,
+        1300
+      ],
+      "orientationPolicy": "look_at_target",
+      "focalLengthMm": 28,
+      "sensorWidthMm": 36
+    }
+  ],
+  "render": {
+    "engine": "none",
+    "mode": "build_only"
+  },
+  "revisions": [
+    {
+      "revisionId": "rev_cad_multispace_0001",
+      "parentRevisionId": null,
+      "status": "committed",
+      "createdAt": "2026-09-29T12:00:00Z"
+    }
+  ],
+  "extensions": {
+    "aiarchviz.cad_multispace_seed": {
+      "version": "0.1.0",
+      "seedPolicy": "cad-scene-seed-policy-v0.2",
+      "sceneApprovalId": "approval_cad_multispace_seed_001",
+      "sceneApprovalHash": "sha256:794f86595cf02585afc1ab6e7cbcf50697185e26a9d1c6872c4f6d7db8c53abb",
+      "partitionPolicyVersion": "cad-shared-partition-policy-v0.1",
+      "partitionApprovalId": "approval_partitions_two_room",
+      "partitionApprovalHash": "sha256:bcb1a14c24df3d512a2fa258f398a6cd8218d2960435cdc1a571b3351eb1f563",
+      "reviewedPartitionModelHash": "sha256:3f57213e3260437b21cc354efd1d6ed3c79bae9597ca92fe2fce59a41d8be017",
+      "architecturalTopologyHash": "sha256:d8be5d08652116e14a7f959adf3efcd80148c7615661d2a7448fce68f74c2f59",
+      "candidateBasis": "space_wall_stage",
+      "spaceWallStageHash": "sha256:ab13a1ac0eed9d9deec986e78bb14bbe6b04aa7119467488184a76ac3083a81a",
+      "architecturalExtractionHash": null,
+      "profileId": "topology_fixture_profile",
+      "profileHash": "sha256:120a33f5919cbc03a0c0f7db42f0770cca9645d8bfd4348d8012f269d5b63f39",
+      "cadDocumentHash": "sha256:7cdd0a8b9d47a74bc57edec6449594d59c4c46682b568c141475f9e84a3aaf29",
+      "sourceHash": "sha256:6de69c56aac4cdc9e98f1a658c62974e4af8e53aff9f19382d352b7143fcab9e",
+      "mappings": {
+        "levels": [
+          {
+            "candidateId": "level_candidate_ground",
+            "logicalId": "level_ground"
+          }
+        ],
+        "spaces": [
+          {
+            "candidateId": "space_candidate_0000",
+            "logicalId": "space_living_main",
+            "floorSurfaceId": "surface_floor_living",
+            "ceilingSurfaceId": "surface_ceiling_living"
+          },
+          {
+            "candidateId": "space_candidate_0001",
+            "logicalId": "space_bedroom_main",
+            "floorSurfaceId": "surface_floor_bedroom",
+            "ceilingSurfaceId": "surface_ceiling_bedroom"
+          }
+        ],
+        "walls": [
+          {
+            "candidateId": "unpaired_wall_segment_wall_candidate_0000_0000_0000",
+            "logicalId": "wall_living_south"
+          },
+          {
+            "candidateId": "unpaired_wall_segment_wall_candidate_0000_0002_0000",
+            "logicalId": "wall_living_north"
+          },
+          {
+            "candidateId": "unpaired_wall_segment_wall_candidate_0000_0003_0000",
+            "logicalId": "wall_living_west"
+          },
+          {
+            "candidateId": "unpaired_wall_segment_wall_candidate_0001_0000_0000",
+            "logicalId": "wall_bedroom_south"
+          },
+          {
+            "candidateId": "unpaired_wall_segment_wall_candidate_0001_0001_0000",
+            "logicalId": "wall_bedroom_east"
+          },
+          {
+            "candidateId": "unpaired_wall_segment_wall_candidate_0001_0002_0000",
+            "logicalId": "wall_bedroom_north"
+          }
+        ],
+        "partitions": [
+          {
+            "candidateId": "partition_candidate_0000",
+            "logicalId": "partition_living_bedroom_main"
+          }
+        ],
+        "openings": [
+          {
+            "candidateId": "topology_opening_0000",
+            "logicalId": "opening_d_internal_01"
+          }
+        ]
+      }
+    }
+  },
+  "lights": [],
+  "circulationRequirements": []
+}

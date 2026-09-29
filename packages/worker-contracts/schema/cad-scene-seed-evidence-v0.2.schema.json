@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-scene-seed-evidence-v0.2.schema.json",
+  "title": "AI ArchViz CAD scene seed evidence v0.2",
+  "description": "Identity proof for one multi-space SceneSpec v0.5 seed (cad-scene-seed-policy-v0.2): the complete reviewed upstream hash chain (raw DXF, CAD document, profile, 10B candidate basis, topology, partition approval, reviewed partition model), the scene approval and SceneSpec hashes, mapping counts, and pure spatial/circulation statuses. architecturalExtractionHash is null for the space_wall_stage basis. No DCC evidence, no paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidenceVersion",
+    "seedPolicyVersion",
+    "sceneSpecVersion",
+    "sourceHash",
+    "cadDocumentHash",
+    "profileHash",
+    "candidateBasis",
+    "architecturalExtractionHash",
+    "spaceWallStageHash",
+    "architecturalTopologyHash",
+    "partitionPolicyVersion",
+    "partitionApprovalId",
+    "partitionApprovalHash",
+    "reviewedPartitionModelHash",
+    "sceneApprovalId",
+    "sceneApprovalHash",
+    "sceneSpecHash",
+    "projectId",
+    "sceneId",
+    "revisionId",
+    "mappingSummary",
+    "spatialPolicyVersion",
+    "spatialValidationStatus",
+    "circulationPolicyVersion",
+    "circulationRequirementStatus",
+    "status"
+  ],
+  "properties": {
+    "evidenceVersion": {
+      "const": "0.2.0"
+    },
+    "seedPolicyVersion": {
+      "const": "cad-scene-seed-policy-v0.2"
+    },
+    "sceneSpecVersion": {
+      "const": "0.5.0"
+    },
+    "sourceHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "cadDocumentHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "profileHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "candidateBasis": {
+      "enum": [
+        "architectural_extraction",
+        "space_wall_stage"
+      ]
+    },
+    "architecturalExtractionHash": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/hash"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "spaceWallStageHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "architecturalTopologyHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "partitionPolicyVersion": {
+      "const": "cad-shared-partition-policy-v0.1"
+    },
+    "partitionApprovalId": {
+      "$ref": "#/$defs/id"
+    },
+    "partitionApprovalHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "reviewedPartitionModelHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "sceneApprovalId": {
+      "$ref": "#/$defs/id"
+    },
+    "sceneApprovalHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "sceneSpecHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "projectId": {
+      "$ref": "#/$defs/id"
+    },
+    "sceneId": {
+      "$ref": "#/$defs/id"
+    },
+    "revisionId": {
+      "$ref": "#/$defs/id"
+    },
+    "mappingSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "levelCount",
+        "spaceCount",
+        "wallCount",
+        "sharedPartitionCount",
+        "surfaceCount",
+        "openingCount",
+        "partitionDoorCount"
+      ],
+      "properties": {
+        "levelCount": {
+          "$ref": "#/$defs/count"
+        },
+        "spaceCount": {
+          "$ref": "#/$defs/count"
+        },
+        "wallCount": {
+          "$ref": "#/$defs/count"
+        },
+        "sharedPartitionCount": {
+          "$ref": "#/$defs/count"
+        },
+        "surfaceCount": {
+          "$ref": "#/$defs/count"
+        },
+        "openingCount": {
+          "$ref": "#/$defs/count"
+        },
+        "partitionDoorCount": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "spatialPolicyVersion": {
+      "const": "spatial-policy-v0.2"
+    },
+    "spatialValidationStatus": {
+      "const": "PASS"
+    },
+    "circulationPolicyVersion": {
+      "const": "circulation-policy-v0.2"
+    },
+    "circulationRequirementStatus": {
+      "const": "PASS"
+    },
+    "status": {
+      "const": "PASS"
+    }
+  },
+  "if": {
+    "properties": {
+      "candidateBasis": {
+        "const": "architectural_extraction"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "architecturalExtractionHash": {
+        "$ref": "#/$defs/hash"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "architecturalExtractionHash": {
+        "type": "null"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

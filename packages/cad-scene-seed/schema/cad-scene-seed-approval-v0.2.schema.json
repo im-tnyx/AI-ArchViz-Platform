@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/cad-scene-seed-approval-v0.2.schema.json",
+  "title": "AI ArchViz CAD scene seed approval v0.2",
+  "description": "Declarative human approval of one exact reviewed-partition-model-v0.1 (bound by its full upstream hash chain) for a multi-space SceneSpec v0.5 seed: explicit canonical identity, candidate-to-logical-ID mappings for the level, spaces (+ floor/ceiling surfaces), unpaired wall segments, shared partitions, and openings, plus non-CAD scene state. It never edits architectural or partition facts: there is no override field anywhere; a wrong model is fixed upstream and reviewed again.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "approvalVersion",
+    "approvalId",
+    "canonicalizationPolicy",
+    "decision",
+    "reviewedPartitionModel",
+    "canonical",
+    "lockPolicy",
+    "mappings",
+    "nonCadState"
+  ],
+  "properties": {
+    "approvalVersion": {
+      "const": "0.2.0"
+    },
+    "approvalId": {
+      "$ref": "#/$defs/id"
+    },
+    "canonicalizationPolicy": {
+      "const": "cad-scene-seed-policy-v0.2"
+    },
+    "decision": {
+      "description": "Recorded review outcome. Only approved_as_is is canonicalizable in v0.1.",
+      "enum": [
+        "approved_as_is",
+        "rejected",
+        "changes_requested"
+      ]
+    },
+    "reviewedPartitionModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewedPartitionModelVersion",
+        "reviewedPartitionModelHash",
+        "partitionPolicyVersion",
+        "architecturalTopologyHash",
+        "candidateBasis",
+        "sourceHash",
+        "cadDocumentHash",
+        "profileHash",
+        "spaceWallStageHash",
+        "architecturalExtractionHash"
+      ],
+      "properties": {
+        "reviewedPartitionModelVersion": {
+          "const": "0.1.0"
+        },
+        "reviewedPartitionModelHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "partitionPolicyVersion": {
+          "const": "cad-shared-partition-policy-v0.1"
+        },
+        "architecturalTopologyHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "candidateBasis": {
+          "enum": [
+            "architectural_extraction",
+            "space_wall_stage"
+          ]
+        },
+        "sourceHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "cadDocumentHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "profileHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "spaceWallStageHash": {
+          "$ref": "#/$defs/hash"
+        },
+        "architecturalExtractionHash": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "candidateBasis": {
+            "const": "architectural_extraction"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "architecturalExtractionHash": {
+            "$ref": "#/$defs/hash"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "architecturalExtractionHash": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "canonical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "scene"
+      ],
+      "properties": {
+        "project": {
+          "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/project"
+        },
+        "scene": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "revisionId",
+            "createdAt"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/id"
+            },
+            "revisionId": {
+              "$ref": "#/$defs/id"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    "lockPolicy": {
+      "const": "all_unlocked"
+    },
+    "mappings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "levels",
+        "spaces",
+        "walls",
+        "partitions",
+        "openings"
+      ],
+      "properties": {
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/levelMapping"
+          }
+        },
+        "spaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/spaceMapping"
+          }
+        },
+        "walls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/wallMapping"
+          }
+        },
+        "partitions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/partitionMapping"
+          }
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/openingMapping"
+          }
+        }
+      }
+    },
+    "nonCadState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sources",
+        "assetDefinitions",
+        "assets",
+        "materials",
+        "materialAssignments",
+        "lights",
+        "cameras",
+        "render",
+        "circulationRequirements"
+      ],
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/source"
+          }
+        },
+        "assetDefinitions": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/assetDefinition"
+          }
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/asset"
+          }
+        },
+        "materials": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/material"
+          }
+        },
+        "materialAssignments": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/materialAssignment"
+          }
+        },
+        "lights": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/light"
+          }
+        },
+        "cameras": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/camera"
+          }
+        },
+        "render": {
+          "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/renderIntent"
+        },
+        "circulationRequirements": {
+          "type": "array",
+          "items": {
+            "$ref": "https://ai-archviz.example/schema/scene-spec-v0.5.schema.json#/$defs/circulationRequirement"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "levelMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "logicalId"
+      ],
+      "properties": {
+        "candidateId": {
+          "$ref": "#/$defs/id"
+        },
+        "logicalId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "spaceMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "logicalId",
+        "floorSurfaceId",
+        "ceilingSurfaceId"
+      ],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^space_candidate_[0-9]{4}$"
+        },
+        "logicalId": {
+          "$ref": "#/$defs/id"
+        },
+        "floorSurfaceId": {
+          "$ref": "#/$defs/id"
+        },
+        "ceilingSurfaceId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "wallMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "logicalId"
+      ],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^unpaired_wall_segment_wall_candidate_[0-9]{4}_[0-9]{4}_[0-9]{4}$"
+        },
+        "logicalId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "description": "Maps one derived, non-canonical unpaired wall-segment candidate (a 10E unpaired interval of one 10B wall) to exactly one canonical wall ID."
+    },
+    "openingMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "logicalId"
+      ],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^topology_opening_[0-9]{4}$"
+        },
+        "logicalId": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "description": "Maps one 10D topology opening relation (shared interior door or unshared opening) to exactly one canonical opening ID."
+    },
+    "partitionMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "logicalId"
+      ],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^partition_candidate_[0-9]{4}$"
+        },
+        "logicalId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    }
+  }
+}

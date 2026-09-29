@@ -224,3 +224,12 @@ or non-coplanar boundaries.
 Multi-room/shared-wall interpretation, a production DWG adapter, a review UX,
 geometry edits during approval, and AI-assisted interpretation are all out of
 scope and not started.
+
+**10F (multi-space):** cad-scene-seed-policy-v0.1 and
+`cad-scene-seed-approval-v0.1` are unchanged and still produce SceneSpec
+v0.4 single-space seeds. The separate cad-scene-seed-policy-v0.2 /
+`cad-scene-seed-approval-v0.2` seed a reviewed multi-space partition model
+into SceneSpec v0.5 (`cad-scene-seed-evidence-v0.2`), with explicit mappings
+for unpaired wall segments, partitions, and topology openings; see [MULTI-SPACE-SCENE-SPEC.md](MULTI-SPACE-SCENE-SPEC.md).
+A v0.5 seed cannot be built in 3ds Max yet: the initial build refuses it
+before any DCC process.

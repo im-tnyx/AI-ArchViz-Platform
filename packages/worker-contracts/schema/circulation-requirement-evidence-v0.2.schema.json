@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-archviz.example/schema/circulation-requirement-evidence-v0.2.schema.json",
+  "title": "AI ArchViz circulation requirement evidence v0.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "evidenceVersion",
+    "projectId",
+    "sceneId",
+    "revisionId",
+    "sceneSpecVersion",
+    "sceneSpecHash",
+    "circulationPolicyVersion",
+    "spatialPolicyVersion",
+    "requirementSetHash",
+    "graphSemanticHash",
+    "requirements",
+    "status"
+  ],
+  "properties": {
+    "evidenceVersion": {
+      "const": "0.2.0"
+    },
+    "projectId": {
+      "$ref": "#/$defs/id"
+    },
+    "sceneId": {
+      "$ref": "#/$defs/id"
+    },
+    "revisionId": {
+      "$ref": "#/$defs/id"
+    },
+    "sceneSpecVersion": {
+      "const": "0.5.0"
+    },
+    "sceneSpecHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "circulationPolicyVersion": {
+      "const": "circulation-policy-v0.2"
+    },
+    "spatialPolicyVersion": {
+      "const": "spatial-policy-v0.2"
+    },
+    "requirementSetHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "graphSemanticHash": {
+      "$ref": "#/$defs/hash"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/requirement"
+      }
+    },
+    "status": {
+      "enum": [
+        "PASS",
+        "FAILED"
+      ]
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 3,
+      "maxLength": 128
+    },
+    "nodeId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*::(0|[1-9][0-9]*)::(0|[1-9][0-9]*)$",
+      "maxLength": 160
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "endpointKind": {
+      "enum": [
+        "door_portal",
+        "point"
+      ]
+    },
+    "point2": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "nullablePoint2": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/point2"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableNodeId": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/nodeId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirementId",
+        "spaceId",
+        "startKind",
+        "endKind",
+        "resolvedStartXY",
+        "resolvedEndXY",
+        "status",
+        "startNodeId",
+        "endNodeId",
+        "distanceMm",
+        "orthogonalStepCount",
+        "diagonalStepCount",
+        "routeSemanticHash",
+        "failureCode"
+      ],
+      "properties": {
+        "requirementId": {
+          "$ref": "#/$defs/id"
+        },
+        "spaceId": {
+          "$ref": "#/$defs/id"
+        },
+        "startKind": {
+          "$ref": "#/$defs/endpointKind"
+        },
+        "endKind": {
+          "$ref": "#/$defs/endpointKind"
+        },
+        "resolvedStartXY": {
+          "$ref": "#/$defs/nullablePoint2"
+        },
+        "resolvedEndXY": {
+          "$ref": "#/$defs/nullablePoint2"
+        },
+        "status": {
+          "enum": [
+            "SATISFIED",
+            "UNSATISFIED"
+          ]
+        },
+        "startNodeId": {
+          "$ref": "#/$defs/nullableNodeId"
+        },
+        "endNodeId": {
+          "$ref": "#/$defs/nullableNodeId"
+        },
+        "distanceMm": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "orthogonalStepCount": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/count"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diagonalStepCount": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/count"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "routeSemanticHash": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "failureCode": {
+          "enum": [
+            null,
+            "CIRCULATION_SOURCE_SPATIAL_INVALID",
+            "CIRCULATION_PORTAL_BLOCKED",
+            "CIRCULATION_ENDPOINT_BLOCKED",
+            "CIRCULATION_ENDPOINT_UNRESOLVABLE",
+            "CIRCULATION_NO_ROUTE"
+          ]
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "SATISFIED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "resolvedStartXY": {
+            "$ref": "#/$defs/point2"
+          },
+          "resolvedEndXY": {
+            "$ref": "#/$defs/point2"
+          },
+          "startNodeId": {
+            "$ref": "#/$defs/nodeId"
+          },
+          "endNodeId": {
+            "$ref": "#/$defs/nodeId"
+          },
+          "distanceMm": {
+            "type": "number",
+            "minimum": 0
+          },
+          "orthogonalStepCount": {
+            "$ref": "#/$defs/count"
+          },
+          "diagonalStepCount": {
+            "$ref": "#/$defs/count"
+          },
+          "routeSemanticHash": {
+            "$ref": "#/$defs/hash"
+          },
+          "failureCode": {
+            "const": null
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "distanceMm": {
+            "const": null
+          },
+          "orthogonalStepCount": {
+            "const": null
+          },
+          "diagonalStepCount": {
+            "const": null
+          },
+          "routeSemanticHash": {
+            "const": null
+          },
+          "failureCode": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "description": "Evaluation of SceneSpec v0.5 canonical circulation requirements under circulation-policy-v0.2 / spatial-policy-v0.2. A shared-partition door_portal resolves to the portal of the requirement's own space. No paths."
+}

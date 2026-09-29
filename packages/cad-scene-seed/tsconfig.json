@@ -6,6 +6,19 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
-  "references": [{ "path": "../cad-interpreter" }, { "path": "../scene-spec" }],
+  "references": [
+    {
+      "path": "../cad-interpreter"
+    },
+    {
+      "path": "../cad-partition-model"
+    },
+    {
+      "path": "../cad-topology"
+    },
+    {
+      "path": "../scene-spec"
+    }
+  ],
   "include": ["src/**/*.ts"]
 }

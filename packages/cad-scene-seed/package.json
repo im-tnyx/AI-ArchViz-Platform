@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@ai-archviz/cad-interpreter": "workspace:*",
+    "@ai-archviz/cad-partition-model": "workspace:*",
+    "@ai-archviz/cad-topology": "workspace:*",
     "@ai-archviz/scene-spec": "workspace:*",
     "ajv": "catalog:",
     "ajv-formats": "catalog:"
