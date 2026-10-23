@@ -1,0 +1,10 @@
+# Security-sensitive repository policy. This file identifies maintainers;
+# it is NOT enforced until the main ruleset requires code-owner review and
+# at least one eligible independent reviewer can approve.
+# Do not enable code-owner approval with only the PR author as eligible owner.
+/.github/CODEOWNERS @im-tnyx
+/.github/workflows/ @im-tnyx
+/scripts/check_commit_attribution.sh @im-tnyx
+/scripts/check_attribution_base_freshness.sh @im-tnyx
+/scripts/check_commit_attribution_test.sh @im-tnyx
+/AGENTS.md @im-tnyx
