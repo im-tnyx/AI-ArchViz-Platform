@@ -1,0 +1,41 @@
+name: Post-merge attribution audit
+
+# Detection only: this cannot prevent or undo a completed merge.
+# Scan only commits newly added by the push, never rewrite old history.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Main commit attribution audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout committed main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Audit new main commit messages
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            echo "audit: previous main SHA unavailable; fail closed" >&2
+            exit 2
+          fi
+          if ! git cat-file -e "${AFTER_SHA}^{commit}" 2>/dev/null; then
+            echo "audit: new main SHA invalid; fail closed" >&2
+            exit 2
+          fi
+          if ! git merge-base --is-ancestor "$BEFORE_SHA" "$AFTER_SHA"; then
+            echo "audit: non-fast-forward main update; fail closed" >&2
+            exit 2
+          fi
+          bash scripts/check_commit_attribution.sh "$BEFORE_SHA" "$AFTER_SHA"
