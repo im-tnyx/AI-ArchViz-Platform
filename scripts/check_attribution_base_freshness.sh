@@ -33,12 +33,12 @@ if [ -z "$current_main_sha" ]; then
 fi
 
 if [ "$current_main_sha" != "$base_sha" ]; then
-  echo "attribution-base-freshness: stale event base ${base_sha}; main is now ${current_main_sha}. Update PR branch and re-run checks." >&2
+  echo "attribution-base-freshness: stale event base ${base_sha}; main is now ${current_main_sha}. Push an updated PR branch to trigger a new synchronize event; rerunning this stale event cannot refresh base.sha." >&2
   exit 1
 fi
 
 if ! git merge-base --is-ancestor "$base_sha" "$head_sha"; then
-  echo "attribution-base-freshness: PR head ${head_sha} does not contain current main ${base_sha}; update PR branch and re-run checks." >&2
+  echo "attribution-base-freshness: PR head ${head_sha} does not contain current main ${base_sha}; push an updated PR branch to trigger a new synchronize event; rerunning the old event cannot refresh base.sha." >&2
   exit 1
 fi
 
