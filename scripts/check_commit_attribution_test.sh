@@ -105,6 +105,15 @@ run_case_ex() {
   local head_sha
   head_sha="$(cd "$repo" && git rev-parse HEAD)"
 
+  # `@current` is a test-only placeholder for a full PR#:HEAD_SHA scope.
+  if [ "$exception_pr" = "@current" ]; then
+    exception_pr="${pr_number}:${head_sha}"
+  elif [ "$exception_pr" = "@other-pr" ]; then
+    exception_pr="43:${head_sha}"
+  elif [ "$exception_pr" = "@wrong-head" ]; then
+    exception_pr="${pr_number}:${base_sha}"
+  fi
+
   local output rc=0
   output="$(cd "$repo" && bash "$checker" "$base_sha" "$head_sha" "$pr_number" "$exception_pr" 2>&1)" || rc=$?
 
@@ -183,17 +192,25 @@ run_case_ex fail "violation, no exception set" \
 
 # violation + different PR exception -> FAIL rc=1
 run_case_ex fail "violation, exception set for a different PR" \
-  "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "43"
+  "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "@other-pr"
 
-# violation + exact matching PR exception -> PASS rc=0
+# violation + exact matching PR AND head SHA exception -> PASS rc=0
 run_case_ex pass "violation, exact matching PR exception" \
-  "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "42"
+  "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "@current"
+
+# violation + same PR number but stale HEAD exception -> FAIL rc=1
+run_case_ex fail "violation, same PR but different exact head SHA" \
+  "$(printf 'feat: x\\n\\nBody.\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "@wrong-head"
+
+# violation + legacy bare PR exception is no longer valid -> FAIL rc=1
+run_case_ex fail "violation, old PR-only exception must fail" \
+  "$(printf 'feat: x\\n\\nBody.\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "42"
 
 # --- Fail-closed technical-failure fixtures: exception must NEVER apply ---
 
 # invalid base ref + exact matching exception -> FAIL rc=2, not bypassed
 run_invalid_ref_case "invalid base ref with matching exception must still fail closed (rc=2)" \
-  "not-a-real-ref" "$base_sha" "42" "42"
+  "not-a-real-ref" "$base_sha" "42" "$base_sha"
 
 # invalid head ref + exact matching exception -> FAIL rc=2, not bypassed
 run_invalid_ref_case "invalid head ref with matching exception must still fail closed (rc=2)" \
