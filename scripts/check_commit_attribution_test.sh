@@ -200,21 +200,21 @@ run_case_ex pass "violation, exact matching PR exception" \
 
 # violation + same PR number but stale HEAD exception -> FAIL rc=1
 run_case_ex fail "violation, same PR but different exact head SHA" \
-  "$(printf 'feat: x\\n\\nBody.\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "@wrong-head"
+  "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "@wrong-head"
 
 # violation + legacy bare PR exception is no longer valid -> FAIL rc=1
 run_case_ex fail "violation, old PR-only exception must fail" \
-  "$(printf 'feat: x\\n\\nBody.\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "42"
+  "$(printf 'feat: x\n\nBody.\n\nCo-Authored-By: Claude <noreply@anthropic.com>')" "42" "42"
 
 # --- Fail-closed technical-failure fixtures: exception must NEVER apply ---
 
 # invalid base ref + exact matching exception -> FAIL rc=2, not bypassed
 run_invalid_ref_case "invalid base ref with matching exception must still fail closed (rc=2)" \
-  "not-a-real-ref" "$base_sha" "42" "$base_sha"
+  "not-a-real-ref" "$base_sha" "42" "42:$base_sha"
 
 # invalid head ref + exact matching exception -> FAIL rc=2, not bypassed
 run_invalid_ref_case "invalid head ref with matching exception must still fail closed (rc=2)" \
-  "$base_sha" "0000000000000000000000000000000000dead" "42" "42"
+  "$base_sha" "0000000000000000000000000000000000dead" "42" "42:0000000000000000000000000000000000dead"
 
 
 # Expanded provider and equivalent self-credit regression fixtures.
