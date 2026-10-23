@@ -1,0 +1,164 @@
+name: Commit attribution guard
+
+# Trusted, base-controlled guard. Runs with pull_request_target (workflow
+# definition and every executable it invokes are loaded from the default
+# branch), never pull_request, so a PR cannot modify the checker it is being
+# judged by. The PR head is fetched as plain Git object data only
+# (refs/pull/<n>/head) and is NEVER checked out into the working tree and
+# NEVER executed.
+#
+# The required merge check is NOT this Actions job. The job below
+# ("Attribution guard runner") authenticates as the dedicated attribution
+# Guard GitHub App and publishes a separate Check Run named
+# "Commit attribution guard" on the PR head SHA. Branch protection pins that
+# check to the App's own source, so a check produced by any other workflow
+# (source github-actions) cannot stand in for it. The App private key lives
+# only in the attribution-guard-trusted environment, whose deployment branch
+# policy admits main only; pull_request jobs evaluate as refs/pull/<n>/merge
+# and cannot obtain it. See docs/commit-attribution-guard.md
+# for this repository's setup and trusted execution boundary.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-attribution-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Bootstrap is intentionally opt-in: before installing the App and its
+# trusted environment, no credential-dependent job runs on ordinary PRs.
+# Enable via the repository Actions variable ARCHVIZ_ATTRIBUTION_APP_ENABLED
+# ONLY after credentials and the App installation are verified. The separate
+# non-secret fixture CI and post-merge audit are always available.
+jobs:
+  guard:
+    if: vars.ARCHVIZ_ATTRIBUTION_APP_ENABLED == 'true'
+    name: Attribution guard runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: attribution-guard-trusted
+
+    steps:
+      - name: Mint ArchViz Attribution Guard installation token
+        id: app_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.ATTRIBUTION_GUARD_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ATTRIBUTION_GUARD_APP_PRIVATE_KEY }}
+          repositories: AI-ArchViz-Platform
+          permission-checks: write
+
+      - name: Open required check (in progress)
+        id: app_check
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+          DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          check_run_id="$(gh api -X POST "repos/${REPO}/check-runs" \
+            -f name='Commit attribution guard' \
+            -f head_sha="${HEAD_SHA}" \
+            -f status=in_progress \
+            -f external_id="${RUN_ID}" \
+            -f details_url="${DETAILS_URL}" \
+            --jq '.id')"
+          case "${check_run_id}" in
+            ''|*[!0-9]*)
+              echo "commit-attribution-guard: error: could not create the App check run." >&2
+              exit 2
+              ;;
+          esac
+          echo "commit-attribution-guard: opened App check run ${check_run_id} on ${HEAD_SHA}."
+          echo "check_run_id=${check_run_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout trusted base
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+
+      - name: Run fixture regression tests (trusted base code)
+        run: bash scripts/check_commit_attribution_test.sh
+
+      - name: Fetch PR head commit objects as data only
+        id: fetch_pr_head
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags origin "refs/pull/${PR_NUMBER}/head:refs/remotes/pull/${PR_NUMBER}/head"
+          fetched_head_sha="$(git rev-parse "refs/remotes/pull/${PR_NUMBER}/head")"
+
+          if [ "$fetched_head_sha" != "$EXPECTED_HEAD_SHA" ]; then
+            echo "commit-attribution-guard: error: fetched PR head (${fetched_head_sha}) does not match the event's reported head (${EXPECTED_HEAD_SHA})." >&2
+            exit 2
+          fi
+
+          echo "commit-attribution-guard: fetched PR #${PR_NUMBER} head ${fetched_head_sha} as data only (not checked out, not executed)."
+          echo "head_sha=${fetched_head_sha}" >> "$GITHUB_OUTPUT"
+
+      # Revalidate against the current trusted main when each PR event
+      # runs. This blocks stale-base events and PRs that have not been updated.
+      # A base push after a prior successful run still requires GitHub's
+      # strict "Require branches to be up to date" setting (ruleset 25645516).
+      - name: Require current main and updated PR head
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ steps.fetch_pr_head.outputs.head_sha }}
+        run: bash scripts/check_attribution_base_freshness.sh "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Check PR commits for prohibited AI attribution
+        id: checker
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ steps.fetch_pr_head.outputs.head_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXCEPTION_PR: ${{ vars.AI_ATTRIBUTION_EXCEPTION_PR }}
+        run: |
+          echo "Checking commit range ${BASE_SHA}..${HEAD_SHA} for PR #${PR_NUMBER} with the trusted base-controlled checker."
+          set +e
+          bash scripts/check_commit_attribution.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" "$EXCEPTION_PR"
+          rc=$?
+          set -e
+          echo "rc=${rc}" >> "$GITHUB_OUTPUT"
+          exit "$rc"
+
+      # Success is published only when the checker step itself succeeded AND
+      # reported rc=0. Every other path (rc 1/2/unexpected, an earlier step
+      # failing, cancellation) publishes failure. If this update call fails,
+      # the check stays in_progress, which is still non-successful.
+      - name: Finalize required check
+        if: always() && steps.app_check.outputs.check_run_id != ''
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          REPO: ${{ github.repository }}
+          CHECK_RUN_ID: ${{ steps.app_check.outputs.check_run_id }}
+          CHECKER_OUTCOME: ${{ steps.checker.outcome }}
+          CHECKER_RC: ${{ steps.checker.outputs.rc }}
+        run: |
+          set -euo pipefail
+          if [ "${CHECKER_OUTCOME}" = "success" ] && [ "${CHECKER_RC}" = "0" ]; then
+            conclusion=success
+            title='No prohibited AI attribution'
+            summary='The trusted base-controlled checker found no prohibited AI Co-Authored-By attribution (or an exact owner-approved exception applied). See the Attribution guard runner log.'
+          else
+            conclusion=failure
+            title='Attribution guard failed'
+            summary="Checker outcome=${CHECKER_OUTCOME:-not-run}, rc=${CHECKER_RC:-unset} (1 = prohibited attribution, 2 or unset = technical failure). See the Attribution guard runner log."
+          fi
+          gh api -X PATCH "repos/${REPO}/check-runs/${CHECK_RUN_ID}" \
+            -f status=completed \
+            -f conclusion="${conclusion}" \
+            -f "output[title]=${title}" \
+            -f "output[summary]=${summary}" \
+            --silent
+          echo "commit-attribution-guard: App check run ${CHECK_RUN_ID} completed with conclusion=${conclusion}."
