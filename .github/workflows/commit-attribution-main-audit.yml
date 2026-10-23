@@ -2,6 +2,8 @@ name: Post-merge attribution audit
 
 # Detection only: this cannot prevent or undo a completed merge.
 # Scan only commits newly added by the push, never rewrite old history.
+# Trusted prior-main checker only; the newly pushed commit cannot replace its
+# own checker in this detection-only job (workflow edits still require review).
 on:
   push:
     branches: [main]
@@ -16,10 +18,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout committed main
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Audit new main commit messages
         env:
           BEFORE_SHA: ${{ github.event.before }}
@@ -38,4 +41,14 @@ jobs:
             echo "audit: non-fast-forward main update; fail closed" >&2
             exit 2
           fi
-          bash scripts/check_commit_attribution.sh "$BEFORE_SHA" "$AFTER_SHA"
+          # Never execute a checker provided by the just-pushed commit.
+          # Run the version from the previous trusted main commit instead.
+          # Bootstrap's first push has no prior checker and fails closed;
+          # owners review that one-time audit separately after clean rollout.
+          prior_checker="$RUNNER_TEMP/archviz-prior-main-attribution-checker.sh"
+          if ! git cat-file -e "${BEFORE_SHA}:scripts/check_commit_attribution.sh" 2>/dev/null; then
+            echo "audit: no checker on the previous trusted main; bootstrap needs manual review, not a self-validated success" >&2
+            exit 2
+          fi
+          git show "${BEFORE_SHA}:scripts/check_commit_attribution.sh" > "$prior_checker"
+          bash "$prior_checker" "$BEFORE_SHA" "$AFTER_SHA"
