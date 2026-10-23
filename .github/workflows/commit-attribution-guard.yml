@@ -131,11 +131,13 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ steps.fetch_pr_head.outputs.head_sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          EXCEPTION_PR: ${{ vars.AI_ATTRIBUTION_EXCEPTION_PR }}
+          # Explicit owner exception must be exactly "PR_NUMBER:FULL_HEAD_SHA".
+          # Any push changes HEAD_SHA and automatically invalidates approval.
+          EXCEPTION_PR_HEAD: ${{ vars.AI_ATTRIBUTION_EXCEPTION_PR_HEAD }}
         run: |
           echo "Checking commit range ${BASE_SHA}..${HEAD_SHA} for PR #${PR_NUMBER} with the trusted base-controlled checker."
           set +e
-          bash scripts/check_commit_attribution.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" "$EXCEPTION_PR"
+          bash scripts/check_commit_attribution.sh "$BASE_SHA" "$HEAD_SHA" "$PR_NUMBER" "$EXCEPTION_PR_HEAD"
           rc=$?
           set -e
           echo "rc=${rc}" >> "$GITHUB_OUTPUT"
