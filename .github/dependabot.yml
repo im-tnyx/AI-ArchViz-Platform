@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Pinned GitHub Action SHAs require explicit dependency refresh PRs.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
