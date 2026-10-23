@@ -97,14 +97,23 @@ This guard is **not yet live or required** while its code is in a PR.
    before merging** (`strict_required_status_checks_policy: true`) and
    explicitly record bypass/merge-method decisions. ArchViz originally
    had **no active rulesets and an unprotected main** at this audit.
-3. After trusted code has landed on `main`, install a dedicated GitHub App
-   with `Checks: Read and write` and `Metadata: Read` scoped to
-   `AI-ArchViz-Platform`. Do not assume Tio-Ledger's App is installed here.
-   Verify the actual source App ID from the emitted check, not a guessed ID.
-4. Create the Actions environment `attribution-guard-trusted`, allow
-   deployments from trusted `main` only, and supply environment variable
-   `ATTRIBUTION_GUARD_APP_CLIENT_ID` and environment secret
-   `ATTRIBUTION_GUARD_APP_PRIVATE_KEY`. Never commit keys.
+3. After trusted code has landed on `main`, use a GitHub App
+   with `Checks: Read and write` and `Metadata: Read`, installed with
+   repository access to `AI-ArchViz-Platform`. The owner reports that the
+   existing shared `Tio Attribution Guard` App (ID `5032971`) is now
+   selected for ArchViz (alongside other repositories). It may be reused;
+   a separate ArchViz-only App has a smaller cross-repository credential
+   blast radius. **GitHub check-run evidence must confirm the actual App ID
+   and source on a live ArchViz PR**; a screenshot alone does not prove a
+   working Check Run.
+4. The owner reports the Actions environment `attribution-guard-trusted`
+   is configured with trusted `main`-only deployments, environment variable
+   `ATTRIBUTION_GUARD_APP_CLIENT_ID` and secret
+   `ATTRIBUTION_GUARD_APP_PRIVATE_KEY` for the selected App.
+   **The connector cannot read environment settings/secrets**, so verify
+   the app/client-id/PEM pair and restrictions from the protected UI and
+   a real successful App-run before marking credentials validated.
+   Never commit or paste keys.
 5. Explicitly set repository Actions variable
    `ARCHVIZ_ATTRIBUTION_APP_ENABLED=true` **only after** the scoped
    installation, environment, App permissions and credentials are ready.
