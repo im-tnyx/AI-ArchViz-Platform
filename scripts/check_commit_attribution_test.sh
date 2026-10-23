@@ -363,6 +363,26 @@ run_case fail "markdown linked generated with Claude Code still prohibited" \
   "$(printf 'feat: x\n\n🤖 Generated with [Claude Code](https://claude.ai/code)')"
 
 
+# Codex review: Markdown patch divider in message must NOT hide trailers.
+run_case fail "Claude AI trailer after Markdown divider" \
+  "$(printf 'feat: x\n\nImplementation summary.\n\n---\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>')"
+
+run_case pass "human co-author after Markdown divider" \
+  "$(printf 'feat: x\n\nImplementation summary.\n\n---\n\nCo-Authored-By: Jane Developer <jane@example.com>')"
+
+# Codex review: AI-assisted feature descriptions are not author credits.
+run_case pass "AI-assisted feature prose with OpenAI mention" \
+  "$(printf 'docs: x\n\nAI-assisted transaction import uses OpenAI and still requires explicit user confirmation.')"
+
+run_case pass "bullet AI-assisted feature prose with Claude mention" \
+  "$(printf 'docs: x\n\n- AI-assisted scene extraction uses Claude behind a provider adapter.')"
+
+run_case fail "explicit AI-assisted: GPT attribution" \
+  "$(printf 'feat: x\n\nAI-assisted: GPT-6')"
+
+run_case fail "explicit AI-assisted by Claude Code attribution" \
+  "$(printf 'feat: x\n\nAI-assisted by Claude Code')"
+
 # Trusted main / PR-head freshness regression cases.
 # Use a disposable bare origin: never touch any real repository or main.
 freshness_checker="$script_dir/check_attribution_base_freshness.sh"
