@@ -3,7 +3,7 @@
 #
 # Usage:
 #   check_commit_attribution.sh <base-sha> <head-sha>
-#   check_commit_attribution.sh <base-sha> <head-sha> <pr-number> <exception-pr>
+#   check_commit_attribution.sh <base-sha> <head-sha> <pr-number> <exception-pr:head-sha>
 #
 # Inspects every commit in base..head, parses each commit message's
 # trailers with `git interpret-trailers`, and rejects any Co-Authored-By
@@ -14,14 +14,14 @@
 # The optional 4-argument form carries the owner-approved exception
 # decision inside this tested script rather than in untested workflow
 # YAML: a detected violation is only forgiven when <pr-number> and
-# <exception-pr> are both non-empty and equal. The exception can NEVER
+# <exception-pr:head-sha> matches the exact PR number AND full head SHA. The exception can NEVER
 # turn a technical/invocation failure (exit 2) into success -- ref
 # validation and detection always run first, and the exception is only
 # ever consulted after a genuine attribution violation (exit-1 case) has
 # already been found.
 #
 # Exit 0: no prohibited AI attribution found, OR a violation was found but
-#         explicitly exempted for the exact matching PR number.
+#         explicitly exempted for the exact PR number and full head SHA.
 # Exit 1: prohibited AI attribution found and no matching exception applies.
 # Exit 2: usage/invocation error -- invalid argument count, invalid base/head
 #         ref, or a technical failure while parsing a commit's trailers.
@@ -30,19 +30,19 @@
 set -euo pipefail
 
 print_usage() {
-  echo "Usage: $0 <base-sha> <head-sha> [<pr-number> <exception-pr>]" >&2
+  echo "Usage: $0 <base-sha> <head-sha> [<pr-number> <exception-pr:head-sha>]" >&2
 }
 
 if [ "$#" -eq 2 ]; then
   base_sha="$1"
   head_sha="$2"
   pr_number=""
-  exception_pr=""
+  exception_pr_head=""
 elif [ "$#" -eq 4 ]; then
   base_sha="$1"
   head_sha="$2"
   pr_number="$3"
-  exception_pr="$4"
+  exception_pr_head="$4"
 else
   print_usage
   exit 2
@@ -304,9 +304,10 @@ if [ "$found_violation" -eq 0 ]; then
   exit 0
 fi
 
-if [ -n "$pr_number" ] && [ -n "$exception_pr" ] && [ "$pr_number" = "$exception_pr" ]; then
-  echo "check_commit_attribution: prohibited AI attribution WAS detected, but an explicit owner-approved exception is active for PR #${pr_number} via the AI_ATTRIBUTION_EXCEPTION_PR repository variable."
-  echo "check_commit_attribution: treat this exception as temporary; clear/change AI_ATTRIBUTION_EXCEPTION_PR once this PR is done so it cannot silently apply to a later PR."
+if [ -n "$pr_number" ] && [ -n "$exception_pr_head" ] &&
+   [ "$exception_pr_head" = "${pr_number}:$(git rev-parse "$head_sha")" ]; then
+  echo "check_commit_attribution: prohibited AI attribution WAS detected, but an explicit owner-approved exception is active only for PR #${pr_number} at head SHA $(git rev-parse "$head_sha") via AI_ATTRIBUTION_EXCEPTION_PR_HEAD."
+  echo "check_commit_attribution: treat this exception as temporary; clear AI_ATTRIBUTION_EXCEPTION_PR_HEAD immediately after the exact authorized PR/head review; a new head SHA requires a separate owner decision."
   exit 0
 fi
 
