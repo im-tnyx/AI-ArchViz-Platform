@@ -383,6 +383,25 @@ run_case fail "explicit AI-assisted: GPT attribution" \
 run_case fail "explicit AI-assisted by Claude Code attribution" \
   "$(printf 'feat: x\n\nAI-assisted by Claude Code')"
 
+# Codex follow-up: explicit credit outside the *final* trailer block.
+run_case fail "AI co-author followed by separate validation notes" \
+  "$(printf 'feat: x\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\nValidation: unit tests passed.')"
+
+run_case fail "AI signed-off-by followed by separate validation notes" \
+  "$(printf 'feat: x\n\nSigned-off-by: GPT-6 <model@users.noreply.github.com>\n\nValidation: unit tests passed.')"
+
+run_case fail "AI-assisted colon trailer followed by ordinary body notes" \
+  "$(printf 'feat: x\n\nAI-assisted: true\n\nValidation: completed.')"
+
+run_case pass "human co-author outside trailing block" \
+  "$(printf 'feat: x\n\nCo-Authored-By: Claude Dupont <claude.dupont@example.com>\n\nValidation: unit tests passed.')"
+
+run_case pass "human provider employee outside trailing block" \
+  "$(printf 'feat: x\n\nSigned-off-by: Jane Developer <jane@openai.com>\n\nValidation: unit tests passed.')"
+
+run_case fail "explicit AI credit followed by divider and more notes" \
+  "$(printf 'feat: x\n\nCo-Authored-By: Gemini 2.5 Pro <bot@example.com>\n\n---\n\nValidation: unit tests passed.')"
+
 # Trusted main / PR-head freshness regression cases.
 # Use a disposable bare origin: never touch any real repository or main.
 freshness_checker="$script_dir/check_attribution_base_freshness.sh"
