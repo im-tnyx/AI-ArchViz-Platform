@@ -27,12 +27,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: commit-attribution-guard-${{ github.event.pull_request.number }}
-  # A title/body edit cannot cancel an already-running App check.
-  # A base-branch edit is revalidated without cancelling the prior event.
-  cancel-in-progress: ${{ github.event.action != 'edited' }}
-
 # Bootstrap is intentionally opt-in: before installing the App and its
 # trusted environment, no credential-dependent job runs on ordinary PRs.
 # Enable via the repository Actions variable ARCHVIZ_ATTRIBUTION_APP_ENABLED
@@ -45,6 +39,12 @@ jobs:
     if: >-
       vars.ARCHVIZ_ATTRIBUTION_APP_ENABLED == 'true' &&
       (github.event.action != 'edited' || github.event.changes.base != null)
+    # Job-level concurrency applies AFTER the if condition. A metadata-only
+    # edited workflow cannot cancel or displace a pending guard for this PR.
+    # A changed base is revalidated without cancelling an active attempt.
+    concurrency:
+      group: commit-attribution-guard-${{ github.event.pull_request.number }}
+      cancel-in-progress: ${{ github.event.action != 'edited' }}
     name: Attribution guard runner
     runs-on: ubuntu-latest
     timeout-minutes: 10
