@@ -130,6 +130,81 @@ This guard is **not yet live or required** while its code is in a PR.
    ruleset, retaining the fixture check and strict policy. Record live
    links/results in Issue #2 before claiming enforcement or closing it.
 
+## Workflow security review: October 2026
+
+An independent workflow security review did **not** identify a critical
+secret-exfiltration or PR-code-execution finding in the inspected YAML. It
+reported two medium and several lower-severity issues. We hardened the
+bootstrap PR, but **do not treat the original review as a formal GitHub
+APPROVED review**: these changes require re-review and live tests.
+
+- `pull_request_target` still handles `opened`, `synchronize`,
+  `reopened`, and `edited`; **title/body edits skip the privileged job**.
+  A base-branch edit is the only `edited` event that re-runs it, and edited
+  events do not cancel an in-progress App check. Genuine new-head pushes
+  still cancel superseded work. A changed base must be revalidated.
+- All `actions/checkout` calls use the verified exact commit
+  `3d3c42e5aac5ba805825da76410c181273ba90b1` (`v7.0.1`);
+  `actions/create-github-app-token` uses verified
+  `bcd2ba49218906704ab6c1aa796996da409d3eb1` (`v3.2.0`).
+  `.github/dependabot.yml` proposes weekly GitHub Actions updates. Pinning
+  does not eliminate the need to review dependency-update PRs.
+- The ArchViz repository is **public**, so checkout uses
+  `persist-credentials: false`; GitHub's bootstrap checkout step still
+  authenticates as necessary, but Git credentials are not left available
+  for subsequent scripts. Never change the guard to checkout/execute
+  untrusted PR code.
+- **Important trust boundary:** the `attribution-guard-trusted` environment's
+  `main`-only branch restriction is *not* a filter for trusted PR authors.
+  For `pull_request_target` the workflow ref is `refs/heads/main` even
+  when the PR originates in an untrusted fork. It is safe **only because**
+  the runner checks out a trusted base SHA and fetches the PR head as
+  inert Git objects, verifies the exact expected head SHA, and never runs
+  PR-supplied code. The environment restriction alone would not stop a
+  malicious fork from triggering a vulnerable trusted workflow.
+- The optional owner exception variable is now
+  `AI_ATTRIBUTION_EXCEPTION_PR_HEAD` and must equal
+  `<PR_NUMBER>:<FULL_PR_HEAD_SHA>` (for example `12:abcdef...`, using the
+  actual complete 40-hex Git commit SHA). A different head, different PR,
+  or legacy PR-number-only value **does not** grant an exception. Obtain
+  explicit owner approval of the exact commit and clear the variable
+  immediately afterward. This exemption is never available for scanner or
+  ref-validation errors. **Do not** enable exceptions as a routine workflow.
+- The `main` post-merge audit executes the checker extracted from the
+  previous trusted `main` SHA (`github.event.before`), rather than the
+  newly pushed revision of its own checker. On the **first bootstrap push**,
+  the prior `main` does not contain the script, so this audit deliberately
+  **fails closed** and needs separate manual verification; it is not a
+  required PR status check. Later pushes audit with the previous trusted
+  script. The workflow itself remains editable by an authorized PR,
+  so CODEOWNERS/review are still necessary.
+- `.github/CODEOWNERS` assigns ownership of the attribution workflows,
+  scanner/tests and policy to `@im-tnyx`. **This is informational until**
+  the branch ruleset has a required approving review and Code Owner Review
+  enabled. Current ruleset `25698567` requires **zero approvals** and
+  `require_code_owner_review=false`. The author cannot approve their own
+  PR. Arrange an eligible independent collaborator/reviewer and review
+  access policy **before** enabling code-owner approvals, to avoid
+  deadlocking merges. No settings have been silently changed here.
+- The repository currently has **no merge queue**; if one is introduced,
+  revisit the expected required-check flow and the `merge_group` event
+  compatibility separately. Do not require a non-emitted `merge_group`
+  status, or the queue will block.
+- `scripts/check_attribution_base_freshness.sh` now instructs a **new
+  push/update of the PR branch** after a stale-base failure. Re-running the
+  old workflow event still uses its old `base.sha` and is insufficient.
+- The non-secret `pull_request` fixture job runs the PR's own proposed
+  test files, so a malicious PR could fake *its fixture CI* result.
+  **Only** a successfully live-tested App-issued check, pinned to the
+  actual GitHub App integration source in the main ruleset, is the
+  security-enforcement signal. The fixture may remain useful supplemental
+  CI but is not a replacement for the App check.
+
+**Activation gate remains open:** trusted code must land with explicit owner
+authorization, a real App-generated clean/fail/remediated sequence must be
+verified on ArchViz PR head SHAs, and source-pinned strict required status
+must be established and tested before this protection is called enforced.
+
 ## Final merge-message limitation
 
 The guard examines existing PR commits. GitHub `squash` and `merge`
