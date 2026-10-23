@@ -15,7 +15,7 @@ name: Commit attribution guard
 # (source github-actions) cannot stand in for it. The App private key lives
 # only in the attribution-guard-trusted environment, whose deployment branch
 # policy admits main only; pull_request jobs evaluate as refs/pull/<n>/merge
-# and cannot obtain it. See docs/commit-attribution-guard.md
+# and cannot obtain it. See docs/operations/commit-attribution-guard.md
 # for this repository's setup and trusted execution boundary.
 
 on:
@@ -29,7 +29,9 @@ permissions:
 
 concurrency:
   group: commit-attribution-guard-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # A title/body edit cannot cancel an already-running App check.
+  # A base-branch edit is revalidated without cancelling the prior event.
+  cancel-in-progress: ${{ github.event.action != 'edited' }}
 
 # Bootstrap is intentionally opt-in: before installing the App and its
 # trusted environment, no credential-dependent job runs on ordinary PRs.
@@ -38,7 +40,11 @@ concurrency:
 # non-secret fixture CI and post-merge audit are always available.
 jobs:
   guard:
-    if: vars.ARCHVIZ_ATTRIBUTION_APP_ENABLED == 'true'
+    # Ignore title/body edits. Only a changed base branch warrants a new
+    # App check; do not silently retain a check computed for another base.
+    if: >-
+      vars.ARCHVIZ_ATTRIBUTION_APP_ENABLED == 'true' &&
+      (github.event.action != 'edited' || github.event.changes.base != null)
     name: Attribution guard runner
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -81,10 +87,13 @@ jobs:
           echo "check_run_id=${check_run_id}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout trusted base
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
+          # This public repo fetches PR objects read-only; do not persist the
+          # base GITHUB_TOKEN in the checkout while App secrets are present.
+          persist-credentials: false
 
       - name: Run fixture regression tests (trusted base code)
         run: bash scripts/check_commit_attribution_test.sh
@@ -109,7 +118,7 @@ jobs:
       # Revalidate against the current trusted main when each PR event
       # runs. This blocks stale-base events and PRs that have not been updated.
       # A base push after a prior successful run still requires GitHub's
-      # strict "Require branches to be up to date" setting (ruleset 25645516).
+      # strict "Require branches to be up to date" setting (ruleset 25698567).
       - name: Require current main and updated PR head
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
