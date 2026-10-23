@@ -1,0 +1,23 @@
+name: Commit attribution fixtures
+
+# No secrets or elevated permissions. During bootstrap this is a normal PR
+# regression job only, NOT the App-owned required guard.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    name: Commit attribution fixture tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source for isolated tests
+        uses: actions/checkout@v4
+      - name: Test AI attribution and main freshness logic
+        run: bash scripts/check_commit_attribution_test.sh
