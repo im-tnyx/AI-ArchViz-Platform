@@ -162,8 +162,10 @@ if [ -n "$commit_list" ]; then
     # failure is a technical error (exit 2), never silently treated as "no
     # trailers found". An empty (but successful) parse is the normal case
     # for a commit with no trailers at all and is not an error.
+    # The value here is ONLY the commit message, not a patch. Markdown
+    # "---" dividers must not hide any later Git trailers.
     set +e
-    trailers="$(printf '%s\n' "$message" | git interpret-trailers --parse)"
+    trailers="$(printf '%s\n' "$message" | git interpret-trailers --parse --no-divider)"
     trailer_rc=$?
     set -e
 
@@ -248,10 +250,13 @@ if [ -n "$commit_list" ]; then
         continue
       fi
 
+      # AI-assisted feature prose (even with OpenAI/Claude mentioned later)
+      # is not an attribution. Only "AI-assisted with/by <model>" or
+      # "AI-assisted: <model>" is treated as an explicit credit prefix.
       # The textual credit prefix alone is not enough: the remainder must
       # identify an AI agent/model or known bot mailbox. "AI-assisted
       # transaction import still requires ..." is normal feature prose.
-      if [[ ! "$lc_line" =~ ^[^[:alnum:]]*(generated[[:space:]]+(with|by)|assisted[[:space:]]+by|ai[[:space:]-]*assisted([[:space:]]+with)?)[[:space:]:-]+ ]]; then
+      if [[ ! "$lc_line" =~ ^[^[:alnum:]]*(generated[[:space:]]+(with|by)|assisted[[:space:]]+by|ai[[:space:]-]*assisted([[:space:]]+(with|by)|[[:space:]]*:))[[:space:]:-]* ]]; then
         continue
       fi
       credit_text="${lc_line:${#BASH_REMATCH[0]}}"
